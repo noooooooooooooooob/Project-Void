@@ -13,6 +13,11 @@ func run() -> Array[Dictionary]:
 	_test_play_card_damages_and_spends_sp()
 	_test_play_card_rejected_without_sp()
 	_test_play_card_rejected_on_blocked_target()
+	_test_play_card_rejected_when_battle_finished()
+	_test_play_card_rejected_when_no_current_actor()
+	_test_play_card_rejected_when_current_unit_is_enemy()
+	_test_play_card_rejected_when_current_unit_is_dead()
+	_test_play_card_rejected_on_hand_index_out_of_bounds()
 	_test_sweep_hits_multiple()
 	_test_battle_ends_when_enemies_wiped()
 	return results()
@@ -130,6 +135,89 @@ func _test_play_card_rejected_on_blocked_target() -> void:
 
 	check("melee cannot reach behind the front", not state.play_card(0, back))
 	check_eq("back rank untouched", back.hp, 10)
+
+
+func _test_play_card_rejected_when_battle_finished() -> void:
+	var strike: CardData = _card(&"strike", 1, CardData.AttackType.MELEE, CardData.Shape.SINGLE, 1, 6)
+	var state: BattleState = _state([strike])
+	var ally: Unit = state.living_units(Unit.Team.ALLY)[0]
+	var front: Unit = state.living_units(Unit.Team.ENEMY)[0]
+	state.turn_index = 0
+	state.initiative = [ally]
+	ally.hand = [strike]
+	state.finished = true
+
+	check("play rejected once battle is finished", not state.play_card(0, front))
+	check_eq("target untouched", front.hp, 10)
+	check_eq("sp untouched", ally.sp, 5)
+	check_eq("hand untouched", ally.hand.size(), 1)
+	check_eq("discard untouched", ally.discard.size(), 0)
+
+
+func _test_play_card_rejected_when_no_current_actor() -> void:
+	var strike: CardData = _card(&"strike", 1, CardData.AttackType.MELEE, CardData.Shape.SINGLE, 1, 6)
+	var state: BattleState = _state([strike])
+	var ally: Unit = state.living_units(Unit.Team.ALLY)[0]
+	var front: Unit = state.living_units(Unit.Team.ENEMY)[0]
+	state.turn_index = 0
+	state.initiative = []  # turn_index out of bounds -> current_unit() returns null
+	ally.hand = [strike]
+
+	check("play rejected without a current actor", not state.play_card(0, front))
+	check_eq("target untouched", front.hp, 10)
+	check_eq("sp untouched", ally.sp, 5)
+	check_eq("hand untouched", ally.hand.size(), 1)
+	check_eq("discard untouched", ally.discard.size(), 0)
+
+
+func _test_play_card_rejected_when_current_unit_is_enemy() -> void:
+	var strike: CardData = _card(&"strike", 1, CardData.AttackType.MELEE, CardData.Shape.SINGLE, 1, 6)
+	var state: BattleState = _state([strike])
+	var ally: Unit = state.living_units(Unit.Team.ALLY)[0]
+	var front: Unit = state.living_units(Unit.Team.ENEMY)[0]
+	state.turn_index = 0
+	state.initiative = [front]
+	ally.hand = [strike]
+
+	check("play rejected when current unit is an enemy", not state.play_card(0, front))
+	check_eq("target untouched", front.hp, 10)
+	check_eq("sp untouched", ally.sp, 5)
+	check_eq("hand untouched", ally.hand.size(), 1)
+	check_eq("discard untouched", ally.discard.size(), 0)
+
+
+func _test_play_card_rejected_when_current_unit_is_dead() -> void:
+	var strike: CardData = _card(&"strike", 1, CardData.AttackType.MELEE, CardData.Shape.SINGLE, 1, 6)
+	var state: BattleState = _state([strike])
+	var ally: Unit = state.living_units(Unit.Team.ALLY)[0]
+	var front: Unit = state.living_units(Unit.Team.ENEMY)[0]
+	state.turn_index = 0
+	state.initiative = [ally]
+	ally.hand = [strike]
+	ally.hp = 0
+
+	check("play rejected when current unit is dead", not state.play_card(0, front))
+	check_eq("target untouched", front.hp, 10)
+	check_eq("sp untouched", ally.sp, 5)
+	check_eq("hand untouched", ally.hand.size(), 1)
+	check_eq("discard untouched", ally.discard.size(), 0)
+
+
+func _test_play_card_rejected_on_hand_index_out_of_bounds() -> void:
+	var strike: CardData = _card(&"strike", 1, CardData.AttackType.MELEE, CardData.Shape.SINGLE, 1, 6)
+	var state: BattleState = _state([strike])
+	var ally: Unit = state.living_units(Unit.Team.ALLY)[0]
+	var front: Unit = state.living_units(Unit.Team.ENEMY)[0]
+	state.turn_index = 0
+	state.initiative = [ally]
+	ally.hand = [strike]
+
+	check("negative hand index rejected", not state.play_card(-1, front))
+	check("too-large hand index rejected", not state.play_card(5, front))
+	check_eq("target untouched", front.hp, 10)
+	check_eq("sp untouched", ally.sp, 5)
+	check_eq("hand untouched", ally.hand.size(), 1)
+	check_eq("discard untouched", ally.discard.size(), 0)
 
 
 func _test_sweep_hits_multiple() -> void:
