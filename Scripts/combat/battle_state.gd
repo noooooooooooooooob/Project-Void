@@ -164,6 +164,5 @@ func _run_until_player_input() -> void:
 		check_end()
 
 
-# Task 7 에서 EnemyBrain 을 연결한다.
-func _take_enemy_turn(_actor: Unit) -> void:
-	pass
+func _take_enemy_turn(actor: Unit) -> void:
+	EnemyBrain.take_turn(self, actor)

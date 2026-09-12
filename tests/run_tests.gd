@@ -7,6 +7,7 @@ const TEST_SCRIPTS: Array[String] = [
 	"res://tests/test_target_resolver.gd",
 	"res://tests/test_battle_state.gd",
 	"res://tests/test_turn_order.gd",
+	"res://tests/test_enemy_brain.gd",
 ]
 
 
