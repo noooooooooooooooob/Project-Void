@@ -5,23 +5,38 @@ func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute("res://Resources/cards")
 	DirAccess.make_dir_recursive_absolute("res://Resources/units")
 
+	var all_ok: bool = true
+
 	var cards: Dictionary = _make_cards()
 	for card_id in cards:
-		_save(cards[card_id], "res://Resources/cards/%s.tres" % card_id)
+		if not _save(cards[card_id], "res://Resources/cards/%s.tres" % card_id):
+			all_ok = false
 
 	for unit in _make_units(cards):
-		_save(unit, "res://Resources/units/%s.tres" % unit.id)
+		if not _save(unit, "res://Resources/units/%s.tres" % unit.id):
+			all_ok = false
+
+	if not all_ok:
+		push_error("starter content generation failed; see errors above")
+		quit(1)
+		return
 
 	print("starter content generated")
 	quit(0)
 
 
-func _save(resource: Resource, path: String) -> void:
+func _save(resource: Resource, path: String) -> bool:
 	var err: int = ResourceSaver.save(resource, path)
 	if err != OK:
 		push_error("failed to save %s (error %d)" % [path, err])
-	else:
-		print("  wrote %s" % path)
+		return false
+	# take_over_path makes this resource's resource_path match where it was
+	# just written, so later saves that embed the same in-memory instance
+	# (e.g. a card referenced from a unit's deck) serialize an ExtResource
+	# pointing back at this file instead of inlining a duplicate copy.
+	resource.take_over_path(path)
+	print("  wrote %s" % path)
+	return true
 
 
 func _card(id: StringName, name: String, sp: int, attack_type: int, shape: int, attack_range: int, damage: int) -> CardData:
