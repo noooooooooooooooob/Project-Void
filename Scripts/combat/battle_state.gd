@@ -104,6 +104,10 @@ func play_card(hand_index: int, primary: Unit) -> bool:
 
 
 func start_battle() -> void:
+	# 유닛이 전혀 없는(또는 이미 결판난) 인카운터라면 여기서 즉시 끝내야 한다.
+	# 그렇지 않으면 _run_until_player_input() 이 매 라운드 빈 initiative 만
+	# 반복 계산하며 멈추지 않는다.
+	check_end()
 	_start_round()
 	_run_until_player_input()
 

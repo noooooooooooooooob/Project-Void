@@ -15,6 +15,7 @@ func run() -> Array[Dictionary]:
 	_test_end_turn_discards_hand()
 	_test_dead_units_are_skipped()
 	_test_new_round_after_everyone_acted()
+	_test_empty_encounter_finishes_without_hanging()
 	return results()
 
 
@@ -132,3 +133,12 @@ func _test_new_round_after_everyone_acted() -> void:
 	state.end_turn()
 	check_eq("second round begins", state.round_index, 2)
 	check_eq("ally acts again", state.current_unit().data.id, &"a")
+
+
+# 유닛이 하나도 없는 인카운터(작성 실수로 빈 encounter 가 로드된 경우 등)에서
+# start_battle() 이 무한 루프에 빠지지 않고 즉시 종료되는지 확인한다.
+func _test_empty_encounter_finishes_without_hanging() -> void:
+	var state: BattleState = _state([], [])
+	state.start_battle()
+	check("start_battle returns instead of hanging", true)
+	check_eq("battle already finished with no units", state.finished, true)
