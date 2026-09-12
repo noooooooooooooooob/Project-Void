@@ -101,3 +101,65 @@ func play_card(hand_index: int, primary: Unit) -> bool:
 
 	check_end()
 	return true
+
+
+func start_battle() -> void:
+	_start_round()
+	_run_until_player_input()
+
+
+func end_turn() -> void:
+	var actor: Unit = current_unit()
+	if actor != null and actor.is_ally():
+		actor.discard_hand()
+	_run_until_player_input()
+
+
+func _start_round() -> void:
+	round_index += 1
+	initiative = _compute_initiative()
+	turn_index = -1
+
+
+func _compute_initiative() -> Array[Unit]:
+	var alive: Array[Unit] = []
+	for unit in units:
+		if unit.is_alive():
+			alive.append(unit)
+	alive.sort_custom(_initiative_sorter)
+	return alive
+
+
+func _initiative_sorter(a: Unit, b: Unit) -> bool:
+	if a.data.speed != b.data.speed:
+		return a.data.speed > b.data.speed
+	return a.unit_id < b.unit_id
+
+
+# 다음 아군 차례에서 멈춘다. 적 차례는 그 자리에서 해결하고 지나간다.
+func _run_until_player_input() -> void:
+	while not finished:
+		turn_index += 1
+		if turn_index >= initiative.size():
+			_start_round()
+			continue
+
+		var actor: Unit = initiative[turn_index]
+		if not actor.is_alive():
+			continue
+
+		actor.block = 0
+		turn_started.emit(actor)
+
+		if actor.is_ally():
+			actor.sp = (actor.data as AllyData).max_sp
+			actor.draw(DRAW_PER_TURN, rng)
+			return
+
+		_take_enemy_turn(actor)
+		check_end()
+
+
+# Task 7 에서 EnemyBrain 을 연결한다.
+func _take_enemy_turn(_actor: Unit) -> void:
+	pass
