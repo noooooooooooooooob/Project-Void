@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="EncounterData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/unit_placement.gd" id="1_qgfyp"]
+[ext_resource type="Resource" path="res://Resources/units/vanguard.tres" id="2_oble2"]
+[ext_resource type="Resource" path="res://Resources/units/archer.tres" id="3_r5rn2"]
+[ext_resource type="Resource" path="res://Resources/units/scout.tres" id="4_hx4xs"]
+[ext_resource type="Resource" path="res://Resources/units/brute.tres" id="5_jq73p"]
+[ext_resource type="Resource" path="res://Resources/units/stalker.tres" id="6_1i0vc"]
+[ext_resource type="Resource" path="res://Resources/units/sentry.tres" id="7_tyvmu"]
+[ext_resource type="Script" path="res://Scripts/combat/data/encounter_data.gd" id="8_fhev4"]
+
+[sub_resource type="Resource" id="Resource_l3lrf"]
+script = ExtResource("1_qgfyp")
+unit_data = ExtResource("2_oble2")
+cell = Vector2i(0, 1)
+
+[sub_resource type="Resource" id="Resource_fgpd1"]
+script = ExtResource("1_qgfyp")
+unit_data = ExtResource("3_r5rn2")
+cell = Vector2i(2, 0)
+
+[sub_resource type="Resource" id="Resource_cy5kt"]
+script = ExtResource("1_qgfyp")
+unit_data = ExtResource("4_hx4xs")
+cell = Vector2i(1, 2)
+
+[sub_resource type="Resource" id="Resource_2no3e"]
+script = ExtResource("1_qgfyp")
+unit_data = ExtResource("5_jq73p")
+
+[sub_resource type="Resource" id="Resource_2jqrp"]
+script = ExtResource("1_qgfyp")
+unit_data = ExtResource("6_1i0vc")
+cell = Vector2i(1, 1)
+
+[sub_resource type="Resource" id="Resource_3qbyn"]
+script = ExtResource("1_qgfyp")
+unit_data = ExtResource("7_tyvmu")
+cell = Vector2i(1, 0)
+
+[resource]
+script = ExtResource("8_fhev4")
+enemy_grid = Vector2i(2, 2)
+ally_units = Array[ExtResource("1_qgfyp")]([SubResource("Resource_l3lrf"), SubResource("Resource_fgpd1"), SubResource("Resource_cy5kt")])
+enemy_units = Array[ExtResource("1_qgfyp")]([SubResource("Resource_2no3e"), SubResource("Resource_2jqrp"), SubResource("Resource_3qbyn")])

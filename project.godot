@@ -13,10 +13,11 @@ config_version=5
 config/name="Project Void"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
+run/main_scene="res://Scenes/battle.tscn"
 
 [autoload]
 
-MCPRuntime="*res://addons/godot_mcp_runtime/mcp_runtime_autoload.gd"
+MCPRuntime="*uid://gm50i23bj43v"
 
 [display]
 

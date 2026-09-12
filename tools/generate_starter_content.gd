@@ -16,6 +16,9 @@ func _initialize() -> void:
 		if not _save(unit, "res://Resources/units/%s.tres" % unit.id):
 			all_ok = false
 
+	DirAccess.make_dir_recursive_absolute("res://Resources/encounters")
+	_save(_make_skirmish(), "res://Resources/encounters/skirmish.tres")
+
 	if not all_ok:
 		push_error("starter content generation failed; see errors above")
 		quit(1)
@@ -131,3 +134,32 @@ func _deck(cards: Array) -> Array[CardData]:
 	var typed: Array[CardData] = []
 	typed.append_array(cards)
 	return typed
+
+
+func _placement(data: UnitData, cell: Vector2i) -> UnitPlacement:
+	var placement := UnitPlacement.new()
+	placement.unit_data = data
+	placement.cell = cell
+	return placement
+
+
+# 진영 크기가 서로 달라도 동작하는지 실제 플레이에서 바로 보이도록
+# 아군 3x3 / 적군 2x2 로 둔다.
+func _make_skirmish() -> EncounterData:
+	var encounter := EncounterData.new()
+	encounter.ally_grid = Vector2i(3, 3)
+	encounter.enemy_grid = Vector2i(2, 2)
+
+	var ally_placements: Array[UnitPlacement] = []
+	ally_placements.append(_placement(load("res://Resources/units/vanguard.tres"), Vector2i(0, 1)))
+	ally_placements.append(_placement(load("res://Resources/units/archer.tres"), Vector2i(2, 0)))
+	ally_placements.append(_placement(load("res://Resources/units/scout.tres"), Vector2i(1, 2)))
+	encounter.ally_units = ally_placements
+
+	var enemy_placements: Array[UnitPlacement] = []
+	enemy_placements.append(_placement(load("res://Resources/units/brute.tres"), Vector2i(0, 0)))
+	enemy_placements.append(_placement(load("res://Resources/units/stalker.tres"), Vector2i(1, 1)))
+	enemy_placements.append(_placement(load("res://Resources/units/sentry.tres"), Vector2i(1, 0)))
+	encounter.enemy_units = enemy_placements
+
+	return encounter

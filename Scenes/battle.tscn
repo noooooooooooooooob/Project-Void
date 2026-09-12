@@ -1,0 +1,59 @@
+[gd_scene format=3 uid="uid://cuys1lmxqgovi"]
+
+[ext_resource type="Script" uid="uid://cem20tvgewh60" path="res://Scripts/ui/battle_controller.gd" id="1_w7k78"]
+[ext_resource type="Resource" path="res://Resources/encounters/skirmish.tres" id="2_oxf17"]
+
+[node name="BattleRoot" type="Control" unique_id=438964999]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_w7k78")
+encounter = ExtResource("2_oxf17")
+
+[node name="Layout" type="VBoxContainer" parent="." unique_id=927789022]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TurnLabel" type="Label" parent="Layout" unique_id=1038895863]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Field" type="HBoxContainer" parent="Layout" unique_id=1767300721]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="AllyGrid" type="GridContainer" parent="Layout/Field" unique_id=1169050839]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Spacer" type="Control" parent="Layout/Field" unique_id=334680777]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EnemyGrid" type="GridContainer" parent="Layout/Field" unique_id=2083604204]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BattleLog" type="RichTextLabel" parent="Layout" unique_id=1386836352]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+
+[node name="Bottom" type="HBoxContainer" parent="Layout" unique_id=1450164761]
+layout_mode = 2
+
+[node name="HandBox" type="HBoxContainer" parent="Layout/Bottom" unique_id=1751821900]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EndTurnButton" type="Button" parent="Layout/Bottom" unique_id=242546585]
+unique_name_in_owner = true
+layout_mode = 2
+text = "차례 종료"
