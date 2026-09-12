@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="1_l577s"]
+
+[resource]
+script = ExtResource("1_l577s")
+id = &"shoot"
+display_name = "사격"
+attack_type = 1
+attack_range = 3
+damage = 4

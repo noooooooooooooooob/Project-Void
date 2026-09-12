@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="AllyData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="1_mg3f6"]
+[ext_resource type="Script" path="res://Scripts/combat/data/ally_data.gd" id="2_cn4jg"]
+
+[sub_resource type="Resource" id="Resource_khyhb"]
+script = ExtResource("1_mg3f6")
+id = &"shoot"
+display_name = "사격"
+attack_type = 1
+attack_range = 3
+damage = 4
+
+[sub_resource type="Resource" id="Resource_btash"]
+script = ExtResource("1_mg3f6")
+id = &"volley"
+display_name = "일제사격"
+sp_cost = 2
+attack_type = 1
+shape = 2
+attack_range = 4
+damage = 3
+
+[sub_resource type="Resource" id="Resource_4ub2x"]
+script = ExtResource("1_mg3f6")
+id = &"piercing_shot"
+display_name = "관통사격"
+sp_cost = 2
+attack_type = 1
+shape = 1
+attack_range = 3
+damage = 5
+
+[resource]
+script = ExtResource("2_cn4jg")
+deck = Array[ExtResource("1_mg3f6")]([SubResource("Resource_khyhb"), SubResource("Resource_khyhb"), SubResource("Resource_khyhb"), SubResource("Resource_btash"), SubResource("Resource_4ub2x"), SubResource("Resource_4ub2x")])
+id = &"archer"
+display_name = "사수"
+max_hp = 20

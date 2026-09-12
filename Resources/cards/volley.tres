@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="1_ocj22"]
+
+[resource]
+script = ExtResource("1_ocj22")
+id = &"volley"
+display_name = "일제사격"
+sp_cost = 2
+attack_type = 1
+shape = 2
+attack_range = 4
+damage = 3

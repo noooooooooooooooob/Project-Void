@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="1_aiytu"]
+
+[resource]
+script = ExtResource("1_aiytu")
+id = &"cleave"
+display_name = "횡베기"
+sp_cost = 2
+shape = 2
+damage = 4

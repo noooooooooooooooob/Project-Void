@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/enemy_data.gd" id="1_3qwrm"]
+
+[resource]
+script = ExtResource("1_3qwrm")
+attack_damage = 7
+block_amount = 6
+rest_heal = 5
+id = &"brute"
+display_name = "괴한"
+max_hp = 28
+speed = 8

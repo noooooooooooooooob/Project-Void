@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="AllyData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="1_j0120"]
+[ext_resource type="Script" path="res://Scripts/combat/data/ally_data.gd" id="2_jam8b"]
+
+[sub_resource type="Resource" id="Resource_e6u34"]
+script = ExtResource("1_j0120")
+id = &"strike"
+display_name = "베기"
+damage = 6
+
+[sub_resource type="Resource" id="Resource_lv5et"]
+script = ExtResource("1_j0120")
+id = &"cleave"
+display_name = "횡베기"
+sp_cost = 2
+shape = 2
+damage = 4
+
+[sub_resource type="Resource" id="Resource_khyhb"]
+script = ExtResource("1_j0120")
+id = &"shoot"
+display_name = "사격"
+attack_type = 1
+attack_range = 3
+damage = 4
+
+[resource]
+script = ExtResource("2_jam8b")
+deck = Array[ExtResource("1_j0120")]([SubResource("Resource_e6u34"), SubResource("Resource_e6u34"), SubResource("Resource_e6u34"), SubResource("Resource_lv5et"), SubResource("Resource_lv5et"), SubResource("Resource_khyhb")])
+id = &"vanguard"
+display_name = "선봉"
+max_hp = 30
+speed = 12
