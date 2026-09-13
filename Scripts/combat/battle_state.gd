@@ -10,6 +10,9 @@ signal card_played(actor: Unit, card: CardData, primary: Unit)
 signal enemy_acted(actor: Unit, action: EnemyBrain.Action, target: Unit)
 signal unit_healed(unit: Unit, amount: int)
 signal block_gained(unit: Unit, amount: int)
+signal deck_reshuffled(unit: Unit, count: int)
+signal card_drawn(unit: Unit, card: CardData, deck_count: int, discard_count: int)
+signal hand_discarded(unit: Unit, cards: Array[CardData], discard_count: int)
 
 const DRAW_PER_TURN: int = 4
 
@@ -135,7 +138,7 @@ func start_battle() -> void:
 func end_turn() -> void:
 	var actor: Unit = current_unit()
 	if actor != null and actor.is_ally():
-		actor.discard_hand()
+		_discard_hand(actor)
 	_run_until_player_input()
 
 
@@ -177,11 +180,28 @@ func _run_until_player_input() -> void:
 
 		if actor.is_ally():
 			actor.sp = (actor.data as AllyData).max_sp
-			actor.draw(DRAW_PER_TURN, rng)
+			_draw_cards(actor, DRAW_PER_TURN)
 			return
 
 		_take_enemy_turn(actor)
 		check_end()
+
+
+# Unit.draw 와 같은 순서로 한 장씩 진행하되, 화면이 순서대로 연출할 수 있게 매 단계 신호를 낸다.
+func _draw_cards(actor: Unit, count: int) -> void:
+	for _i in count:
+		if actor.deck.is_empty():
+			if actor.discard.is_empty():
+				return
+			deck_reshuffled.emit(actor, actor.reshuffle_discard(rng))
+		var card: CardData = actor.draw_one()
+		card_drawn.emit(actor, card, actor.deck.size(), actor.discard.size())
+
+
+func _discard_hand(actor: Unit) -> void:
+	var cards: Array[CardData] = actor.hand.duplicate()
+	actor.discard_hand()
+	hand_discarded.emit(actor, cards, actor.discard.size())
 
 
 func _take_enemy_turn(actor: Unit) -> void:

@@ -56,15 +56,29 @@ func shuffle_deck(rng: RandomNumberGenerator) -> void:
 	_shuffle(deck, rng)
 
 
+func reshuffle_discard(rng: RandomNumberGenerator) -> int:
+	var count: int = discard.size()
+	deck.append_array(discard)
+	discard.clear()
+	_shuffle(deck, rng)
+	return count
+
+
+func draw_one() -> CardData:
+	if deck.is_empty():
+		return null
+	var card: CardData = deck.pop_front()
+	hand.append(card)
+	return card
+
+
 func draw(count: int, rng: RandomNumberGenerator) -> void:
-	for i in count:
+	for _i in count:
 		if deck.is_empty():
 			if discard.is_empty():
 				return
-			deck = discard.duplicate()
-			discard.clear()
-			_shuffle(deck, rng)
-		hand.append(deck.pop_front())
+			reshuffle_discard(rng)
+		draw_one()
 
 
 func discard_hand() -> void:
