@@ -12,6 +12,7 @@ const TEST_SCRIPTS: Array[String] = [
 	"res://tests/test_event_recorder.gd",
 	"res://tests/test_board_layout.gd",
 	"res://tests/test_unit_view.gd",
+	"res://tests/test_board_3d.gd",
 ]
 
 var _started: bool = false
