@@ -1,15 +1,14 @@
-[gd_resource type="Resource" script_class="AllyData" format=3]
+[gd_resource type="Resource" script_class="AllyData" format=3 uid="uid://b7eost00fgvqo"]
 
-[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="1_y6xum"]
-[ext_resource type="Resource" path="res://Resources/cards/strike.tres" id="2_fyewd"]
-[ext_resource type="Resource" path="res://Resources/cards/shoot.tres" id="3_y5lg4"]
-[ext_resource type="Resource" path="res://Resources/cards/volley.tres" id="4_rj5yi"]
-[ext_resource type="Resource" path="res://Resources/cards/cleave.tres" id="5_8bf1v"]
-[ext_resource type="Script" path="res://Scripts/combat/data/ally_data.gd" id="6_w6v1e"]
+[ext_resource type="Script" uid="uid://c7l28pr4irggh" path="res://Scripts/combat/data/card_data.gd" id="1_y6xum"]
+[ext_resource type="Resource" uid="uid://b3wxy8jjt744e" path="res://Resources/cards/strike.tres" id="2_fyewd"]
+[ext_resource type="Resource" uid="uid://cyw41v4yf1j05" path="res://Resources/cards/shoot.tres" id="3_y5lg4"]
+[ext_resource type="Resource" uid="uid://c6xtex48jqom8" path="res://Resources/cards/volley.tres" id="4_rj5yi"]
+[ext_resource type="Resource" uid="uid://cu38wj8qfosm7" path="res://Resources/cards/cleave.tres" id="5_8bf1v"]
+[ext_resource type="Script" uid="uid://digrljfdhjmf2" path="res://Scripts/combat/data/ally_data.gd" id="6_w6v1e"]
 
 [resource]
 script = ExtResource("6_w6v1e")
-max_sp = 2
 deck = Array[ExtResource("1_y6xum")]([ExtResource("2_fyewd"), ExtResource("2_fyewd"), ExtResource("3_y5lg4"), ExtResource("3_y5lg4"), ExtResource("4_rj5yi"), ExtResource("5_8bf1v")])
 id = &"scout"
 display_name = "정찰병"

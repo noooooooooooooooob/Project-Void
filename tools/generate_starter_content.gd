@@ -56,8 +56,8 @@ func _card(id: StringName, name: String, sp: int, attack_type: int, shape: int, 
 
 func _make_cards() -> Dictionary:
 	return {
-		"strike": _card(&"strike", "베기", 1, CardData.AttackType.MELEE, CardData.Shape.SINGLE, 1, 6),
-		"cleave": _card(&"cleave", "횡베기", 2, CardData.AttackType.MELEE, CardData.Shape.SWEEP, 1, 4),
+		"strike": _card(&"strike", "베기", 1, CardData.AttackType.MELEE, CardData.Shape.SINGLE, 2, 6),
+		"cleave": _card(&"cleave", "횡베기", 2, CardData.AttackType.MELEE, CardData.Shape.SWEEP, 2, 4),
 		"shoot": _card(&"shoot", "사격", 1, CardData.AttackType.RANGED, CardData.Shape.SINGLE, 3, 4),
 		"volley": _card(&"volley", "일제사격", 2, CardData.AttackType.RANGED, CardData.Shape.SWEEP, 4, 3),
 		"piercing_shot": _card(&"piercing_shot", "관통사격", 2, CardData.AttackType.RANGED, CardData.Shape.PIERCE, 3, 5),
@@ -86,7 +86,7 @@ func _make_units(cards: Dictionary) -> Array[UnitData]:
 	scout.display_name = "정찰병"
 	scout.max_hp = 22
 	scout.speed = 16
-	scout.max_sp = 2
+	scout.max_sp = 3
 	scout.deck = _deck([cards["strike"], cards["strike"], cards["shoot"], cards["shoot"], cards["volley"], cards["cleave"]])
 
 	var brute := EnemyData.new()
