@@ -42,7 +42,11 @@ func _run_all() -> void:
 
 		print("\n== %s" % path)
 		var suite: Object = script.new()
-		var suite_results: Array = suite.call("run")
+		var suite_results: Variant = suite.call("run")
+		if not (suite_results is Array):
+			print("  FAIL  %s -- suite did not return results" % path)
+			failures += 1
+			continue
 		for result in suite_results:
 			total += 1
 			if result["ok"]:
