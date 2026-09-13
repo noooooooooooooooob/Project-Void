@@ -1,6 +1,8 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://Scripts/ui/battle_hud.gd" id="1_hud"]
+[ext_resource type="Script" path="res://Scripts/ui/cards/hand_view.gd" id="2_hand"]
+[ext_resource type="Script" path="res://Scripts/ui/cards/pile_view.gd" id="3_pile"]
 
 [node name="BattleHud" type="Control"]
 layout_mode = 3
@@ -30,56 +32,92 @@ autowrap_mode = 0
 
 [node name="LogPanel" type="PanelContainer" parent="."]
 layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
 offset_left = 16.0
-offset_top = -276.0
+offset_top = 56.0
 offset_right = 376.0
-offset_bottom = -108.0
-grow_vertical = 0
+offset_bottom = 216.0
 
 [node name="BattleLog" type="RichTextLabel" parent="LogPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 scroll_following = true
 
-[node name="Bottom" type="HBoxContainer" parent="."]
+[node name="SpPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
 layout_mode = 1
-anchors_preset = 12
+anchors_preset = 2
 anchor_top = 1.0
-anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 16.0
-offset_top = -92.0
-offset_right = -16.0
-offset_bottom = -16.0
-grow_horizontal = 2
+offset_top = -250.0
+offset_right = 112.0
+offset_bottom = -178.0
 grow_vertical = 0
 mouse_filter = 2
 
-[node name="SpPanel" type="PanelContainer" parent="Bottom"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(96, 0)
-layout_mode = 2
-mouse_filter = 2
-
-[node name="SpLabel" type="Label" parent="Bottom/SpPanel"]
+[node name="SpLabel" type="Label" parent="SpPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="HandBox" type="HBoxContainer" parent="Bottom"]
+[node name="DeckPile" type="Control" parent="."]
 unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -142.0
+offset_right = 106.0
+offset_bottom = -16.0
+grow_vertical = 0
 mouse_filter = 2
+script = ExtResource("3_pile")
 
-[node name="EndTurnButton" type="Button" parent="Bottom"]
+[node name="DiscardPile" type="Control" parent="."]
 unique_name_in_owner = true
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -236.0
+offset_top = -142.0
+offset_right = -146.0
+offset_bottom = -16.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("3_pile")
+
+[node name="EndTurnButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -130.0
+offset_top = -64.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 0
+grow_vertical = 0
 text = "차례 종료"
+
+[node name="HandView" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_hand")
 
 [node name="Banner" type="Label" parent="."]
 unique_name_in_owner = true

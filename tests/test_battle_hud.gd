@@ -9,11 +9,13 @@ const EncounterScript := preload("res://Scripts/combat/data/encounter_data.gd")
 
 
 func run() -> Array[Dictionary]:
-	_test_sync_builds_hand_and_sp()
+	_test_sync_builds_hand_and_piles()
 	_test_interactive_lock()
 	_test_turn_bar_text()
-	_test_card_selection_signal()
-	_test_enemy_turn_clears_hand()
+	_test_hand_signals_are_relayed()
+	_test_enemy_turn_clears_hand_and_dims_piles()
+	_test_ally_turn_shows_pile_snapshot()
+	_test_playback_helpers()
 	_test_log_and_banner()
 	return results()
 
@@ -42,7 +44,7 @@ func _placement(data: UnitData, cell: Vector2i) -> UnitPlacement:
 	return placement
 
 
-# 아군 a(속도 10, SP 3) 손패 strike(근접 1) / shot(원거리 1) / big(원거리 9). 적 e(속도 1).
+# 아군 a(속도 10, SP 3) 덱 strike(근접 1) / shot(원거리 1) / big(원거리 9) — 시작하면 3장 모두 손패, 덱 0. 적 e(속도 1).
 func _started_state() -> BattleState:
 	var ally: AllyData = AllyDataScript.new()
 	ally.id = &"a"
@@ -75,43 +77,50 @@ func _started_state() -> BattleState:
 	return state
 
 
-func _button_starting_with(hud: BattleHud, prefix: String) -> Button:
-	for button in hud.hand_buttons():
-		if button.text.begins_with(prefix):
-			return button
+func _view_named(views: Array[CardView], display_name: String) -> CardView:
+	for view in views:
+		if view.card.display_name == display_name:
+			return view
 	return null
 
 
-func _test_sync_builds_hand_and_sp() -> void:
+func _turn_event(state: BattleState, unit: Unit, turn_index: int) -> BattleEvent:
+	var event := BattleEvent.new(BattleEvent.Kind.TURN_STARTED)
+	event.unit = unit
+	event.round_index = 1
+	event.order = state.initiative
+	var alive: Array[bool] = [true, true]
+	event.alive = alive
+	event.turn_index = turn_index
+	return event
+
+
+func _test_sync_builds_hand_and_piles() -> void:
 	var hud: BattleHud = _hud()
 	var state: BattleState = _started_state()
 	hud.sync_from_state(state, -1)
 	hud.set_interactive(true)
 
-	check_eq("one button per card in hand", hud.hand_buttons().size(), 3)
-	check("melee card is labelled", _button_starting_with(hud, "strike  [근접]") != null)
-	check("ranged card is labelled", _button_starting_with(hud, "shot  [원거리]") != null)
-	check("unaffordable card disabled", _button_starting_with(hud, "big").disabled)
-	check("affordable card enabled", not _button_starting_with(hud, "strike").disabled)
+	var views: Array[CardView] = hud.hand_view().card_views()
+	check_eq("one card view per card in hand", views.size(), 3)
+	check_eq("melee card border", _view_named(views, "strike").border_color(), CardView.MELEE_COLOR)
+	check_eq("unaffordable card dimmed", _view_named(views, "big").modulate, CardView.UNAFFORDABLE_MODULATE)
 	check_eq("sp panel text", hud.sp_text(), "SP\n●●●\n3 / 3")
+	check_eq("deck pile names the ally", hud.deck_pile().owner_text(), "a")
+	check_eq("deck pile count", hud.deck_pile().count_text(), "0")
+	check_eq("discard pile count", hud.discard_pile().count_text(), "0")
 	check("end turn enabled", hud.end_turn_enabled())
 	hud.free()
 
 
 func _test_interactive_lock() -> void:
 	var hud: BattleHud = _hud()
-	hud.sync_from_state(_started_state(), -1)
+	hud.sync_from_state(_started_state(), 0)
 	hud.set_interactive(true)
-	var strike: Button = _button_starting_with(hud, "strike")
-	strike.pressed.emit()
 	hud.set_interactive(false)
-
-	var all_disabled: bool = true
-	for button in hud.hand_buttons():
-		all_disabled = all_disabled and button.disabled
-	check("hand locked", all_disabled)
+	check("hand locked", not hud.hand_view().interactive)
 	check("end turn locked", not hud.end_turn_enabled())
-	check("lock clears the pressed card", not strike.button_pressed)
+	check_eq("lock clears the selection", hud.hand_view().selected_index(), -1)
 	hud.free()
 
 
@@ -128,37 +137,85 @@ func _test_turn_bar_text() -> void:
 	check("dead unit left out", dead.contains("▶a") and not dead.contains("→"))
 
 
-func _test_card_selection_signal() -> void:
+func _test_hand_signals_are_relayed() -> void:
 	var hud: BattleHud = _hud()
-	hud.sync_from_state(_started_state(), -1)
-	hud.set_interactive(true)
 	var picked: Array = []
+	var dropped: Array = []
 	hud.card_selected.connect(func(index: int) -> void: picked.append(index))
-	var strike: Button = _button_starting_with(hud, "strike")
-	var strike_index: int = hud.hand_buttons().find(strike)
-
-	strike.pressed.emit()
-	strike.pressed.emit()
-	check_eq("select then deselect", picked, [strike_index, -1])
-	check("button state follows selection", not strike.button_pressed)
+	hud.card_dropped.connect(func(index: int, at: Vector2) -> void: dropped.append([index, at]))
+	hud.hand_view().card_selected.emit(1)
+	hud.hand_view().card_dropped.emit(0, Vector2(10, 20))
+	check_eq("selection relayed", picked, [1])
+	check_eq("drop relayed", dropped, [[0, Vector2(10, 20)]])
 	hud.free()
 
 
-func _test_enemy_turn_clears_hand() -> void:
+func _test_enemy_turn_clears_hand_and_dims_piles() -> void:
 	var hud: BattleHud = _hud()
 	var state: BattleState = _started_state()
 	hud.sync_from_state(state, -1)
-	var event := BattleEvent.new(BattleEvent.Kind.TURN_STARTED)
-	event.unit = state.living_units(Unit.Team.ENEMY)[0]
-	event.round_index = 1
-	event.order = state.initiative
-	var alive: Array[bool] = [true, true]
-	event.alive = alive
-	event.turn_index = 1
-
-	hud.show_turn(event)
-	check_eq("hand cleared on enemy turn", hud.hand_buttons().size(), 0)
+	hud.show_turn(_turn_event(state, state.living_units(Unit.Team.ENEMY)[0], 1))
+	check_eq("hand cleared on enemy turn", hud.hand_view().card_views().size(), 0)
 	check_eq("sp hidden on enemy turn", hud.sp_text(), "")
+	check("piles dimmed on enemy turn", hud.deck_pile().is_dimmed())
+	hud.free()
+
+
+func _test_ally_turn_shows_pile_snapshot() -> void:
+	var hud: BattleHud = _hud()
+	var state: BattleState = _started_state()
+	var event: BattleEvent = _turn_event(state, state.living_units(Unit.Team.ALLY)[0], 0)
+	event.deck_count = 5
+	event.discard_count = 2
+	hud.show_turn(event)
+	check_eq("deck owner is the acting ally", hud.deck_pile().owner_text(), "a")
+	check_eq("deck count from snapshot", hud.deck_pile().count_text(), "5")
+	check_eq("discard count from snapshot", hud.discard_pile().count_text(), "2")
+	check("piles lit on ally turn", not hud.deck_pile().is_dimmed())
+	hud.free()
+
+
+func _test_playback_helpers() -> void:
+	var hud: BattleHud = _hud()
+	var state: BattleState = _started_state()
+	var ally: Unit = state.living_units(Unit.Team.ALLY)[0]
+	hud.sync_from_state(state, -1)
+
+	var drawn := BattleEvent.new(BattleEvent.Kind.CARD_DRAWN)
+	drawn.unit = ally
+	drawn.card = ally.hand[0]
+	drawn.deck_count = 1
+	drawn.discard_count = 0
+	hud.draw_card(drawn)
+	check_eq("drawn card joins the hand", hud.hand_view().card_views().size(), 4)
+	check_eq("deck count after draw", hud.deck_pile().count_text(), "1")
+
+	var played := BattleEvent.new(BattleEvent.Kind.CARD_PLAYED)
+	played.unit = ally
+	played.card = ally.hand[0]
+	played.deck_count = 1
+	played.discard_count = 1
+	hud.set_pending_play(0)
+	hud.remove_played_card(played)
+	check_eq("played card leaves the hand", hud.hand_view().card_views().size(), 3)
+	check_eq("discard count after play", hud.discard_pile().count_text(), "1")
+
+	var discarded := BattleEvent.new(BattleEvent.Kind.HAND_DISCARDED)
+	discarded.unit = ally
+	discarded.discard_count = 4
+	discarded.deck_count = 1
+	hud.discard_hand(discarded)
+	check_eq("hand empty after discard", hud.hand_view().card_views().size(), 0)
+	check_eq("discard count after discard", hud.discard_pile().count_text(), "4")
+
+	var reshuffled := BattleEvent.new(BattleEvent.Kind.DECK_RESHUFFLED)
+	reshuffled.unit = ally
+	reshuffled.amount = 4
+	reshuffled.deck_count = 5
+	reshuffled.discard_count = 0
+	hud.reshuffle(reshuffled)
+	check_eq("deck refilled", hud.deck_pile().count_text(), "5")
+	check_eq("discard emptied", hud.discard_pile().count_text(), "0")
 	hud.free()
 
 
