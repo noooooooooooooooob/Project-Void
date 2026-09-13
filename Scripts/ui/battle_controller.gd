@@ -2,9 +2,11 @@ extends Control
 
 const CURRENT_TURN_COLOR := Color(1.0, 0.82, 0.3)
 const VALID_TARGET_COLOR := Color(0.45, 0.85, 0.45)
+const MELEE_CARD_COLOR := Color(0.85, 0.4, 0.35)
+const RANGED_CARD_COLOR := Color(0.4, 0.6, 0.95)
 const ACTED_COLOR := Color(0.5, 0.5, 0.5)
 const UNAVAILABLE_MODULATE := Color(1, 1, 1, 0.45)
-const OUTLINED_STATES: Array[StringName] = [&"normal", &"hover", &"pressed"]
+const OUTLINED_STATES: Array[StringName] = [&"normal", &"hover", &"pressed", &"hover_pressed", &"disabled"]
 
 @export var encounter: EncounterData
 
@@ -23,11 +25,15 @@ var _selected_card: int = -1
 var _cells: Dictionary = {}
 var _current_turn_boxes: Dictionary = {}
 var _valid_target_boxes: Dictionary = {}
+var _melee_card_boxes: Dictionary = {}
+var _ranged_card_boxes: Dictionary = {}
 
 
 func _ready() -> void:
 	_current_turn_boxes = _make_outline_boxes(CURRENT_TURN_COLOR)
 	_valid_target_boxes = _make_outline_boxes(VALID_TARGET_COLOR)
+	_melee_card_boxes = _make_outline_boxes(MELEE_CARD_COLOR)
+	_ranged_card_boxes = _make_outline_boxes(RANGED_CARD_COLOR)
 
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
@@ -128,6 +134,8 @@ func _target_hint(actor: Unit, target: Unit, card: CardData, valid: bool) -> Str
 func _make_outline_boxes(color: Color) -> Dictionary:
 	var boxes: Dictionary = {}
 	for state in OUTLINED_STATES:
+		if not has_theme_stylebox(state, &"Button"):
+			continue
 		var box: StyleBox = get_theme_stylebox(state, &"Button").duplicate()
 		var flat := box as StyleBoxFlat
 		if flat != null:
@@ -185,7 +193,9 @@ func _refresh_hand() -> void:
 	for i in actor.hand.size():
 		var card: CardData = actor.hand[i]
 		var button := Button.new()
-		button.text = "%s\nSP %d · %d뎀 · 사거리 %d" % [card.display_name, card.sp_cost, card.damage, card.attack_range]
+		var melee: bool = card.attack_type == CardData.AttackType.MELEE
+		button.text = "%s  [%s]\nSP %d · %d뎀 · 사거리 %d" % [card.display_name, "근접" if melee else "원거리", card.sp_cost, card.damage, card.attack_range]
+		_set_outline(button, _melee_card_boxes if melee else _ranged_card_boxes)
 		button.toggle_mode = true
 		button.button_pressed = (i == _selected_card)
 		button.disabled = card.sp_cost > actor.sp
