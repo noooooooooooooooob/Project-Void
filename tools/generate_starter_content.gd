@@ -17,7 +17,8 @@ func _initialize() -> void:
 			all_ok = false
 
 	DirAccess.make_dir_recursive_absolute("res://Resources/encounters")
-	_save(_make_skirmish(), "res://Resources/encounters/skirmish.tres")
+	if not _save(_make_skirmish(), "res://Resources/encounters/skirmish.tres"):
+		all_ok = false
 
 	if not all_ok:
 		push_error("starter content generation failed; see errors above")
