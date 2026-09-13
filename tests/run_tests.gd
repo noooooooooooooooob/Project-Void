@@ -9,6 +9,7 @@ const TEST_SCRIPTS: Array[String] = [
 	"res://tests/test_turn_order.gd",
 	"res://tests/test_enemy_brain.gd",
 	"res://tests/test_battle_signals.gd",
+	"res://tests/test_event_recorder.gd",
 ]
 
 var _started: bool = false
