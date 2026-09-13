@@ -36,15 +36,18 @@ static func take_turn(state: BattleState, actor: Unit) -> void:
 
 	match decide(state, actor):
 		Action.REST:
-			actor.heal(data.rest_heal)
+			state.report_enemy_action(actor, Action.REST, null)
+			state.apply_heal(actor, data.rest_heal)
 			state.write_log("%s 휴식" % data.display_name)
 		Action.DEFEND:
-			actor.gain_block(data.block_amount)
+			state.report_enemy_action(actor, Action.DEFEND, null)
+			state.apply_block(actor, data.block_amount)
 			state.write_log("%s 방어" % data.display_name)
 		Action.ATTACK:
 			var target: Unit = find_target(state, actor)
 			if target == null:
 				return
+			state.report_enemy_action(actor, Action.ATTACK, target)
 			state.write_log("%s → %s 공격" % [data.display_name, target.data.display_name])
 			for victim in state.resolver.expand_shape(target, data.attack_shape, state.units):
 				state.apply_damage(victim, data.attack_damage)

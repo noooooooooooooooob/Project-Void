@@ -6,6 +6,10 @@ signal unit_damaged(unit: Unit, amount: int)
 signal unit_died(unit: Unit)
 signal battle_ended(ally_won: bool)
 signal log_message(text: String)
+signal card_played(actor: Unit, card: CardData, primary: Unit)
+signal enemy_acted(actor: Unit, action: EnemyBrain.Action, target: Unit)
+signal unit_healed(unit: Unit, amount: int)
+signal block_gained(unit: Unit, amount: int)
 
 const DRAW_PER_TURN: int = 4
 
@@ -63,6 +67,21 @@ func apply_damage(target: Unit, amount: int) -> void:
 		write_log("%s 쓰러짐" % target.data.display_name)
 
 
+func apply_heal(target: Unit, amount: int) -> void:
+	var before: int = target.hp
+	target.heal(amount)
+	unit_healed.emit(target, target.hp - before)
+
+
+func apply_block(target: Unit, amount: int) -> void:
+	target.gain_block(amount)
+	block_gained.emit(target, amount)
+
+
+func report_enemy_action(actor: Unit, action: EnemyBrain.Action, target: Unit) -> void:
+	enemy_acted.emit(actor, action, target)
+
+
 func check_end() -> void:
 	if finished:
 		return
@@ -94,6 +113,7 @@ func play_card(hand_index: int, primary: Unit) -> bool:
 	actor.sp -= card.sp_cost
 	actor.hand.remove_at(hand_index)
 	actor.discard.append(card)
+	card_played.emit(actor, card, primary)
 	write_log("%s → %s (%s)" % [actor.data.display_name, primary.data.display_name, card.display_name])
 
 	for victim in resolver.expand_shape(primary, card.shape, units):

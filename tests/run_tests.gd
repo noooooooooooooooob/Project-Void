@@ -8,10 +8,22 @@ const TEST_SCRIPTS: Array[String] = [
 	"res://tests/test_battle_state.gd",
 	"res://tests/test_turn_order.gd",
 	"res://tests/test_enemy_brain.gd",
+	"res://tests/test_battle_signals.gd",
 ]
 
+var _started: bool = false
 
-func _initialize() -> void:
+
+# _initialize() 시점에는 root 가 아직 트리 밖이라, 노드를 붙이는 테스트에서 _ready 가 돌지 않는다.
+func _process(_delta: float) -> bool:
+	if _started:
+		return false
+	_started = true
+	_run_all()
+	return false
+
+
+func _run_all() -> void:
 	var total: int = 0
 	var failures: int = 0
 
