@@ -79,7 +79,9 @@ func _on_cell_clicked(team: Unit.Team, cell: Vector2i) -> void:
 		_hud.append_log("사용할 수 없는 대상")
 		return
 	var card_index: int = _selected_card
-	_run(func() -> void: _state.play_card(card_index, target))
+	_run(func() -> void:
+		if not _state.play_card(card_index, target):
+			_hud.append_log("사용할 수 없는 대상"))
 
 
 func _on_end_turn_pressed() -> void:
