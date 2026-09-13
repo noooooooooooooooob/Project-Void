@@ -14,6 +14,7 @@ func run() -> Array[Dictionary]:
 	_test_card_play_records_action_then_damage()
 	_test_kill_records_death_and_battle_end()
 	_test_defend_and_rest_record_snapshots()
+	_test_card_zone_events_snapshot()
 	return results()
 
 
@@ -90,15 +91,17 @@ func _test_start_battle_records_first_turn() -> void:
 	var recorder := BattleEventRecorder.new(state)
 	state.start_battle()
 	var events: Array[BattleEvent] = recorder.take_events()
+	var k := BattleEvent.Kind
 
-	check_eq("one event", events.size(), 1)
-	check_eq("turn started", events[0].kind, BattleEvent.Kind.TURN_STARTED)
+	check_eq("turn start then the single draw", _kinds(events), [k.TURN_STARTED, k.CARD_DRAWN])
 	check("subject is the ally", events[0].unit.is_ally())
 	check_eq("round snapshot", events[0].round_index, 1)
 	check_eq("turn index snapshot", events[0].turn_index, 0)
 	check_eq("order has every unit", events[0].order.size(), 3)
 	check_eq("alive flags", events[0].alive, [true, true, true])
 	check_eq("hp snapshot", events[0].hp, 30)
+	check_eq("deck snapshot before the draw", events[0].deck_count, 1)
+	check_eq("discard snapshot before the draw", events[0].discard_count, 0)
 	check_eq("take_events empties the queue", recorder.take_events().size(), 0)
 
 
@@ -113,16 +116,17 @@ func _test_end_turn_records_enemies_in_order() -> void:
 	var events: Array[BattleEvent] = recorder.take_events()
 	var k := BattleEvent.Kind
 	check_eq("event kinds in play order", _kinds(events), [
+		k.HAND_DISCARDED,
 		k.TURN_STARTED, k.ENEMY_ACTED, k.LOG, k.DAMAGED,
 		k.TURN_STARTED, k.ENEMY_ACTED, k.LOG, k.DAMAGED,
-		k.TURN_STARTED,
+		k.TURN_STARTED, k.DECK_RESHUFFLED, k.CARD_DRAWN,
 	])
-	check_eq("faster enemy acts first", events[0].unit.data.id, &"e1")
-	check_eq("attack targets the ally", events[1].target.data.id, &"a")
-	check_eq("first hit snapshot", events[3].hp, 26)
-	check_eq("second hit snapshot", events[7].hp, 23)
-	check_eq("last snapshot matches state", events[7].hp, ally.hp)
-	check_eq("ally's next turn is round 2", events[8].round_index, 2)
+	check_eq("faster enemy acts first", events[1].unit.data.id, &"e1")
+	check_eq("attack targets the ally", events[2].target.data.id, &"a")
+	check_eq("first hit snapshot", events[4].hp, 26)
+	check_eq("second hit snapshot", events[8].hp, 23)
+	check_eq("last snapshot matches state", events[8].hp, ally.hp)
+	check_eq("ally's next turn is round 2", events[9].round_index, 2)
 
 
 func _test_card_play_records_action_then_damage() -> void:
@@ -140,6 +144,8 @@ func _test_card_play_records_action_then_damage() -> void:
 	check_eq("card recorded", events[0].card.id, &"zap")
 	check_eq("damage amount", events[2].amount, 1)
 	check_eq("damage hp snapshot", events[2].hp, 19)
+	check_eq("deck after playing", events[0].deck_count, 0)
+	check_eq("discard after playing", events[0].discard_count, 1)
 
 
 func _test_kill_records_death_and_battle_end() -> void:
@@ -184,3 +190,24 @@ func _test_defend_and_rest_record_snapshots() -> void:
 	check_eq("rest action", rest[0].action, EnemyBrain.Action.REST)
 	check_eq("heal amount", rest[1].amount, 4)
 	check_eq("heal hp snapshot", rest[1].hp, 9)
+
+
+func _test_card_zone_events_snapshot() -> void:
+	var state: BattleState = _state(1, 2)
+	var recorder := BattleEventRecorder.new(state)
+	state.start_battle()
+	recorder.take_events()
+
+	state.end_turn()
+	var events: Array[BattleEvent] = recorder.take_events()
+	var discarded: BattleEvent = events[0]
+	var reshuffled: BattleEvent = events[10]
+	var drawn: BattleEvent = events[11]
+	check_eq("discarded cards", discarded.cards.size(), 1)
+	check_eq("discard pile after discarding", discarded.discard_count, 1)
+	check_eq("deck when discarding", discarded.deck_count, 0)
+	check_eq("reshuffled amount", reshuffled.amount, 1)
+	check_eq("deck after reshuffle", reshuffled.deck_count, 1)
+	check_eq("discard after reshuffle", reshuffled.discard_count, 0)
+	check_eq("drawn card", drawn.card.id, &"zap")
+	check_eq("deck after the draw", drawn.deck_count, 0)

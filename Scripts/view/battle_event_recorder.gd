@@ -17,6 +17,9 @@ func _init(state: BattleState) -> void:
 	state.unit_died.connect(_on_unit_died)
 	state.log_message.connect(_on_log_message)
 	state.battle_ended.connect(_on_battle_ended)
+	state.card_drawn.connect(_on_card_drawn)
+	state.deck_reshuffled.connect(_on_deck_reshuffled)
+	state.hand_discarded.connect(_on_hand_discarded)
 
 
 func take_events() -> Array[BattleEvent]:
@@ -36,6 +39,8 @@ func _on_turn_started(unit: Unit) -> void:
 	event.order = state.initiative.duplicate()
 	for member in state.initiative:
 		event.alive.append(member.is_alive())
+	event.deck_count = unit.deck.size()
+	event.discard_count = unit.discard.size()
 	_events.append(event)
 
 
@@ -44,6 +49,8 @@ func _on_card_played(actor: Unit, card: CardData, primary: Unit) -> void:
 	event.unit = actor
 	event.card = card
 	event.target = primary
+	event.deck_count = actor.deck.size()
+	event.discard_count = actor.discard.size()
 	_events.append(event)
 
 
@@ -95,4 +102,31 @@ func _on_log_message(text: String) -> void:
 func _on_battle_ended(ally_won: bool) -> void:
 	var event := BattleEvent.new(BattleEvent.Kind.BATTLE_ENDED)
 	event.ally_won = ally_won
+	_events.append(event)
+
+
+func _on_card_drawn(unit: Unit, card: CardData, deck_count: int, discard_count: int) -> void:
+	var event := BattleEvent.new(BattleEvent.Kind.CARD_DRAWN)
+	event.unit = unit
+	event.card = card
+	event.deck_count = deck_count
+	event.discard_count = discard_count
+	_events.append(event)
+
+
+func _on_deck_reshuffled(unit: Unit, count: int) -> void:
+	var event := BattleEvent.new(BattleEvent.Kind.DECK_RESHUFFLED)
+	event.unit = unit
+	event.amount = count
+	event.deck_count = unit.deck.size()
+	event.discard_count = unit.discard.size()
+	_events.append(event)
+
+
+func _on_hand_discarded(unit: Unit, cards: Array[CardData], discard_count: int) -> void:
+	var event := BattleEvent.new(BattleEvent.Kind.HAND_DISCARDED)
+	event.unit = unit
+	event.cards = cards.duplicate()
+	event.discard_count = discard_count
+	event.deck_count = unit.deck.size()
 	_events.append(event)
