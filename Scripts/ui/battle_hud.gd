@@ -58,6 +58,10 @@ func show_turn(event: BattleEvent) -> void:
 
 func set_interactive(enabled: bool) -> void:
 	_interactive = enabled
+	if not enabled:
+		_selected_card = -1
+		for child in _hand_box.get_children():
+			(child as Button).set_pressed_no_signal(false)
 	_apply_interactive()
 
 

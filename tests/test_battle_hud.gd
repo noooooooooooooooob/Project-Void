@@ -101,6 +101,9 @@ func _test_sync_builds_hand_and_sp() -> void:
 func _test_interactive_lock() -> void:
 	var hud: BattleHud = _hud()
 	hud.sync_from_state(_started_state(), -1)
+	hud.set_interactive(true)
+	var strike: Button = _button_starting_with(hud, "strike")
+	strike.pressed.emit()
 	hud.set_interactive(false)
 
 	var all_disabled: bool = true
@@ -108,6 +111,7 @@ func _test_interactive_lock() -> void:
 		all_disabled = all_disabled and button.disabled
 	check("hand locked", all_disabled)
 	check("end turn locked", not hud.end_turn_enabled())
+	check("lock clears the pressed card", not strike.button_pressed)
 	hud.free()
 
 
