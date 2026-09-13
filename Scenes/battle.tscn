@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cuys1lmxqgovi"]
 
 [ext_resource type="Script" uid="uid://cem20tvgewh60" path="res://Scripts/ui/battle_controller.gd" id="1_w7k78"]
-[ext_resource type="Resource" uid="uid://b3q4stxlh67ig" path="res://Resources/encounters/skirmish.tres" id="2_oxf17"]
+[ext_resource type="Resource" uid="uid://cfgh2xplajbgi" path="res://Resources/encounters/skirmish.tres" id="2_oxf17"]
 
 [node name="BattleRoot" type="Control" unique_id=438964999]
 layout_mode = 3
@@ -24,9 +24,13 @@ offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="TurnLabel" type="Label" parent="Layout" unique_id=1038895863]
+[node name="TurnLabel" type="RichTextLabel" parent="Layout"]
 unique_name_in_owner = true
 layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
 
 [node name="Field" type="HBoxContainer" parent="Layout" unique_id=1767300721]
 layout_mode = 2
@@ -52,6 +56,17 @@ layout_mode = 2
 
 [node name="Bottom" type="HBoxContainer" parent="Layout" unique_id=1450164761]
 layout_mode = 2
+
+[node name="SpPanel" type="PanelContainer" parent="Layout/Bottom"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+
+[node name="SpLabel" type="Label" parent="Layout/Bottom/SpPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="HandBox" type="HBoxContainer" parent="Layout/Bottom" unique_id=1751821900]
 unique_name_in_owner = true
