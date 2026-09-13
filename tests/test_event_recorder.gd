@@ -13,6 +13,7 @@ func run() -> Array[Dictionary]:
 	_test_end_turn_records_enemies_in_order()
 	_test_card_play_records_action_then_damage()
 	_test_kill_records_death_and_battle_end()
+	_test_defend_and_rest_record_snapshots()
 	return results()
 
 
@@ -155,3 +156,31 @@ func _test_kill_records_death_and_battle_end() -> void:
 	check("died event names the foe", events[3].unit == foe)
 	check("death log follows", events[4].text.ends_with("쓰러짐"))
 	check("ally won", events[5].ally_won)
+
+
+func _test_defend_and_rest_record_snapshots() -> void:
+	var state: BattleState = _state(1, 1)
+	var recorder := BattleEventRecorder.new(state)
+	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
+	var data: EnemyData = foe.data as EnemyData
+	var k := BattleEvent.Kind
+
+	# 사거리 0 이면 어떤 아군에도 닿지 않아 방어를 고른다.
+	data.attack_range = 0
+	EnemyBrain.take_turn(state, foe)
+	var defend: Array[BattleEvent] = recorder.take_events()
+	check_eq("defend kinds", _kinds(defend), [k.ENEMY_ACTED, k.BLOCK_GAINED, k.LOG])
+	check_eq("defend action", defend[0].action, EnemyBrain.Action.DEFEND)
+	check("defend has no target", defend[0].target == null)
+	check_eq("block amount", defend[1].amount, 5)
+	check_eq("block snapshot", defend[1].block, 5)
+
+	# 방어도 5 가 먼저 흡수해 HP 는 5 (25%) 가 되고, 회복량이 있으니 휴식을 고른다.
+	data.rest_heal = 4
+	foe.take_damage(20)
+	EnemyBrain.take_turn(state, foe)
+	var rest: Array[BattleEvent] = recorder.take_events()
+	check_eq("rest kinds", _kinds(rest), [k.ENEMY_ACTED, k.HEALED, k.LOG])
+	check_eq("rest action", rest[0].action, EnemyBrain.Action.REST)
+	check_eq("heal amount", rest[1].amount, 4)
+	check_eq("heal hp snapshot", rest[1].hp, 9)
