@@ -2,7 +2,7 @@ class_name BattleEventRecorder
 extends RefCounted
 
 var _events: Array[BattleEvent] = []
-# 신호 연결이 state → recorder 방향으로 이미 있으므로, 강한 참조를 두면 서로 붙잡아 해제되지 않는다.
+# 레코더는 상태를 관찰만 할 뿐 생명 주기를 책임지지 않는다 (소유자인 BattleRoot 가 살려 둔다).
 var _state_ref: WeakRef
 
 
