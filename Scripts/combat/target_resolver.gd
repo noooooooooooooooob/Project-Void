@@ -22,7 +22,7 @@ func reach(attacker: Unit, target: Unit) -> int:
 	var col_distance: int = attacker.cell.x + 1 + target.cell.x
 	var attacker_offset: float = center_offset(attacker.cell.y, rows_for(attacker.team))
 	var target_offset: float = center_offset(target.cell.y, rows_for(target.team))
-	return col_distance + roundi(absf(attacker_offset - target_offset))
+	return col_distance + floori(absf(attacker_offset - target_offset))
 
 
 func is_blocked(target: Unit, all_units: Array[Unit]) -> bool:

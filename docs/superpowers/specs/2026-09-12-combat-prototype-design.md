@@ -98,10 +98,12 @@ col_distance(a, b) = a.col + 1 + b.col
 
 ```
 center_offset(row, rows) = row - (rows - 1) / 2.0
-row_distance(a, b)       = roundi(abs(center_offset(a) - center_offset(b)))
+row_distance(a, b)       = floori(abs(center_offset(a) - center_offset(b)))
 ```
 
-행 수가 둘 다 홀수거나 둘 다 짝수면 오프셋 차이는 항상 정수다. 한쪽만 홀수일 때만 0.5 단위가 생기고, 이때는 `roundi`가 올려서 보수적으로(더 먼 쪽으로) 판정한다. `roundi(0.5) == 1`.
+행 수가 둘 다 홀수거나 둘 다 짝수면 오프셋 차이는 항상 정수라 내림해도 값이 그대로다. 한쪽만 홀수일 때만 0.5 단위가 생기고, 이때는 내림해서 반칸 어긋남을 정면으로 본다. `floori(0.5) == 0`, `floori(1.5) == 1`.
+
+처음에는 `roundi`(올림)였는데, 행 수 홀짝이 다른 진영끼리는 종거리 최소값이 1이 되어 사거리 1인 근접 카드가 어떤 대상에도 닿지 못했다. 그래서 내림으로 바꿨다.
 
 예 — 아군 3행 vs 적군 5행:
 

@@ -9,7 +9,7 @@ func run() -> Array[Dictionary]:
 	_test_col_distance()
 	_test_row_distance_same_size()
 	_test_row_distance_different_size()
-	_test_row_distance_odd_even_rounds_up()
+	_test_row_distance_odd_even_rounds_down()
 	_test_melee_blocked_by_front()
 	_test_melee_unblocked_after_front_dies()
 	_test_ranged_ignores_blocking()
@@ -52,11 +52,14 @@ func _test_row_distance_different_size() -> void:
 	check_eq("one row off centre adds 1", resolver.reach(a, off), 2)
 
 
-func _test_row_distance_odd_even_rounds_up() -> void:
+func _test_row_distance_odd_even_rounds_down() -> void:
 	var resolver: TargetResolver = ResolverScript.new(Vector2i(3, 3), Vector2i(3, 4))
 	var a: Unit = _unit(1, Unit.Team.ALLY, Vector2i(0, 1))
 	var e: Unit = _unit(2, Unit.Team.ENEMY, Vector2i(0, 1))
-	check_eq("half-cell offset rounds up to 1", resolver.reach(a, e), 2)
+	check_eq("half-cell offset counts as facing", resolver.reach(a, e), 1)
+
+	var far: Unit = _unit(3, Unit.Team.ENEMY, Vector2i(0, 3))
+	check_eq("one and a half rows off rounds down to 1", resolver.reach(a, far), 2)
 
 
 func _test_melee_blocked_by_front() -> void:
