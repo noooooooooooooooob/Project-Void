@@ -186,7 +186,7 @@ func _build_side(team: Unit.Team, grid: Vector2i) -> void:
 			hint.no_depth_test = true
 			hint.render_priority = 2
 			hint.outline_render_priority = 1
-			hint.position = top + Vector3(0.0, 0.15, BoardLayout.TILE_SIZE / 2.0)
+			hint.position = top + Vector3(0.0, UnitView.OVERHEAD_Y + 0.6, 0.0)
 			hint.visible = false
 			add_child(hint)
 
