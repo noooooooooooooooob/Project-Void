@@ -4,6 +4,7 @@
 - 대상: 전투 프로토타입의 표현 레이어
 - 상태: 승인 대기
 - 선행 문서: `2026-09-12-combat-prototype-design.md`
+- 구현 계획: `docs/superpowers/plans/2026-09-13-battle-2-5d.md` — 계획 단계에서 `unit_view.tscn` 을 코드 생성으로, HUD 를 별도 씬으로 바꾸는 등 조정한 내용은 계획의 "스펙과 다른 점" 표에 있다
 
 ## 1. 배경
 
