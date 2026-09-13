@@ -85,10 +85,6 @@ func sp_text() -> String:
 	return _sp_label.text if _sp_panel.visible else ""
 
 
-func turn_text() -> String:
-	return _turn_label.text
-
-
 func log_text() -> String:
 	return _log.get_parsed_text()
 

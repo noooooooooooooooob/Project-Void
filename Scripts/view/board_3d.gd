@@ -15,7 +15,7 @@ const VALID_EMISSION := Color(0.45, 0.85, 0.45)
 var layout: BoardLayout
 var input_enabled: bool = false
 
-# 키는 Vector3i(team, col, row). 2D 화면 컨트롤러와 같은 규약.
+# 키는 Vector3i(team, col, row).
 var _tiles: Dictionary = {}
 var _tile_states: Dictionary = {}
 var _hints: Dictionary = {}
