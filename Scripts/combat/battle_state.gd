@@ -71,8 +71,8 @@ func _init(encounter: EncounterData, p_rng: RandomNumberGenerator) -> void:
 	rng = p_rng
 	# 적 AI 전용 난수 생성기를 만든다.
 	ai_rng = RandomNumberGenerator.new()
-	# 같은 시드로 시작해, 전투 시드가 같으면 적 행동도 같게 한다.
-	ai_rng.seed = p_rng.seed
+	# 전투 시드에서 따로 뽑은 시드로 시작한다: 전투 시드가 같으면 적 행동도 같지만, 덱 섞기와 같은 수열을 되풀이하지 않는다.
+	ai_rng.seed = hash([p_rng.seed, "enemy_ai"])
 	# 양쪽 격자 크기로 대상 판정기를 만든다.
 	resolver = TargetResolver.new(encounter.ally_grid, encounter.enemy_grid)
 
