@@ -8,7 +8,7 @@ class_name BattleState
 # RefCounted: 노드가 아닌 가벼운 객체. 참조가 없어지면 자동으로 해제된다.
 extends RefCounted
 
-## 어떤 유닛의 차례가 시작됐다 (방어도 초기화 직후, 아군이면 SP 충전·드로우 전).
+## 어떤 유닛의 차례가 시작됐다 (스탠바이 처리 직후 — 방어도 초기화·아군 SP 충전은 끝났고, 드로우는 아직 전).
 signal turn_started(unit: Unit)
 ## 유닛이 공격을 받았다. amount 는 방어도로 막기 전의 공격 피해량이다.
 signal unit_damaged(unit: Unit, amount: int)
