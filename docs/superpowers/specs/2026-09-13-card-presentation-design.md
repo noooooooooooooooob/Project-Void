@@ -108,9 +108,9 @@ signal hand_discarded(unit: Unit, cards: Array[CardData], discard_count: int)   
   - 왼쪽 위 원 안에 SP 비용 숫자
   - 위쪽 가운데 이름
   - 가운데 큰 피해 숫자
-  - 아래 `근접 · 사거리 2 · 단일` 형식 (형태: SINGLE 단일, SWEEP 횡렬, PIERCE 관통)
+  - 아래 왼쪽 위 정렬 두 줄 `사거리 2` / `근접 · 단일` 형식, (8, 114) 위치 (형태: SINGLE 단일, SWEEP 횡렬, PIERCE 관통). 부채꼴에서는 오른쪽 약 20px 가 다음 카드에 가려지므로 사거리를 왼쪽 윗줄에 둔다
 - 뒷면: 남색 `Color(0.18, 0.22, 0.38)` 바탕, 가운데 `VOID`
-- SP 부족: modulate `Color(1, 1, 1, 0.55)`
+- SP 부족: modulate `Color(1, 1, 1, 0.55)`, 비용이 현재 SP 를 넘는 카드는 흐려지고 누르기·드래그를 무시한다
 - `mouse_filter = STOP` (카드 위 클릭은 보드로 새지 않는다)
 
 ```gdscript
@@ -121,7 +121,7 @@ func set_affordable(affordable: bool) -> void
 func cost_text() -> String        # "1"
 func name_text() -> String        # "베기"
 func damage_text() -> String      # "6"
-func footer_text() -> String      # "근접 · 사거리 2 · 단일"
+func footer_text() -> String      # "사거리 2\n근접 · 단일"
 func border_color() -> Color
 ```
 
@@ -154,7 +154,7 @@ signal card_dropped(index: int, screen_position: Vector2)
 var instant: bool      # 테스트용: 트윈 없이 최종 상태만
 var interactive: bool
 
-func set_cards(cards: Array[CardData], sp: int, selected: int) -> void   # 동기화용, 연출 없음
+func set_cards(cards: Array[CardData], sp: int, selected: int) -> void   # 동기화용, 연출 없음. 이미 같은 손패(장수·카드 순서 동일)면 뷰를 다시 만들지 않아 재생 직후 동기화가 마지막 드로우 비행을 끊지 않는다
 func draw_card(card: CardData, from_global: Vector2) -> void           # 연출, 기다리지 않음
 func set_pending_play(index: int) -> void                              # 곧 사용될 카드 위치를 기억 (잠금으로 선택이 풀려도 유지)
 func remove_card(card: CardData) -> void                               # 기억한 위치의 카드가 같은 카드면 그것, 아니면 같은 카드 첫 장. 제거 후 기억 해제
@@ -186,7 +186,7 @@ func center_global() -> Vector2
 ### 6.6 HUD 배치 변경
 
 - 위: 행동 순서 바 (그대로)
-- 왼쪽 위: 로그 패널 (순서 바 아래로 이동)
+- 왼쪽 위: 로그 패널 (순서 바 아래 좁은 세로 칸 x 16..216, y 56..380 — 넓은 왼쪽 위 칸은 아군 유닛을 가렸다)
 - 왼쪽 아래: SP 패널(위) + 덱 더미(아래)
 - 아래 가운데: `HandView`
 - 오른쪽 아래: 묘지 더미 + 차례 종료
