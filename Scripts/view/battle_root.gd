@@ -1,5 +1,5 @@
 ## 전투 씬(battle_3d.tscn)의 루트 스크립트. 규칙·기록·보드·HUD·재생을 이어 붙이는 조립 담당.
-## 플레이어 입력(카드 선택, 칸 클릭, 드래그 놓기, 차례 종료)을 받아 규칙을 부르고,
+## 플레이어 입력(카드 선택, 칸 클릭 — 카드 사용 또는 이동, 드래그 놓기, 차례 종료)을 받아 규칙을 부르고,
 ## 그 결과로 쌓인 이벤트를 재생한 뒤 화면을 실제 상태와 다시 맞춘다.
 # class_name 이 없다: 씬에만 붙어 쓰이고 다른 스크립트가 이 타입을 직접 참조하지 않는다.
 # Node3D: 3D 씬의 루트 노드.
@@ -97,6 +97,8 @@ func _run(action: Callable) -> void:
 	_hud.sync_from_state(_state, _selected_card)
 	# 전투가 끝났으면 계속 잠그고, 아니면 입력을 푼다.
 	_set_busy(_state.finished)
+	# 잠금이 풀린 상태에 맞는 힌트(이동 가능 칸 등)를 보여 준다.
+	_refresh_hints()
 
 
 ## 입력 잠금 상태를 바꾸고 보드·HUD 에 알린다.
@@ -122,8 +124,8 @@ func _on_card_selected(index: int) -> void:
 		return
 	# 고른 카드 번호를 기억한다.
 	_selected_card = index
-	# 대상 칸마다 사거리 힌트를 새로 보여 준다.
-	_refresh_target_hints()
+	# 선택 상태에 맞는 힌트를 새로 보여 준다 (카드면 사거리, 해제면 이동 가능 칸).
+	_refresh_hints()
 
 
 ## 카드를 끌어다 화면 위치에 놓았다. 그 위치의 칸을 판정하도록 보드에 요청한다.
@@ -134,7 +136,7 @@ func _on_card_dropped(index: int, screen_position: Vector2) -> void:
 	# 끌던 카드를 선택된 카드로 삼는다.
 	_selected_card = index
 	# 힌트를 그 카드 기준으로 갱신한다.
-	_refresh_target_hints()
+	_refresh_hints()
 	# 이제부터 오는 판정 결과는 드래그에서 온 것이다.
 	_awaiting_drop = true
 	# 놓은 위치를 클릭처럼 판정해 달라고 한다 (결과는 cell_clicked 또는 pick_missed 로 온다).
@@ -158,8 +160,14 @@ func _on_cell_clicked(team: Unit.Team, cell: Vector2i) -> void:
 	var from_drop: bool = _awaiting_drop
 	# 판정 대기는 여기서 끝난다.
 	_awaiting_drop = false
-	# 잠겨 있거나 고른 카드가 없으면 할 일이 없다.
-	if _busy or _selected_card < 0:
+	# 잠겨 있으면 할 일이 없다.
+	if _busy:
+		return
+	# 고른 카드가 없으면 이동을 시도한다.
+	if _selected_card < 0:
+		# 드래그가 아닌 아군 칸 클릭만 이동으로 본다.
+		if not from_drop and team == Unit.Team.ALLY:
+			_try_move(cell)
 		return
 	# 지금 차례인 유닛.
 	var actor: Unit = _state.current_unit()
@@ -200,12 +208,45 @@ func _on_end_turn_pressed() -> void:
 	_run(_state.end_turn)
 
 
-## 카드 선택과 사거리 힌트를 지운다.
+## 지금 차례 아군을 cell 로 이동시킨다. 이동할 수 없는 칸이면 무시한다.
+func _try_move(cell: Vector2i) -> void:
+	# 지금 차례인 유닛.
+	var actor: Unit = _state.current_unit()
+	# 아군 차례가 아니거나 SP 가 없으면 무시한다.
+	if actor == null or not actor.is_ally() or actor.sp < 1:
+		return
+	# 상하좌우 빈 칸이 아니면 무시한다.
+	if not _state.resolver.movable_cells(actor, _state.units).has(cell):
+		return
+	# 이동을 실행하고 재생한다. 규칙이 거절하면(예상 밖 상황) 로그를 남긴다.
+	_run(func() -> void:
+		if not _state.move_unit(cell):
+			_hud.append_log("이동할 수 없는 칸"))
+
+
+## 지금 상황에 맞는 힌트를 보드에 보여 준다.
+## 카드 선택 중이면 사거리 힌트, 선택이 없고 이동할 수 있으면 이동 가능 칸, 그 외에는 지운다.
+func _refresh_hints() -> void:
+	# 카드를 골랐으면 사거리 힌트.
+	if _selected_card >= 0:
+		_refresh_target_hints()
+		return
+	# 지금 차례인 유닛.
+	var actor: Unit = _state.current_unit()
+	# 잠겨 있거나, 끝났거나, 아군 차례가 아니거나, SP 가 없으면 힌트를 지운다.
+	if _busy or _state.finished or actor == null or not actor.is_ally() or actor.sp < 1:
+		_board.clear_target_hints()
+		return
+	# 이동할 수 있는 칸을 표시한다.
+	_board.show_move_hints(actor.team, _state.resolver.movable_cells(actor, _state.units))
+
+
+## 카드 선택을 지우고 힌트를 다시 정한다 (입력 가능하면 이동 가능 칸, 잠겨 있으면 없음).
 func _clear_selection() -> void:
 	# 선택 없음으로.
 	_selected_card = -1
-	# 보드의 힌트 표시를 지운다.
-	_board.clear_target_hints()
+	# 선택이 없는 상태의 힌트로 바꾼다.
+	_refresh_hints()
 
 
 ## 고른 카드 기준으로 살아 있는 적마다 칠 수 있는지와 이유를 계산해 보드에 보여 준다.
