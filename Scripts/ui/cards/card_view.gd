@@ -48,8 +48,10 @@ func setup(p_card: CardData) -> void:
 	_damage_label = _make_label(str(card.damage), 40, Vector2(0, 62), Vector2(SIZE.x, 50))
 	_face.add_child(_damage_label)
 	var kind: String = "근접" if melee else "원거리"
-	_footer_label = _make_label("%s · 사거리 %d · %s" % [kind, card.attack_range, SHAPE_NAMES[card.shape]], 11, Vector2(4, 114), Vector2(SIZE.x - 8, 34))
-	_footer_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# 부채꼴에서는 오른쪽 약 20px 가 다음 카드에 가려지므로 사거리를 왼쪽 윗줄에 둔다.
+	_footer_label = _make_label("사거리 %d\n%s · %s" % [card.attack_range, kind, SHAPE_NAMES[card.shape]], 11, Vector2(8, 114), Vector2(78, 34))
+	_footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_footer_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	_face.add_child(_footer_label)
 
 	_back = make_back()

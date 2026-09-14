@@ -28,7 +28,7 @@ func _test_ranged_sweep_card_face() -> void:
 	check_eq("cost", view.cost_text(), "2")
 	check_eq("name", view.name_text(), "일제사격")
 	check_eq("damage", view.damage_text(), "3")
-	check_eq("footer", view.footer_text(), "원거리 · 사거리 4 · 횡렬")
+	check_eq("footer", view.footer_text(), "사거리 4\n원거리 · 횡렬")
 	check_eq("ranged border", view.border_color(), CardView.RANGED_COLOR)
 	check_eq("card size", view.size, CardView.SIZE)
 	view.free()
@@ -37,7 +37,7 @@ func _test_ranged_sweep_card_face() -> void:
 func _test_melee_single_card_face() -> void:
 	var view := CardView.new()
 	view.setup(_card("베기", 1, CardData.AttackType.MELEE, CardData.Shape.SINGLE, 2, 6))
-	check_eq("melee footer", view.footer_text(), "근접 · 사거리 2 · 단일")
+	check_eq("melee footer", view.footer_text(), "사거리 2\n근접 · 단일")
 	check_eq("melee border", view.border_color(), CardView.MELEE_COLOR)
 	view.free()
 
