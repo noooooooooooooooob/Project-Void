@@ -3,6 +3,7 @@
 ## 상태가 바뀔 때마다 신호를 내고, 화면(BattleEventRecorder → BattlePlayback)은 그 신호만 보고 연출한다.
 ##
 ## 흐름: start_battle() → (아군 차례에서 멈춤) → play_card() 여러 번 → end_turn() → (적 차례 자동 처리) → 다음 아군 차례에서 멈춤 ...
+## 한 차례는 Phase 순서(스탠바이 → 드로우 → 턴 행동 → 종료 전 → 종료 후)로 진행하고, 아군은 턴 행동 단계에서 멈춘다.
 class_name BattleState
 # RefCounted: 노드가 아닌 가벼운 객체. 참조가 없어지면 자동으로 해제된다.
 extends RefCounted
@@ -31,6 +32,11 @@ signal deck_reshuffled(unit: Unit, count: int)
 signal card_drawn(unit: Unit, card: CardData, deck_count: int, discard_count: int)
 ## 차례가 끝나 손패를 버렸다. cards 는 버린 카드들, discard_count 는 버린 뒤 묘지 장수.
 signal hand_discarded(unit: Unit, cards: Array[CardData], discard_count: int)
+## 한 차례의 단계. 아군·적 모두 이 순서로 진행한다.
+## STANDBY 스탠바이(block 초기화·SP 회복), DRAW 드로우, ACTION 턴 행동, BEFORE_END 종료 전, AFTER_END 종료 후(손패 버리기).
+enum Phase { STANDBY, DRAW, ACTION, BEFORE_END, AFTER_END }
+## 차례의 한 단계가 시작됐다. 단계 값을 바꾼 직후, 그 단계의 처리보다 먼저 나간다.
+signal phase_started(unit: Unit, phase: Phase)
 
 ## 아군 차례가 시작될 때마다 뽑는 카드 수.
 const DRAW_PER_TURN: int = 4
@@ -51,6 +57,8 @@ var turn_index: int = -1
 var finished: bool = false
 ## 끝났을 때 아군이 이겼으면 true.
 var ally_won: bool = false
+## 지금 진행 중인 차례 단계.
+var phase: Phase = Phase.STANDBY
 
 
 ## 전투 구성과 난수 생성기로 전투를 준비한다 (아직 시작하지는 않음).
@@ -229,13 +237,14 @@ func start_battle() -> void:
 	_run_until_player_input()
 
 
-## 지금 차례인 아군의 차례를 끝낸다. 손패를 버리고 다음 아군 차례까지 진행한다.
+## 지금 차례인 아군의 차례를 끝낸다. 종료 전 → 종료 후(손패 버리기) 단계를 지나 다음 아군 차례까지 진행한다.
 func end_turn() -> void:
 	# 지금 차례인 유닛을 가져온다.
 	var actor: Unit = current_unit()
-	# 아군 차례였다면 남은 손패를 묘지로 버린다.
+	# 아군 차례였다면 종료 단계들을 진행한다.
 	if actor != null and actor.is_ally():
-		_discard_hand(actor)
+		# 종료 전 → 종료 후. 손패는 종료 후 단계에서 버린다.
+		_end_phases(actor)
 	# 다음 아군 차례가 올 때까지 진행한다.
 	_run_until_player_input()
 
@@ -275,7 +284,7 @@ func _initiative_sorter(a: Unit, b: Unit) -> bool:
 
 
 # 다음 아군 차례에서 멈춘다. 적 차례는 그 자리에서 해결하고 지나간다.
-## 전투를 다음 입력 지점(아군 차례)까지 진행한다.
+## 전투를 다음 입력 지점(아군의 턴 행동 단계)까지 진행한다.
 func _run_until_player_input() -> void:
 	# 전투가 끝나면 반복을 멈춘다.
 	while not finished:
@@ -292,24 +301,61 @@ func _run_until_player_input() -> void:
 		if not actor.is_alive():
 			continue
 
-		# 방어도는 자기 차례가 시작될 때 사라진다 (한 바퀴 동안만 유지).
-		actor.block = 0
-		# 차례 시작 신호를 낸다.
-		turn_started.emit(actor)
+		# 스탠바이 → 차례 시작 알림 → 드로우.
+		_start_phases(actor)
+		# 턴 행동 단계로 들어간다.
+		_enter_phase(actor, Phase.ACTION)
 
-		# 아군이면 SP 를 채우고 카드를 뽑은 뒤, 플레이어 입력을 기다리러 빠져나간다.
+		# 아군이면 여기서 멈추고 플레이어 입력을 기다린다 — 다음 진행은 end_turn() 이 이어 간다.
 		if actor.is_ally():
-			# SP 를 최대치로 채운다.
-			actor.sp = (actor.data as AllyData).max_sp
-			# 정해진 장수를 뽑는다.
-			_draw_cards(actor, DRAW_PER_TURN)
-			# 여기서 멈춘다 — 다음 진행은 end_turn() 이 이어 간다.
 			return
 
 		# 적이면 AI 가 바로 행동한다.
 		_take_enemy_turn(actor)
-		# 적 공격으로 전투가 끝났는지 확인한다.
+		# 적 행동으로 전투가 끝났는지 확인한다.
 		check_end()
+		# 전투가 끝났으면 남은 단계는 진행하지 않는다.
+		if finished:
+			return
+		# 종료 전 → 종료 후.
+		_end_phases(actor)
+
+
+## 현재 단계를 바꾸고 단계 시작 신호를 낸다.
+func _enter_phase(actor: Unit, next_phase: Phase) -> void:
+	# 현재 단계를 바꾼다.
+	phase = next_phase
+	# 단계 시작 신호를 낸다 (그 단계의 처리보다 먼저).
+	phase_started.emit(actor, next_phase)
+
+
+## 스탠바이(block 초기화·SP 회복) → 차례 시작 알림 → 드로우 단계를 진행한다.
+func _start_phases(actor: Unit) -> void:
+	# 스탠바이 단계.
+	_enter_phase(actor, Phase.STANDBY)
+	# 방어도는 자기 차례가 시작될 때 사라진다 (한 바퀴 동안만 유지).
+	actor.block = 0
+	# 아군이면 SP 를 최대치로 채운다.
+	if actor.is_ally():
+		actor.sp = (actor.data as AllyData).max_sp
+	# 초기화된 값이 기록되도록 스탠바이 처리 뒤에 차례 시작을 알린다.
+	turn_started.emit(actor)
+	# 드로우 단계.
+	_enter_phase(actor, Phase.DRAW)
+	# 아군만 카드를 뽑는다 (적은 덱이 없어 단계만 지나간다).
+	if actor.is_ally():
+		_draw_cards(actor, DRAW_PER_TURN)
+
+
+## 종료 전 → 종료 후 단계를 진행한다. 아군은 종료 후 단계에서 손패를 버린다.
+func _end_phases(actor: Unit) -> void:
+	# 종료 전 단계 (지금은 처리할 일이 없다).
+	_enter_phase(actor, Phase.BEFORE_END)
+	# 종료 후 단계.
+	_enter_phase(actor, Phase.AFTER_END)
+	# 아군이면 남은 손패를 묘지로 버린다.
+	if actor.is_ally():
+		_discard_hand(actor)
 
 
 # Unit.draw 와 같은 순서로 한 장씩 진행하되, 화면이 순서대로 연출할 수 있게 매 단계 신호를 낸다.
