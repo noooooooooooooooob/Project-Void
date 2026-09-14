@@ -12,6 +12,9 @@ var ally_grid: Vector2i
 ## 적군 격자 크기 (x = 열 수, y = 행 수).
 var enemy_grid: Vector2i
 
+## 한 칸 이동 방향 후보. 위, 아래, 앞(적 쪽), 뒤 순서로 고정해 무작위 선택이 시드마다 재현되게 한다.
+const MOVE_DIRECTIONS: Array[Vector2i] = [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
+
 
 ## 양쪽 격자 크기를 받아 저장한다.
 func _init(p_ally_grid: Vector2i, p_enemy_grid: Vector2i) -> void:
@@ -25,6 +28,12 @@ func _init(p_ally_grid: Vector2i, p_enemy_grid: Vector2i) -> void:
 func rows_for(team: Unit.Team) -> int:
 	# 아군이면 아군 격자의 행 수, 아니면 적군 격자의 행 수.
 	return ally_grid.y if team == Unit.Team.ALLY else enemy_grid.y
+
+
+## 주어진 편 격자의 크기를 돌려준다.
+func grid_for(team: Unit.Team) -> Vector2i:
+	# 아군이면 아군 격자, 아니면 적군 격자.
+	return ally_grid if team == Unit.Team.ALLY else enemy_grid
 
 
 ## 행 번호를 "격자 가운데로부터 얼마나 떨어졌는가"로 바꾼다.
@@ -112,3 +121,37 @@ func expand_shape(primary: Unit, shape: CardData.Shape, all_units: Array[Unit]) 
 
 	# 모은 목록을 돌려준다 (대상 자신도 조건에 맞으므로 포함된다).
 	return hit
+
+
+## 유닛이 지금 한 칸 이동할 수 있는 칸 목록 (MOVE_DIRECTIONS 순서).
+## 자기 편 격자 안이고 살아 있는 유닛이 없는 상하좌우 칸만 들어간다.
+func movable_cells(unit: Unit, all_units: Array[Unit]) -> Array[Vector2i]:
+	# 결과를 담을 배열.
+	var cells: Array[Vector2i] = []
+	# 그 편 격자 크기.
+	var grid: Vector2i = grid_for(unit.team)
+	# 네 방향마다.
+	for direction in MOVE_DIRECTIONS:
+		# 한 칸 옮긴 좌표.
+		var cell: Vector2i = unit.cell + direction
+		# 격자 밖이면 건너뛴다.
+		if cell.x < 0 or cell.y < 0 or cell.x >= grid.x or cell.y >= grid.y:
+			continue
+		# 살아 있는 유닛이 있으면 건너뛴다.
+		if _occupied(unit.team, cell, all_units):
+			continue
+		# 갈 수 있는 칸이다.
+		cells.append(cell)
+	# 모은 칸을 돌려준다.
+	return cells
+
+
+## 그 편의 그 칸에 살아 있는 유닛이 있으면 true. 쓰러진 유닛은 칸을 막지 않는다.
+func _occupied(team: Unit.Team, cell: Vector2i, all_units: Array[Unit]) -> bool:
+	# 모든 유닛을 확인한다.
+	for other in all_units:
+		# 같은 편, 같은 칸, 살아 있음이면 막혀 있다.
+		if other.team == team and other.cell == cell and other.is_alive():
+			return true
+	# 비어 있다.
+	return false

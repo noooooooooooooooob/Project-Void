@@ -37,6 +37,8 @@ signal hand_discarded(unit: Unit, cards: Array[CardData], discard_count: int)
 enum Phase { STANDBY, DRAW, ACTION, BEFORE_END, AFTER_END }
 ## 차례의 한 단계가 시작됐다. 단계 값을 바꾼 직후, 그 단계의 처리보다 먼저 나간다.
 signal phase_started(unit: Unit, phase: Phase)
+## 유닛이 한 칸 이동했다.
+signal unit_moved(unit: Unit, from_cell: Vector2i, to_cell: Vector2i)
 
 ## 아군 차례가 시작될 때마다 뽑는 카드 수.
 const DRAW_PER_TURN: int = 4
@@ -223,6 +225,43 @@ func play_card(hand_index: int, primary: Unit) -> bool:
 	check_end()
 	# 성공.
 	return true
+
+
+## 지금 차례인 아군이 SP 1 을 써서 to_cell 로 한 칸 이동한다.
+## 규칙에 맞지 않으면 아무것도 바꾸지 않고 false 를 돌려준다. 성공하면 true.
+func move_unit(to_cell: Vector2i) -> bool:
+	# 끝난 전투에서는 이동할 수 없다.
+	if finished:
+		return false
+	# 지금 차례인 유닛.
+	var actor: Unit = current_unit()
+	# 차례 유닛이 없거나, 적이거나, 쓰러졌으면 이동할 수 없다.
+	if actor == null or not actor.is_ally() or not actor.is_alive():
+		return false
+	# SP 가 없으면 이동할 수 없다.
+	if actor.sp < 1:
+		return false
+	# 상하좌우 빈 칸이 아니면 이동할 수 없다.
+	if not resolver.movable_cells(actor, units).has(to_cell):
+		return false
+	# SP 1 을 쓴다.
+	actor.sp -= 1
+	# 옮기고 알린다.
+	apply_move(actor, to_cell)
+	# 성공.
+	return true
+
+
+## 검사 없이 유닛을 to_cell 로 옮기고 알린다 (아군 move_unit 과 EnemyBrain 이 부르는 통로).
+func apply_move(unit: Unit, to_cell: Vector2i) -> void:
+	# 원래 칸을 기억한다.
+	var from_cell: Vector2i = unit.cell
+	# 칸을 바꾼다.
+	unit.cell = to_cell
+	# 이동 신호를 낸다.
+	unit_moved.emit(unit, from_cell, to_cell)
+	# 로그에 남긴다.
+	write_log("%s 이동" % unit.data.display_name)
 
 
 ## 전투를 시작한다. 첫 라운드를 준비하고 첫 아군 차례까지 진행한 뒤 멈춘다.

@@ -31,6 +31,14 @@ func run() -> Array[Dictionary]:
 	_test_expand_pierce()
 	# 횡렬 범위.
 	_test_expand_sweep()
+	# 가운데 칸의 이동 후보 네 칸.
+	_test_movable_cells_in_the_middle()
+	# 모서리 칸의 이동 후보 두 칸.
+	_test_movable_cells_at_a_corner()
+	# 살아 있는 유닛 칸은 빼고 쓰러진 유닛 칸은 넣는다.
+	_test_movable_cells_skip_living_units()
+	# 자기 편 격자 크기 안에서만.
+	_test_movable_cells_stay_in_own_grid()
 	# 결과를 돌려준다.
 	return results()
 
@@ -216,3 +224,67 @@ func _test_expand_sweep() -> void:
 	check_eq("sweep hits the whole column", hit.size(), 2)
 	# 다른 열 제외.
 	check("sweep excludes other columns", not hit.has(other_col))
+
+
+# 3×3 가운데(1,1) 유닛은 위·아래·앞·뒤 순서로 네 칸에 갈 수 있는지.
+func _test_movable_cells_in_the_middle() -> void:
+	# 양쪽 3×3.
+	var resolver: TargetResolver = ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 가운데 아군.
+	var a: Unit = _unit(1, Unit.Team.ALLY, Vector2i(1, 1))
+	# 전장 유닛 목록.
+	var all: Array[Unit] = [a]
+	# 기대값: 위(1,0), 아래(1,2), 앞(0,1), 뒤(2,1) (타입 있는 배열끼리 비교한다).
+	var expected: Array[Vector2i] = [Vector2i(1, 0), Vector2i(1, 2), Vector2i(0, 1), Vector2i(2, 1)]
+	# 순서까지 같다.
+	check_eq("middle cell has four moves in fixed order", resolver.movable_cells(a, all), expected)
+
+
+# 모서리(0,0) 유닛은 아래와 뒤 두 칸만 갈 수 있는지.
+func _test_movable_cells_at_a_corner() -> void:
+	# 양쪽 3×3.
+	var resolver: TargetResolver = ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 모서리 아군.
+	var a: Unit = _unit(1, Unit.Team.ALLY, Vector2i(0, 0))
+	# 전장 유닛 목록.
+	var all: Array[Unit] = [a]
+	# 기대값: 아래(0,1), 뒤(1,0).
+	var expected: Array[Vector2i] = [Vector2i(0, 1), Vector2i(1, 0)]
+	# 두 칸.
+	check_eq("corner cell has two moves", resolver.movable_cells(a, all), expected)
+
+
+# 같은 편 살아 있는 유닛 칸은 빠지고, 쓰러진 유닛 칸과 다른 편 같은 좌표는 막지 않는지.
+func _test_movable_cells_skip_living_units() -> void:
+	# 양쪽 3×3.
+	var resolver: TargetResolver = ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 가운데 아군.
+	var a: Unit = _unit(1, Unit.Team.ALLY, Vector2i(1, 1))
+	# 위 칸의 살아 있는 아군.
+	var blocker: Unit = _unit(2, Unit.Team.ALLY, Vector2i(1, 0))
+	# 아래 칸의 쓰러진 아군.
+	var fallen: Unit = _unit(3, Unit.Team.ALLY, Vector2i(1, 2))
+	# 쓰러뜨린다.
+	fallen.take_damage(999)
+	# 앞 칸과 같은 좌표에 선 적 (다른 편 격자라 막지 않는다).
+	var foe: Unit = _unit(4, Unit.Team.ENEMY, Vector2i(0, 1))
+	# 전장 유닛 목록.
+	var all: Array[Unit] = [a, blocker, fallen, foe]
+	# 기대값: 위는 막히고 아래·앞·뒤는 열린다.
+	var expected: Array[Vector2i] = [Vector2i(1, 2), Vector2i(0, 1), Vector2i(2, 1)]
+	# 비교.
+	check_eq("living ally blocks, fallen ally and enemy side do not", resolver.movable_cells(a, all), expected)
+
+
+# 적 격자가 2×2 이면 (1,1) 적은 위(1,0)와 앞(0,1)만 갈 수 있는지.
+func _test_movable_cells_stay_in_own_grid() -> void:
+	# 아군 3×3, 적군 2×2.
+	var resolver: TargetResolver = ResolverScript.new(Vector2i(3, 3), Vector2i(2, 2))
+	# 적 격자 오른쪽 아래 칸의 적.
+	var e: Unit = _unit(1, Unit.Team.ENEMY, Vector2i(1, 1))
+	# 전장 유닛 목록.
+	var all: Array[Unit] = [e]
+	# 기대값: 위(1,0)와 앞(0,1) — 아래(1,2)와 뒤(2,1)는 격자 밖.
+	var expected: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1)]
+	# 비교.
+	check_eq("moves stay inside the unit's own grid", resolver.movable_cells(e, all), expected)

@@ -26,6 +26,7 @@ const TEST_SCRIPTS: Array[String] = [
 	"res://tests/test_hand_layout.gd",
 	"res://tests/test_hand_view.gd",
 	"res://tests/test_turn_phases.gd",
+	"res://tests/test_movement.gd",
 ]
 
 # 테스트를 이미 시작했는지 (첫 프레임에 한 번만 돌리기 위해).
