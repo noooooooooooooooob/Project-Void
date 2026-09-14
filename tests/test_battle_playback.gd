@@ -28,6 +28,8 @@ func run() -> Array[Dictionary]:
 	_test_turn_start_draws_into_hand()
 	# 차례 종료: 버리기 → 리셔플 → 드로우.
 	_test_end_turn_discards_then_reshuffles_and_draws()
+	# 아군 이동 이벤트 재생.
+	_test_move_event_moves_the_view()
 	# 결과를 돌려준다.
 	return results()
 
@@ -332,5 +334,42 @@ func _test_end_turn_discards_then_reshuffles_and_draws() -> void:
 	check_eq("card drawn again after the reshuffle", hud.hand_view().card_views().size(), 1)
 	# 묘지 0.
 	check_eq("discard pile emptied by the reshuffle", hud.discard_pile().count_text(), "0")
+	# 정리.
+	_free(rig)
+
+
+# 아군이 (0,1)→(1,1) 로 이동한 이벤트를 재생하면 화면 위치·강조 타일·SP 패널·로그가 바뀌는지.
+func _test_move_event_moves_the_view() -> void:
+	# 준비물.
+	var rig: Dictionary = _rig()
+	# 전투 상태.
+	var state: BattleState = rig["state"]
+	# 기록기.
+	var recorder: BattleEventRecorder = rig["recorder"]
+	# 보드.
+	var board: Board3D = rig["board"]
+	# HUD.
+	var hud: BattleHud = rig["hud"]
+	# 재생기.
+	var playback: BattlePlayback = rig["playback"]
+
+	# 시작.
+	state.start_battle()
+	# 시작 이벤트 재생.
+	playback.play(recorder.take_events())
+	# 아군 유닛.
+	var ally: Unit = state.living_units(Unit.Team.ALLY)[0]
+	# 한 칸 뒤로 이동.
+	state.move_unit(Vector2i(1, 1))
+	# 이동 이벤트 재생.
+	playback.play(recorder.take_events())
+	# 화면 위치.
+	check("view moved to the new cell", board.view_for(ally).position.is_equal_approx(board.layout.cell_position(Unit.Team.ALLY, Vector2i(1, 1))))
+	# 새 칸 강조.
+	check_eq("new cell highlighted", board.tile_state(Unit.Team.ALLY, Vector2i(1, 1)), Board3D.TileState.CURRENT)
+	# SP 2 표시.
+	check_eq("sp panel shows the spent sp", hud.sp_text(), "SP\n●●○\n2 / 3")
+	# 로그.
+	check("move logged", hud.log_text().contains("a 이동"))
 	# 정리.
 	_free(rig)

@@ -29,6 +29,10 @@ func run() -> Array[Dictionary]:
 	_test_defend_and_rest_record_snapshots()
 	# 카드 더미 이벤트의 장수.
 	_test_card_zone_events_snapshot()
+	# 아군 이동: 이동 → 로그.
+	_test_ally_move_records_move_then_log()
+	# 적 이동: 행동 → 이동 → 로그.
+	_test_enemy_move_records_action_move_log()
 	# 결과를 돌려준다.
 	return results()
 
@@ -380,3 +384,56 @@ func _test_card_zone_events_snapshot() -> void:
 	check_eq("drawn card", drawn.card.id, &"zap")
 	# 뽑은 뒤 덱 0.
 	check_eq("deck after the draw", drawn.deck_count, 0)
+
+
+# 아군이 (0,1)→(1,1) 로 이동하면 [UNIT_MOVED, LOG] 가 기록되고 두 칸·유닛·로그 문장이 맞는지.
+func _test_ally_move_records_move_then_log() -> void:
+	# 적 하나인 전투.
+	var state: BattleState = _state(1, 1)
+	# 기록기 연결.
+	var recorder := BattleEventRecorder.new(state)
+	# 시작 (아군 차례).
+	state.start_battle()
+	# 시작 기록은 버린다.
+	recorder.take_events()
+
+	# 한 칸 뒤로 이동.
+	state.move_unit(Vector2i(1, 1))
+	# 기록 꺼내기.
+	var events: Array[BattleEvent] = recorder.take_events()
+	# 종류 별칭.
+	var k := BattleEvent.Kind
+	# 종류 순서.
+	check_eq("ally move kinds", _kinds(events), [k.UNIT_MOVED, k.LOG])
+	# 이전 칸.
+	check_eq("from cell", events[0].from_cell, Vector2i(0, 1))
+	# 새 칸.
+	check_eq("to cell", events[0].to_cell, Vector2i(1, 1))
+	# 주인공은 아군.
+	check("moved unit is the ally", events[0].unit.is_ally())
+	# 로그 문장.
+	check_eq("move log text", events[1].text, "a 이동")
+
+
+# 이동 확률 100% 적의 차례를 돌리면 [ENEMY_ACTED(MOVE), UNIT_MOVED, LOG] 이고 새 칸이 실제 칸과 같은지.
+func _test_enemy_move_records_action_move_log() -> void:
+	# 적 하나인 전투 (e1 은 적 격자 (0,0)).
+	var state: BattleState = _state(1, 1)
+	# 기록기 연결.
+	var recorder := BattleEventRecorder.new(state)
+	# 적 유닛.
+	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
+	# 항상 이동하게 한다.
+	(foe.data as EnemyData).move_chance = 1.0
+	# 적 차례 처리.
+	EnemyBrain.take_turn(state, foe)
+	# 기록 꺼내기.
+	var events: Array[BattleEvent] = recorder.take_events()
+	# 종류 별칭.
+	var k := BattleEvent.Kind
+	# 종류 순서.
+	check_eq("enemy move kinds", _kinds(events), [k.ENEMY_ACTED, k.UNIT_MOVED, k.LOG])
+	# 행동은 이동.
+	check_eq("enemy action is move", events[0].action, EnemyBrain.Action.MOVE)
+	# 기록된 새 칸 = 실제 칸.
+	check_eq("recorded destination matches the unit", events[1].to_cell, foe.cell)

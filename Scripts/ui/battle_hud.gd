@@ -167,6 +167,17 @@ func remove_played_card(event: BattleEvent) -> void:
 	_set_counts(event.deck_count, event.discard_count)
 
 
+## 이동 이벤트: 아군이 이동했으면 줄어든 SP 로 SP 패널과 카드 흐림을 갱신한다.
+func apply_move(event: BattleEvent) -> void:
+	# 적 이동은 SP 와 상관없다.
+	if not event.unit.is_ally():
+		return
+	# 남은 SP 로 카드 흐림을 다시 계산한다.
+	_hand.set_sp(event.unit.sp)
+	# SP 패널을 갱신한다.
+	_refresh_sp(event.unit)
+
+
 ## 로그에 한 줄을 추가한다.
 func append_log(text: String) -> void:
 	# 줄바꿈을 붙여 덧붙인다.

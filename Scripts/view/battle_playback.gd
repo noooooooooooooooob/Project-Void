@@ -92,6 +92,9 @@ func play(events: Array[BattleEvent]) -> void:
 				hud.discard_hand(event)
 				# 연출이 보이도록 기다린다.
 				await _wait(DISCARD_WAIT)
+			# 이동: 유닛이 새 칸으로 미끄러진다.
+			BattleEvent.Kind.UNIT_MOVED:
+				await _unit_moved(event)
 	# 모든 이벤트를 재생했음을 알린다.
 	finished.emit()
 
@@ -128,10 +131,13 @@ func _card_played(event: BattleEvent) -> void:
 	await view.lunge_toward(board.view_for(event.target).home_position)
 
 
-## 적 행동 연출: 공격이면 돌진, 방어·휴식이면 제자리 뛰기.
+## 적 행동 연출: 공격이면 돌진, 방어·휴식이면 제자리 뛰기, 이동이면 없음(UNIT_MOVED 가 보여 준다).
 func _enemy_acted(event: BattleEvent) -> void:
 	# 테스트 모드면 움직임 연출은 건너뛴다.
 	if instant:
+		return
+	# 이동은 뒤따르는 이동 이벤트가 보여 주므로 여기서는 연출하지 않는다.
+	if event.action == EnemyBrain.Action.MOVE:
 		return
 	# 행동한 적의 화면 객체.
 	var view: UnitView = board.view_for(event.unit)
@@ -141,6 +147,14 @@ func _enemy_acted(event: BattleEvent) -> void:
 	# 그 외(방어, 휴식)는 제자리에서 한 번 뛴다.
 	else:
 		await view.hop()
+
+
+## 이동 연출: 아군이면 SP 표시를 갱신하고, 유닛을 새 칸으로 옮긴다.
+func _unit_moved(event: BattleEvent) -> void:
+	# SP 패널과 카드 흐림을 갱신한다 (적이면 HUD 가 무시한다).
+	hud.apply_move(event)
+	# 보드에서 유닛을 옮긴다. 테스트 모드면 즉시, 아니면 미끄러짐이 끝날 때까지 기다린다.
+	await board.move_view(event.unit, event.from_cell, event.to_cell, not instant)
 
 
 ## 피해 연출: 체력 바를 먼저 갱신하고, 숫자를 띄우며 번쩍이고 흔들린다.

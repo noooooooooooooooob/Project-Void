@@ -8,7 +8,7 @@ extends RefCounted
 
 ## 기록 종류. BattleState 의 신호 하나에 종류 하나가 대응한다.
 ## (새 종류는 뒤에만 추가한다 — 중간에 넣으면 기존 숫자 값이 밀린다.)
-enum Kind { TURN_STARTED, CARD_PLAYED, ENEMY_ACTED, DAMAGED, HEALED, BLOCK_GAINED, DIED, LOG, BATTLE_ENDED, CARD_DRAWN, DECK_RESHUFFLED, HAND_DISCARDED }
+enum Kind { TURN_STARTED, CARD_PLAYED, ENEMY_ACTED, DAMAGED, HEALED, BLOCK_GAINED, DIED, LOG, BATTLE_ENDED, CARD_DRAWN, DECK_RESHUFFLED, HAND_DISCARDED, UNIT_MOVED }
 
 ## 이 기록의 종류.
 var kind: Kind
@@ -44,6 +44,10 @@ var cards: Array[CardData] = []
 var deck_count: int = 0
 ## 기록 시점의 묘지 장수.
 var discard_count: int = 0
+## 이동 전 칸 (UNIT_MOVED).
+var from_cell: Vector2i = Vector2i.ZERO
+## 이동 후 칸 (UNIT_MOVED).
+var to_cell: Vector2i = Vector2i.ZERO
 
 
 ## 종류를 정해 빈 기록을 만든다. 나머지 필드는 만든 쪽이 채운다.

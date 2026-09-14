@@ -40,6 +40,8 @@ func _init(state: BattleState) -> void:
 	state.deck_reshuffled.connect(_on_deck_reshuffled)
 	# 손패 버리기 신호 → 기록.
 	state.hand_discarded.connect(_on_hand_discarded)
+	# 이동 신호 → 기록.
+	state.unit_moved.connect(_on_unit_moved)
 
 
 ## 쌓인 기록을 모두 꺼내고 목록을 비운다.
@@ -231,5 +233,19 @@ func _on_hand_discarded(unit: Unit, cards: Array[CardData], discard_count: int) 
 	event.discard_count = discard_count
 	# 버린 직후 덱 장수.
 	event.deck_count = unit.deck.size()
+	# 목록에 추가한다.
+	_events.append(event)
+
+
+## 이동: 누가 어느 칸에서 어느 칸으로 옮겼는지.
+func _on_unit_moved(unit: Unit, from_cell: Vector2i, to_cell: Vector2i) -> void:
+	# 이동 기록을 만든다.
+	var event := BattleEvent.new(BattleEvent.Kind.UNIT_MOVED)
+	# 이동한 유닛.
+	event.unit = unit
+	# 이전 칸.
+	event.from_cell = from_cell
+	# 새 칸.
+	event.to_cell = to_cell
 	# 목록에 추가한다.
 	_events.append(event)
