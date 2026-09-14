@@ -34,6 +34,8 @@
 | 4.2 `movable_cells` 만 명시 | `TargetResolver.grid_for(team)`, `_occupied(team, cell, units)` 도우미 추가 | 격자 범위·점유 검사를 한 곳에 둔다 |
 | 6.5 클릭 이동 | `_try_move` 가 SP 0 이면 무시, 규칙이 거절하면 로그 "이동할 수 없는 칸" | 카드 사용 경로(`사용할 수 없는 대상`)와 같은 안전장치 |
 | 4.4 `decide` | 막혔을 때의 무작위 선택을 `_random_fallback(state, actor)` 로 분리 | `decide` 가 길어지지 않게 |
+| 5 `TURN_STARTED`/`DIED` | `BattleEvent.cell` 로 기록 시점의 칸을 복사, `Board3D.show_current`/`mark_empty` 가 유닛 대신 team+cell 을 받음 (최종 리뷰 수정, 2026-09-15) | 규칙이 적 차례를 끝까지 계산한 뒤에 재생하므로, 재생 시점에 `unit.cell` 을 읽으면 이미 이동 뒤의 칸이라 강조·빈 칸 표시가 이동보다 먼저 옮겨 보였다 |
+| 4.5 `ai_rng` | `seed = p_rng.seed` 대신 `seed = hash([p_rng.seed, "enemy_ai"])` (최종 리뷰 수정, 2026-09-15) | 같은 시드로 시작하면 적 AI 의 k 번째 뽑기가 덱 섞기의 k 번째 뽑기와 같아져, 두 난수열이 같은 수열을 되풀이했다 |
 
 ## 파일 구조
 

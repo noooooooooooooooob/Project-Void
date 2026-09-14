@@ -115,10 +115,10 @@ enum Action { ATTACK, DEFEND, REST, MOVE }   # MOVE 는 끝에 추가
 ### 4.5 적 전용 난수 (`BattleState`)
 
 ```gdscript
-var ai_rng: RandomNumberGenerator   # _init 에서 새로 만들고 seed = rng.seed
+var ai_rng: RandomNumberGenerator   # _init 에서 새로 만들고 seed = hash([rng.seed, "enemy_ai"])
 ```
 
-적 AI 는 `ai_rng` 만 쓴다. 덱 섞기는 계속 `rng` 를 써서, 적이 난수를 몇 번 쓰든 카드 순서가 바뀌지 않는다. 시드가 같으면 적 행동도 같다.
+적 AI 는 `ai_rng` 만 쓴다. 덱 섞기는 계속 `rng` 를 써서, 적이 난수를 몇 번 쓰든 카드 순서가 바뀌지 않는다. 시드가 같으면 적 행동도 같다. `ai_rng` 의 시드는 전투 시드에서 따로 뽑아, 적 AI 가 덱 섞기와 같은 난수 수열을 되풀이하지 않게 한다.
 
 기존 테스트가 만드는 적은 `move_chance = 0` 으로 두어 지금의 결정론적 기대값을 유지한다. `Resources/units/*.tres` 는 값을 쓰지 않으므로 기본 25% 가 적용된다.
 
@@ -127,6 +127,7 @@ var ai_rng: RandomNumberGenerator   # _init 에서 새로 만들고 seed = rng.s
 - `BattleEvent.Kind` 끝에 `UNIT_MOVED`, 필드 `from_cell: Vector2i`, `to_cell: Vector2i`
 - `BattleEventRecorder` 가 `unit_moved` 를 기록한다. `phase_started` 는 기록하지 않는다 (화면에 표시하지 않음)
 - 발생 순서: 아군 이동 `UNIT_MOVED → LOG`, 적 이동 `ENEMY_ACTED(MOVE) → UNIT_MOVED → LOG`
+- `TURN_STARTED`·`DIED` 는 기록 시점의 `cell` 을 복사한다 (재생 때 규칙의 칸은 이미 이동 뒤일 수 있다)
 
 ## 6. 화면 변경
 
@@ -144,6 +145,7 @@ func slide_to(world_position: Vector3) -> void   # home_position 을 바꾸고 M
 - `clear_target_hints()` — 사거리 힌트(`VALID`/`INVALID`)는 `BASE`, 이동 힌트(`MOVABLE`)는 `EMPTY` 로 되돌린다
 - `move_view(unit, from_cell, to_cell, animate)` — 원래 칸 `EMPTY`, 새 칸 `CURRENT`, 유닛 클릭 몸체의 칸 메타 갱신, `animate` 면 `await slide_to`, 아니면 `set_home`
 - `sync_from_state` — 유닛 화면을 규칙의 현재 칸 위치로 옮기고(`set_home`) 클릭 몸체 칸 메타를 다시 붙인다 (연출이 어긋나도 실제 상태로 맞춘다)
+- `show_current(team, cell)`, `mark_empty(team, cell)` — 유닛 대신 편·칸을 받는다 (재생은 이벤트의 기록 칸을 넘긴다)
 
 ### 6.3 `BattleHud`
 
