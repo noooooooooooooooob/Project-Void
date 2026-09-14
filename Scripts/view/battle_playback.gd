@@ -9,6 +9,10 @@ const STAT_POP_TIME: float = 0.4
 const DAMAGE_COLOR := Color(1.0, 0.35, 0.3)
 const HEAL_COLOR := Color(0.45, 0.9, 0.45)
 const BLOCK_COLOR := Color(0.5, 0.7, 1.0)
+const DRAW_WAIT: float = 0.12
+const RESHUFFLE_WAIT: float = 0.45
+const DISCARD_WAIT: float = 0.35
+const PLAY_REMOVE_WAIT: float = 0.2
 
 var board: Board3D
 var hud: BattleHud
@@ -38,6 +42,15 @@ func play(events: Array[BattleEvent]) -> void:
 			BattleEvent.Kind.BATTLE_ENDED:
 				hud.show_banner(event.ally_won)
 				hud.append_log("전투 종료 — %s" % ("승리" if event.ally_won else "패배"))
+			BattleEvent.Kind.CARD_DRAWN:
+				hud.draw_card(event)
+				await _wait(DRAW_WAIT)
+			BattleEvent.Kind.DECK_RESHUFFLED:
+				hud.reshuffle(event)
+				await _wait(RESHUFFLE_WAIT)
+			BattleEvent.Kind.HAND_DISCARDED:
+				hud.discard_hand(event)
+				await _wait(DISCARD_WAIT)
 	finished.emit()
 
 
@@ -51,8 +64,10 @@ func _turn_started(event: BattleEvent) -> void:
 
 
 func _card_played(event: BattleEvent) -> void:
+	hud.remove_played_card(event)
 	if instant:
 		return
+	await _wait(PLAY_REMOVE_WAIT)
 	var view: UnitView = board.view_for(event.unit)
 	view.pop_text(event.card.display_name, Color.WHITE)
 	await view.lunge_toward(board.view_for(event.target).home_position)

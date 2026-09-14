@@ -12,6 +12,8 @@ func run() -> Array[Dictionary]:
 	_test_turn_start_highlights_and_logs()
 	_test_kill_plays_to_banner()
 	_test_heal_and_block_update_view()
+	_test_turn_start_draws_into_hand()
+	_test_end_turn_discards_then_reshuffles_and_draws()
 	return results()
 
 
@@ -113,6 +115,7 @@ func _test_kill_plays_to_banner() -> void:
 	check("card log from the rules", hud.log_text().contains("a → e (zap)"))
 	check("damage log", hud.log_text().contains("e 에게 50 피해"))
 	check("victory banner", hud.banner_visible())
+	check_eq("played card left the hand", hud.hand_view().card_views().size(), 0)
 	_free(rig)
 
 
@@ -139,4 +142,42 @@ func _test_heal_and_block_update_view() -> void:
 	var block_events: Array[BattleEvent] = [guarded]
 	playback.play(block_events)
 	check_eq("block keeps the shown hp", view.stat_label.text, "12/20  방5")
+	_free(rig)
+
+
+func _test_turn_start_draws_into_hand() -> void:
+	var rig: Dictionary = _rig()
+	var state: BattleState = rig["state"]
+	var recorder: BattleEventRecorder = rig["recorder"]
+	var hud: BattleHud = rig["hud"]
+	var playback: BattlePlayback = rig["playback"]
+
+	state.start_battle()
+	playback.play(recorder.take_events())
+	check_eq("drawn card is in the hand", hud.hand_view().card_views().size(), 1)
+	check_eq("deck pile emptied by the draw", hud.deck_pile().count_text(), "0")
+	check_eq("deck pile names the ally", hud.deck_pile().owner_text(), "a")
+	_free(rig)
+
+
+func _test_end_turn_discards_then_reshuffles_and_draws() -> void:
+	var rig: Dictionary = _rig()
+	var state: BattleState = rig["state"]
+	var recorder: BattleEventRecorder = rig["recorder"]
+	var hud: BattleHud = rig["hud"]
+	var playback: BattlePlayback = rig["playback"]
+
+	state.start_battle()
+	playback.play(recorder.take_events())
+	state.end_turn()
+	var events: Array[BattleEvent] = recorder.take_events()
+
+	var discard_only: Array[BattleEvent] = [events[0]]
+	playback.play(discard_only)
+	check_eq("hand discarded", hud.hand_view().card_views().size(), 0)
+	check_eq("discard pile holds the card", hud.discard_pile().count_text(), "1")
+
+	playback.play(events.slice(1))
+	check_eq("card drawn again after the reshuffle", hud.hand_view().card_views().size(), 1)
+	check_eq("discard pile emptied by the reshuffle", hud.discard_pile().count_text(), "0")
 	_free(rig)
