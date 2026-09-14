@@ -7,6 +7,7 @@ func run() -> Array[Dictionary]:
 	_test_set_cards_lays_out()
 	_test_set_cards_same_hand_keeps_views()
 	_test_selected_card_lifts()
+	_test_child_order_follows_selection()
 	_test_draw_card_appends()
 	_test_remove_card_prefers_pending_play()
 	_test_discard_all_empties()
@@ -86,6 +87,19 @@ func _test_selected_card_lifts() -> void:
 	check("lifted above its slot", is_equal_approx(view.position.y, slot["position"].y - CardView.SIZE.y / 2.0 - HandView.LIFT))
 	check_eq("upright while selected", view.rotation, 0.0)
 	check("enlarged while selected", view.scale.is_equal_approx(Vector2.ONE * HandView.SELECTED_SCALE))
+	hand.free()
+
+
+func _test_child_order_follows_selection() -> void:
+	var hand: HandView = _hand()
+	var cards: Array[CardData] = _cards([_card("a", 1), _card("b", 1), _card("c", 1)])
+	hand.set_cards(cards, 3, 1)
+	var views: Array[CardView] = hand.card_views()
+	check("lifted card is picked before its right neighbour", views[1].get_index() > views[2].get_index())
+	check("aim arrow stays the last child", hand.get_child(hand.get_child_count() - 1) is AimArrow)
+	hand.set_cards(cards, 3, -1)
+	check("deselected card goes back under its right neighbour", views[1].get_index() < views[2].get_index())
+	check("left card stays under the deselected card", views[0].get_index() < views[1].get_index())
 	hand.free()
 
 

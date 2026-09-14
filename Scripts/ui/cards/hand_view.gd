@@ -247,11 +247,14 @@ func _layout(animate: bool) -> void:
 			view.position = target["position"]
 			view.rotation = target["rotation"]
 			view.scale = target["scale"]
-	# 그리기 순서는 z_index 가 아니라 트리 순서를 따르므로, 들린 카드가 오른쪽 이웃에게
-	# 클릭을 뺏기지 않도록 맨 뒤로 옮긴다.
+	# 클릭 판정은 z_index 가 아니라 트리 순서를 따르므로, 트리 순서를 z_index 와 같게 맞춘다.
+	# 선택이 풀린 카드가 오른쪽 이웃보다 뒤에 남으면 겹친 곳의 클릭을 가로챈다.
+	for i in _cards.size():
+		if i != _selected:
+			move_child(_cards[i], -1)
 	if _selected >= 0 and _selected < _cards.size():
 		move_child(_cards[_selected], -1)
-		move_child(_arrow, -1)
+	move_child(_arrow, -1)
 
 
 func _on_flight_finished(view: CardView) -> void:
