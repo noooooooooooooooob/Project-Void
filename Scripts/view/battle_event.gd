@@ -48,6 +48,8 @@ var discard_count: int = 0
 var from_cell: Vector2i = Vector2i.ZERO
 ## 이동 후 칸 (UNIT_MOVED).
 var to_cell: Vector2i = Vector2i.ZERO
+## 기록 시점에 유닛이 서 있던 칸 (TURN_STARTED, DIED). 재생 때는 규칙의 칸이 이미 이동 뒤일 수 있어 이 값을 쓴다.
+var cell: Vector2i = Vector2i.ZERO
 
 
 ## 종류를 정해 빈 기록을 만든다. 나머지 필드는 만든 쪽이 채운다.

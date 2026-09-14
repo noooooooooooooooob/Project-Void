@@ -198,7 +198,7 @@ func _test_show_current_moves_highlight() -> void:
 	board.sync_from_state(state)
 
 	# e1 으로 강조를 옮긴다.
-	board.show_current(_unit(state, &"e1"))
+	board.show_current(Unit.Team.ENEMY, Vector2i(0, 0))
 	# e1 칸 강조.
 	check_eq("new current tile", board.tile_state(Unit.Team.ENEMY, Vector2i(0, 0)), Board3D.TileState.CURRENT)
 	# 아군 칸은 기본으로.
@@ -260,7 +260,7 @@ func _test_mark_empty() -> void:
 	board.sync_from_state(state)
 
 	# e2 칸을 빈 칸으로.
-	board.mark_empty(_unit(state, &"e2"))
+	board.mark_empty(Unit.Team.ENEMY, Vector2i(1, 0))
 	# 빈 칸.
 	check_eq("marked tile is empty", board.tile_state(Unit.Team.ENEMY, Vector2i(1, 0)), Board3D.TileState.EMPTY)
 	# 지운다.

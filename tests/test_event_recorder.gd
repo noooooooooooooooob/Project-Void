@@ -187,6 +187,8 @@ func _test_start_battle_records_first_turn() -> void:
 	check_eq("alive flags", events[0].alive, [true, true, true])
 	# 체력 30.
 	check_eq("hp snapshot", events[0].hp, 30)
+	# 차례 시작 시점의 칸.
+	check_eq("cell snapshot", events[0].cell, Vector2i(0, 1))
 	# 드로우 전 덱 1.
 	check_eq("deck snapshot before the draw", events[0].deck_count, 1)
 	# 드로우 전 묘지 0.
@@ -293,6 +295,8 @@ func _test_kill_records_death_and_battle_end() -> void:
 	check_eq("kill kinds", _kinds(events), [k.CARD_PLAYED, k.LOG, k.DAMAGED, k.DIED, k.LOG, k.BATTLE_ENDED])
 	# 쓰러진 유닛은 적.
 	check("died event names the foe", events[3].unit == foe)
+	# 쓰러진 칸.
+	check_eq("died cell snapshot", events[3].cell, Vector2i(0, 0))
 	# 쓰러짐 로그.
 	check("death log follows", events[4].text.ends_with("쓰러짐"))
 	# 아군 승리.

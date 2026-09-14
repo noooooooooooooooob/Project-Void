@@ -66,6 +66,8 @@ func _on_turn_started(unit: Unit) -> void:
 	event.hp = unit.hp
 	# 그 순간의 방어도 (방금 0 으로 초기화된 값).
 	event.block = unit.block
+	# 차례 시작 시점의 칸 (재생 때 규칙의 칸은 이미 이동 뒤일 수 있다).
+	event.cell = unit.cell
 	# 현재 라운드 번호.
 	event.round_index = state.round_index
 	# 행동 순서 안의 현재 위치.
@@ -165,6 +167,8 @@ func _on_unit_died(unit: Unit) -> void:
 	var event := BattleEvent.new(BattleEvent.Kind.DIED)
 	# 쓰러진 유닛.
 	event.unit = unit
+	# 쓰러진 칸.
+	event.cell = unit.cell
 	# 목록에 추가한다.
 	_events.append(event)
 

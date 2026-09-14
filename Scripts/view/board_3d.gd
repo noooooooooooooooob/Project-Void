@@ -109,21 +109,22 @@ func sync_from_state(state: BattleState) -> void:
 		set_tile_state(actor.team, actor.cell, TileState.CURRENT)
 
 
-## 지금 차례 강조를 이 유닛의 칸으로 옮긴다.
-func show_current(unit: Unit) -> void:
+## 지금 차례 강조를 그 편의 그 칸으로 옮긴다.
+## 재생 중에는 기록 시점의 칸을 넘긴다 (규칙의 칸은 이미 이동 뒤일 수 있다).
+func show_current(team: Unit.Team, cell: Vector2i) -> void:
 	# 기존에 강조된 칸을 찾는다.
 	for key in _tile_states:
 		# 강조 상태인 칸이면 기본으로 되돌린다.
 		if _tile_states[key] == TileState.CURRENT:
 			set_tile_state(key.x as Unit.Team, Vector2i(key.y, key.z), TileState.BASE)
-	# 새 유닛의 칸을 강조한다.
-	set_tile_state(unit.team, unit.cell, TileState.CURRENT)
+	# 새 칸을 강조한다.
+	set_tile_state(team, cell, TileState.CURRENT)
 
 
-## 유닛이 쓰러진 칸을 빈 칸 모습으로 바꾼다.
-func mark_empty(unit: Unit) -> void:
+## 유닛이 쓰러진 칸을 빈 칸 모습으로 바꾼다. 재생 중에는 기록 시점의 칸을 넘긴다.
+func mark_empty(team: Unit.Team, cell: Vector2i) -> void:
 	# 그 칸을 EMPTY 로.
-	set_tile_state(unit.team, unit.cell, TileState.EMPTY)
+	set_tile_state(team, cell, TileState.EMPTY)
 
 
 ## 카드를 골랐을 때 대상 후보 칸마다 칠 수 있는지 색과 글자로 보여 준다.

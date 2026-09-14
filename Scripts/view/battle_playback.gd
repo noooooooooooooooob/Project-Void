@@ -101,8 +101,8 @@ func play(events: Array[BattleEvent]) -> void:
 
 ## 차례 시작 연출.
 func _turn_started(event: BattleEvent) -> void:
-	# 보드에서 지금 차례인 유닛을 강조한다.
-	board.show_current(event.unit)
+	# 보드에서 지금 차례인 유닛이 차례 시작 때 서 있던 칸을 강조한다.
+	board.show_current(event.unit.team, event.cell)
 	# 그 유닛의 체력·방어도 표시를 기록 시점 값으로 맞춘다 (방어도 초기화 반영).
 	board.view_for(event.unit).set_stats(event.hp, event.unit.data.max_hp, event.block)
 	# HUD 의 순서 바·SP·더미를 이번 차례로 바꾼다.
@@ -208,8 +208,8 @@ func _block_gained(event: BattleEvent) -> void:
 
 ## 쓰러짐 연출: 타일을 빈 칸으로 표시하고 유닛을 서서히 사라지게 한다.
 func _died(event: BattleEvent) -> void:
-	# 유닛이 서 있던 타일을 빈 칸 모습으로 바꾼다.
-	board.mark_empty(event.unit)
+	# 유닛이 쓰러진 칸의 타일을 빈 칸 모습으로 바꾼다.
+	board.mark_empty(event.unit.team, event.cell)
 	# 쓰러진 유닛의 화면 객체.
 	var view: UnitView = board.view_for(event.unit)
 	# 테스트 모드면 바로 숨긴다.

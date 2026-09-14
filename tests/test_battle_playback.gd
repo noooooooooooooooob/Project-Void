@@ -30,6 +30,8 @@ func run() -> Array[Dictionary]:
 	_test_end_turn_discards_then_reshuffles_and_draws()
 	# 아군 이동 이벤트 재생.
 	_test_move_event_moves_the_view()
+	# 적 이동 차례: 차례 시작 강조는 출발 칸, 이동 뒤에는 도착 칸.
+	_test_enemy_move_highlights_follow_the_move()
 	# 결과를 돌려준다.
 	return results()
 
@@ -371,5 +373,71 @@ func _test_move_event_moves_the_view() -> void:
 	check_eq("sp panel shows the spent sp", hud.sp_text(), "SP\n●●○\n2 / 3")
 	# 로그.
 	check("move logged", hud.log_text().contains("a 이동"))
+	# 정리.
+	_free(rig)
+
+
+# 이동 확률 100% 적의 차례를 나눠 재생: 차례 시작까지는 출발 칸(0,1)이 강조되고 도착 칸은 빈 칸,
+# 이동 이벤트까지 재생하면 출발 칸은 빈 칸, 도착 칸은 강조, 적 화면은 도착 칸에 선다.
+func _test_enemy_move_highlights_follow_the_move() -> void:
+	# 준비물.
+	var rig: Dictionary = _rig()
+	# 전투 상태.
+	var state: BattleState = rig["state"]
+	# 기록기.
+	var recorder: BattleEventRecorder = rig["recorder"]
+	# 보드.
+	var board: Board3D = rig["board"]
+	# 재생기.
+	var playback: BattlePlayback = rig["playback"]
+
+	# 시작.
+	state.start_battle()
+	# 시작 이벤트 재생.
+	playback.play(recorder.take_events())
+	# 보드 동기화.
+	board.sync_from_state(state)
+	# 적 유닛.
+	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
+	# 항상 이동하게 한다.
+	(foe.data as EnemyData).move_chance = 1.0
+	# 차례 종료 → 적이 이동 → 다음 아군 차례 (규칙은 끝까지 계산된다).
+	state.end_turn()
+	# 쌓인 이벤트.
+	var events: Array[BattleEvent] = recorder.take_events()
+	# 적 차례 시작까지의 이벤트.
+	var until_turn: Array[BattleEvent] = []
+	# 그 뒤 적 이동까지의 이벤트.
+	var until_move: Array[BattleEvent] = []
+	# 적 차례 시작을 지났는지.
+	var turn_seen: bool = false
+	# 이벤트를 나눈다.
+	for event in events:
+		# 적 차례 시작 전(포함)이면 첫 묶음.
+		if not turn_seen:
+			until_turn.append(event)
+			turn_seen = event.kind == BattleEvent.Kind.TURN_STARTED and event.unit == foe
+		# 그 뒤 적 이동(포함)까지는 둘째 묶음.
+		else:
+			until_move.append(event)
+			if event.kind == BattleEvent.Kind.UNIT_MOVED:
+				break
+
+	# 규칙에서는 이미 이동했다.
+	check("the enemy already moved in the rules", foe.cell != Vector2i(0, 1))
+	# 적 차례 시작까지 재생.
+	playback.play(until_turn)
+	# 출발 칸이 강조된다.
+	check_eq("starting cell highlighted at turn start", board.tile_state(Unit.Team.ENEMY, Vector2i(0, 1)), Board3D.TileState.CURRENT)
+	# 도착 칸은 아직 빈 칸.
+	check_eq("destination not highlighted before the move", board.tile_state(Unit.Team.ENEMY, foe.cell), Board3D.TileState.EMPTY)
+	# 이동까지 재생.
+	playback.play(until_move)
+	# 출발 칸은 빈 칸.
+	check_eq("starting cell empty after the move", board.tile_state(Unit.Team.ENEMY, Vector2i(0, 1)), Board3D.TileState.EMPTY)
+	# 도착 칸이 강조된다.
+	check_eq("destination highlighted after the move", board.tile_state(Unit.Team.ENEMY, foe.cell), Board3D.TileState.CURRENT)
+	# 적 화면이 도착 칸에 선다.
+	check("enemy view stands on its destination", board.view_for(foe).position.is_equal_approx(board.layout.cell_position(Unit.Team.ENEMY, foe.cell)))
 	# 정리.
 	_free(rig)
