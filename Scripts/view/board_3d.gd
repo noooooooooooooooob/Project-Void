@@ -2,6 +2,7 @@ class_name Board3D
 extends Node3D
 
 signal cell_clicked(team: Unit.Team, cell: Vector2i)
+signal pick_missed
 
 enum TileState { BASE, EMPTY, CURRENT, VALID, INVALID }
 
@@ -123,6 +124,12 @@ func set_tile_state(team: Unit.Team, cell: Vector2i, new_state: TileState) -> vo
 			material.albedo_color = base.darkened(0.6)
 
 
+# 드래그로 놓은 카드처럼 마우스 이벤트가 보드에 오지 않는 경우에도 같은 판정 경로를 쓴다.
+func request_pick(screen_position: Vector2) -> void:
+	_pending_click = screen_position
+	_has_pending_click = true
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not input_enabled:
 		return
@@ -141,12 +148,14 @@ func _physics_process(_delta: float) -> void:
 	_has_pending_click = false
 	var camera: Camera3D = get_viewport().get_camera_3d()
 	if camera == null:
+		pick_missed.emit()
 		return
 	var from: Vector3 = camera.project_ray_origin(_pending_click)
 	var to: Vector3 = from + camera.project_ray_normal(_pending_click) * RAY_LENGTH
 	var query := PhysicsRayQueryParameters3D.create(from, to, UnitView.PICK_LAYER_BIT)
 	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
 	if hit.is_empty():
+		pick_missed.emit()
 		return
 	var collider: Object = hit["collider"]
 	cell_clicked.emit(collider.get_meta(&"team"), collider.get_meta(&"cell"))

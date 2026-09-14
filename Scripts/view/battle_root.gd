@@ -13,6 +13,8 @@ var _state: BattleState
 var _recorder: BattleEventRecorder
 var _selected_card: int = -1
 var _busy: bool = false
+# 드래그로 놓은 카드의 판정 결과를 기다리는 중. 빗나가거나 무효면 클릭과 달리 선택을 해제한다.
+var _awaiting_drop: bool = false
 
 @onready var _camera: Camera3D = %Camera
 @onready var _board: Board3D = %Board
@@ -32,7 +34,9 @@ func _ready() -> void:
 	_playback.hud = _hud
 
 	_board.cell_clicked.connect(_on_cell_clicked)
+	_board.pick_missed.connect(_on_pick_missed)
 	_hud.card_selected.connect(_on_card_selected)
+	_hud.card_dropped.connect(_on_card_dropped)
 	_hud.end_turn_pressed.connect(_on_end_turn_pressed)
 	get_viewport().size_changed.connect(_frame_camera)
 	_frame_camera()
@@ -53,8 +57,8 @@ func _run(action: Callable) -> void:
 func _set_busy(busy: bool) -> void:
 	_busy = busy
 	if busy:
-		_selected_card = -1
-		_board.clear_target_hints()
+		_awaiting_drop = false
+		_clear_selection()
 	_board.input_enabled = not busy
 	_hud.set_interactive(not busy)
 
@@ -66,19 +70,42 @@ func _on_card_selected(index: int) -> void:
 	_refresh_target_hints()
 
 
+func _on_card_dropped(index: int, screen_position: Vector2) -> void:
+	if _busy:
+		return
+	_selected_card = index
+	_refresh_target_hints()
+	_awaiting_drop = true
+	_board.request_pick(screen_position)
+
+
+func _on_pick_missed() -> void:
+	if not _awaiting_drop:
+		return
+	_awaiting_drop = false
+	_clear_selection()
+
+
 func _on_cell_clicked(team: Unit.Team, cell: Vector2i) -> void:
-	if _busy or _selected_card < 0 or team != Unit.Team.ENEMY:
+	var from_drop: bool = _awaiting_drop
+	_awaiting_drop = false
+	if _busy or _selected_card < 0:
 		return
 	var actor: Unit = _state.current_unit()
-	var target: Unit = _unit_at(team, cell)
+	var target: Unit = _unit_at(team, cell) if team == Unit.Team.ENEMY else null
 	if actor == null or target == null or _selected_card >= actor.hand.size():
+		if from_drop:
+			_clear_selection()
 		return
 	var card: CardData = actor.hand[_selected_card]
-	# 선택을 유지한 채 다른 대상을 고를 수 있도록 무효 대상은 규칙 호출 전에 거른다.
+	# 클릭은 선택을 유지한 채 다른 대상을 고를 수 있게 규칙 호출 전에 거르고, 드래그는 손패로 돌려보낸다.
 	if not _state.resolver.is_valid_target(actor, target, card.attack_type, card.attack_range, _state.units):
 		_hud.append_log("사용할 수 없는 대상")
+		if from_drop:
+			_clear_selection()
 		return
 	var card_index: int = _selected_card
+	_hud.set_pending_play(card_index)
 	_run(func() -> void:
 		if not _state.play_card(card_index, target):
 			_hud.append_log("사용할 수 없는 대상"))
@@ -88,6 +115,11 @@ func _on_end_turn_pressed() -> void:
 	if _busy:
 		return
 	_run(_state.end_turn)
+
+
+func _clear_selection() -> void:
+	_selected_card = -1
+	_board.clear_target_hints()
 
 
 func _refresh_target_hints() -> void:
