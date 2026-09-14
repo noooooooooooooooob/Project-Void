@@ -1,7 +1,7 @@
 # @tool: 에디터 안에서도 실행되어 인스펙터에서 값을 편집할 수 있다.
 @tool
 ## 적 유닛 한 종류의 설계 데이터 (.tres 리소스로 저장).
-## 적은 카드 대신 고정된 공격·방어·휴식 행동을 쓰며, 그 수치를 여기서 정한다.
+## 적은 카드 대신 고정된 공격·방어·휴식·이동 행동을 쓰며, 그 수치를 여기서 정한다.
 ## 어떤 행동을 할지는 EnemyBrain 이 정한다.
 class_name EnemyData
 # 이름·체력·속도·그림 같은 공통 항목은 부모 UnitData 에서 물려받는다.
@@ -19,3 +19,5 @@ extends UnitData
 @export var block_amount: int = 5
 ## 휴식 행동으로 회복하는 체력.
 @export var rest_heal: int = 4
+## 차례마다 이동을 먼저 고를 확률 (0.25 = 25%). 0 이면 이동하지 않고 난수도 쓰지 않는다.
+@export var move_chance: float = 0.25

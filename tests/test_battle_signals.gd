@@ -118,6 +118,8 @@ func _enemy(attack_range: int, rest_heal: int) -> EnemyData:
 	data.block_amount = 7
 	# 회복량.
 	data.rest_heal = rest_heal
+	# 무작위 이동을 끈다 (신호 순서를 정확히 확인하기 위해).
+	data.move_chance = 0.0
 	# 돌려준다.
 	return data
 

@@ -89,6 +89,8 @@ func _rig() -> Dictionary:
 	enemy.max_hp = 20
 	# 느리게.
 	enemy.speed = 1
+	# 무작위 이동을 끈다 (재생 결과를 정확히 확인하기 위해).
+	enemy.move_chance = 0.0
 
 	# 전투 구성 (격자 기본 3×3).
 	var encounter: EncounterData = EncounterScript.new()

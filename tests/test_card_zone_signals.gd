@@ -33,6 +33,8 @@ func run() -> Array[Dictionary]:
 	_test_hand_discarded_carries_cards()
 	# 신호 드로우와 Unit.draw 의 결과가 같다.
 	_test_state_draw_matches_unit_draw()
+	# 적이 무작위로 움직여도 드로우 순서는 같다.
+	_test_enemy_moves_do_not_change_draws()
 	# 결과를 돌려준다.
 	return results()
 
@@ -81,8 +83,9 @@ func _ally(deck_size: int) -> AllyData:
 	return data
 
 
-# 적 e(속도 1)는 기본 근접 공격으로 아군을 치기만 한다. 카드와 난수에 영향이 없다.
-func _state(ally: AllyData) -> BattleState:
+# 적 e(속도 1)는 기본 근접 공격으로 아군을 친다. move_chance 로 무작위 이동을 켤 수 있다 (기본 0).
+# 적 AI 는 전용 난수(ai_rng)를 쓰므로 카드 순서에 영향이 없다.
+func _state(ally: AllyData, move_chance: float = 0.0) -> BattleState:
 	# 적 데이터.
 	var enemy: EnemyData = EnemyDataScript.new()
 	# id.
@@ -93,6 +96,8 @@ func _state(ally: AllyData) -> BattleState:
 	enemy.max_hp = 20
 	# 아군보다 느리게.
 	enemy.speed = 1
+	# 무작위 이동 확률.
+	enemy.move_chance = move_chance
 
 	# 전투 구성 (격자 크기는 기본값 3×3).
 	var encounter: EncounterData = EncounterScript.new()
@@ -246,3 +251,23 @@ func _test_state_draw_matches_unit_draw() -> void:
 	reference.draw(BattleState.DRAW_PER_TURN, rng)
 	# 두 번째 손패 비교.
 	check_eq("second hand, across a reshuffle, matches Unit.draw", second_hand, _ids(reference.hand))
+
+
+# 적이 매 차례 무작위로 이동해도(적 전용 난수) 아군이 뽑는 카드는 이동하지 않을 때와 같은지.
+func _test_enemy_moves_do_not_change_draws() -> void:
+	# 적이 움직이지 않는 전투.
+	var still: BattleState = _state(_ally(6), 0.0)
+	# 적이 항상 움직이는 전투 (같은 시드).
+	var moving: BattleState = _state(_ally(6), 1.0)
+	# 둘 다 시작.
+	still.start_battle()
+	# 둘 다 시작.
+	moving.start_battle()
+	# 둘 다 차례 종료 (적 차례를 지나 다음 드로우까지).
+	still.end_turn()
+	# 둘 다 차례 종료.
+	moving.end_turn()
+	# 두 전투의 두 번째 손패가 같다.
+	check_eq("enemy randomness leaves the draw order alone", _ids(still.living_units(Unit.Team.ALLY)[0].hand), _ids(moving.living_units(Unit.Team.ALLY)[0].hand))
+	# 움직이는 전투에서는 적이 실제로 자리를 옮겼다.
+	check("the moving enemy left its cell", moving.living_units(Unit.Team.ENEMY)[0].cell != Vector2i(0, 1))

@@ -27,6 +27,14 @@ func run() -> Array[Dictionary]:
 	_test_attack_respects_melee_blocking()
 	# 같은 상황이면 같은 결정.
 	_test_deterministic_across_runs()
+	# 확률이 맞으면 이동한다.
+	_test_moves_when_the_roll_hits()
+	# 막혔으면 공격·방어·휴식 중 무작위.
+	_test_blocked_move_picks_another_action()
+	# 확률 0 이면 난수를 쓰지 않는다.
+	_test_zero_chance_uses_no_randomness()
+	# 같은 시드면 같은 칸으로 이동한다.
+	_test_same_seed_same_moves()
 	# 결과를 돌려준다.
 	return results()
 
@@ -83,6 +91,8 @@ func _enemy(attack_range: int, damage: int, block_amount: int, rest_heal: int) -
 	data.block_amount = block_amount
 	# 휴식 행동의 회복량.
 	data.rest_heal = rest_heal
+	# 무작위 이동을 끈다 (기존 결정론적 결과를 확인하기 위해).
+	data.move_chance = 0.0
 	# 돌려준다.
 	return data
 
@@ -99,23 +109,24 @@ func _placement(data: UnitData, cell: Vector2i) -> UnitPlacement:
 	return placement
 
 
-# 아군 배치 목록과 적 한 명(앞줄 가운데)으로 전투 상태를 만든다 (시작하지는 않음).
-func _state(allies: Array, enemy: EnemyData) -> BattleState:
+# 아군 배치 목록과 적 한 명으로 전투 상태를 만든다 (시작하지는 않음).
+# 적 격자 크기와 적 칸을 바꿀 수 있다 (기본: 3×3 격자의 앞줄 가운데).
+func _state(allies: Array, enemy: EnemyData, enemy_grid: Vector2i = Vector2i(3, 3), enemy_cell: Vector2i = Vector2i(0, 1)) -> BattleState:
 	# 타입이 있는 아군 배치 배열.
 	var ally_placements: Array[UnitPlacement] = []
 	# 받은 배치들을 넣는다.
 	ally_placements.append_array(allies)
 	# 적 배치 배열.
 	var enemy_placements: Array[UnitPlacement] = []
-	# 적 한 명을 앞줄 가운데에.
-	enemy_placements.append(_placement(enemy, Vector2i(0, 1)))
+	# 적 한 명을 지정한 칸에.
+	enemy_placements.append(_placement(enemy, enemy_cell))
 
 	# 전투 구성.
 	var encounter: EncounterData = EncounterScript.new()
 	# 아군 격자 3×3.
 	encounter.ally_grid = Vector2i(3, 3)
-	# 적군 격자 3×3.
-	encounter.enemy_grid = Vector2i(3, 3)
+	# 적군 격자.
+	encounter.enemy_grid = enemy_grid
 	# 아군 배치.
 	encounter.ally_units = ally_placements
 	# 적군 배치.
@@ -230,3 +241,102 @@ func _test_deterministic_across_runs() -> void:
 			second = picked
 	# 둘이 같다.
 	check_eq("same situation yields the same target", first, second)
+
+
+# move_chance 1 이면 이동을 고르고, 앞줄 가운데(0,1)에서 위·아래·뒤 중 한 칸으로 옮기며, 공격은 하지 않는지.
+func _test_moves_when_the_roll_hits() -> void:
+	# 이동 확률 100% 적.
+	var mover: EnemyData = _enemy(5, 6, 5, 4)
+	# 항상 이동을 고른다.
+	mover.move_chance = 1.0
+	# 아군 하나와 적 하나.
+	var state: BattleState = _state([_placement(_ally(&"a", 30), Vector2i(0, 1))], mover)
+	# 적 유닛.
+	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
+	# 이동을 고른다.
+	check_eq("certain roll picks move", BrainScript.decide(state, foe), BrainScript.Action.MOVE)
+	# 차례를 진행한다.
+	BrainScript.take_turn(state, foe)
+	# 원래 칸을 떠났다.
+	check("moved off the starting cell", foe.cell != Vector2i(0, 1))
+	# 위(0,0)·아래(0,2)·뒤(1,1) 중 하나 (앞은 격자 밖).
+	check("moved one step up, down or back", [Vector2i(0, 0), Vector2i(0, 2), Vector2i(1, 1)].has(foe.cell))
+	# 이동이 그 차례의 행동 전부라 아군은 맞지 않았다.
+	check_eq("moving is the whole action", state.living_units(Unit.Team.ALLY)[0].hp, 30)
+
+
+# 1×1 적 격자라 갈 칸이 없으면 이동 대신 공격·방어·휴식 중에서 고르고, 칠 대상이 없으면 공격은 후보에서 빠지는지.
+func _test_blocked_move_picks_another_action() -> void:
+	# 이동 확률 100% 적 (사거리 5).
+	var mover: EnemyData = _enemy(5, 6, 5, 4)
+	# 항상 이동을 시도한다.
+	mover.move_chance = 1.0
+	# 1×1 적 격자, 아군은 사거리 안.
+	var state: BattleState = _state([_placement(_ally(&"a", 30), Vector2i(0, 1))], mover, Vector2i(1, 1), Vector2i(0, 0))
+	# 적 유닛.
+	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
+	# 30 번 고른 결과.
+	var picks: Array = []
+	# 반복해서 고른다.
+	for i in 30:
+		picks.append(BrainScript.decide(state, foe))
+	# 이동은 없다.
+	check("blocked mover never picks MOVE", not picks.has(BrainScript.Action.MOVE))
+	# 칠 대상이 있으니 공격도 나온다.
+	check("blocked mover can attack a reachable target", picks.has(BrainScript.Action.ATTACK))
+	# 방어나 휴식도 나온다.
+	check("blocked mover can also defend or rest", picks.has(BrainScript.Action.DEFEND) or picks.has(BrainScript.Action.REST))
+
+	# 사거리 1 적, 아군은 뒷줄(2,1)이라 칠 대상이 없다.
+	var shy: EnemyData = _enemy(1, 6, 5, 4)
+	# 항상 이동을 시도한다.
+	shy.move_chance = 1.0
+	# 1×1 적 격자.
+	var far_state: BattleState = _state([_placement(_ally(&"far", 30), Vector2i(2, 1))], shy, Vector2i(1, 1), Vector2i(0, 0))
+	# 적 유닛.
+	var far_foe: Unit = far_state.living_units(Unit.Team.ENEMY)[0]
+	# 30 번 고른 결과.
+	var far_picks: Array = []
+	# 반복해서 고른다.
+	for i in 30:
+		far_picks.append(BrainScript.decide(far_state, far_foe))
+	# 공격은 없다.
+	check("no attack without a target", not far_picks.has(BrainScript.Action.ATTACK))
+	# 방어와 휴식이 둘 다 나온다.
+	check("falls back to defend and rest", far_picks.has(BrainScript.Action.DEFEND) and far_picks.has(BrainScript.Action.REST))
+
+
+# move_chance 0 이면 기존 규칙(공격)을 고르고 적 전용 난수 상태가 그대로인지.
+func _test_zero_chance_uses_no_randomness() -> void:
+	# 이동 확률 0 적 (_enemy 기본값).
+	var state: BattleState = _state([_placement(_ally(&"a", 30), Vector2i(0, 1))], _enemy(5, 6, 5, 4))
+	# 적 유닛.
+	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
+	# 고르기 전 난수 상태.
+	var before: int = state.ai_rng.state
+	# 기존 규칙대로 공격.
+	check_eq("zero chance keeps the old choice", BrainScript.decide(state, foe), BrainScript.Action.ATTACK)
+	# 난수를 쓰지 않았다.
+	check_eq("zero chance draws no random number", state.ai_rng.state, before)
+
+
+# 같은 시드로 만든 두 전투에서 이동 확률 100% 적이 같은 칸으로 가는지.
+func _test_same_seed_same_moves() -> void:
+	# 두 전투의 이동 결과.
+	var cells: Array = []
+	# 두 번 반복한다.
+	for i in 2:
+		# 이동 확률 100% 적.
+		var mover: EnemyData = _enemy(5, 6, 5, 4)
+		# 항상 이동한다.
+		mover.move_chance = 1.0
+		# 같은 시드(_rng 4242)의 전투.
+		var state: BattleState = _state([_placement(_ally(&"a", 30), Vector2i(0, 1))], mover)
+		# 적 유닛.
+		var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
+		# 차례를 진행한다.
+		BrainScript.take_turn(state, foe)
+		# 도착 칸을 기록한다.
+		cells.append(foe.cell)
+	# 둘이 같다.
+	check_eq("same seed moves to the same cell", cells[0], cells[1])

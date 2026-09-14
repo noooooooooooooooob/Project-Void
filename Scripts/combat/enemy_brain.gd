@@ -4,18 +4,27 @@ class_name EnemyBrain
 # RefCounted: 노드가 아닌 가벼운 객체. 모든 함수가 static 이라 객체를 만들 필요는 없다.
 extends RefCounted
 
-## 적이 할 수 있는 행동. ATTACK 공격, DEFEND 방어도 얻기, REST 체력 회복.
-enum Action { ATTACK, DEFEND, REST }
+## 적이 할 수 있는 행동. ATTACK 공격, DEFEND 방어도 얻기, REST 체력 회복, MOVE 한 칸 이동.
+enum Action { ATTACK, DEFEND, REST, MOVE }
 
 ## 체력 비율이 이 값 이하로 떨어지면 휴식을 고른다 (0.3 = 30%).
 const REST_THRESHOLD: float = 0.3
 
 
 ## 이번 차례에 어떤 행동을 할지 정한다.
-## 우선순위: 체력이 낮으면 휴식 → 칠 대상이 없으면 방어 → 그 외에는 공격.
+## 먼저 move_chance 확률로 이동을 고른다 (갈 칸이 없으면 공격·방어·휴식 중 무작위).
+## 이동을 고르지 않으면 우선순위: 체력이 낮으면 휴식 → 칠 대상이 없으면 방어 → 그 외에는 공격.
+## 확률 판정에 적 전용 난수를 쓰므로, 같은 상황에서 여러 번 부르면 결과가 달라질 수 있다.
 static func decide(state: BattleState, actor: Unit) -> Action:
 	# 적 전용 수치를 읽기 위해 EnemyData 로 형 변환한다.
 	var data: EnemyData = actor.data as EnemyData
+	# 이동 확률이 있으면 먼저 판정한다 (0 이면 난수를 쓰지 않아 결과가 결정론적이다).
+	if data.move_chance > 0.0 and state.ai_rng.randf() < data.move_chance:
+		# 갈 칸이 있으면 이동한다.
+		if not state.resolver.movable_cells(actor, state.units).is_empty():
+			return Action.MOVE
+		# 막혔으면 공격·방어·휴식 중 무작위로 고른다.
+		return _random_fallback(state, actor)
 	# 현재 체력 / 최대 체력 비율을 소수로 구한다.
 	var hp_ratio: float = float(actor.hp) / float(data.max_hp)
 	# 체력이 문턱 이하이고 회복량이 있는 적이면 휴식한다.
@@ -26,6 +35,21 @@ static func decide(state: BattleState, actor: Unit) -> Action:
 		return Action.DEFEND
 	# 그 외에는 공격한다.
 	return Action.ATTACK
+
+
+## 이동하려 했지만 막혔을 때: 공격(칠 대상이 있을 때만)·방어·휴식 중 하나를 적 전용 난수로 고른다.
+static func _random_fallback(state: BattleState, actor: Unit) -> Action:
+	# 후보 행동 목록.
+	var choices: Array[Action] = []
+	# 칠 대상이 있을 때만 공격을 후보에 넣는다.
+	if find_target(state, actor) != null:
+		choices.append(Action.ATTACK)
+	# 방어는 항상 후보.
+	choices.append(Action.DEFEND)
+	# 휴식도 항상 후보.
+	choices.append(Action.REST)
+	# 하나를 무작위로 고른다.
+	return choices[state.ai_rng.randi_range(0, choices.size() - 1)]
 
 
 ## 이 적이 칠 수 있는 대상 중 가장 좋은 대상을 고른다. 없으면 null.
@@ -90,3 +114,16 @@ static func take_turn(state: BattleState, actor: Unit) -> void:
 			# 범위 모양에 따라 맞는 유닛마다 피해를 준다.
 			for victim in state.resolver.expand_shape(target, data.attack_shape, state.units):
 				state.apply_damage(victim, data.attack_damage)
+		# 이동: 갈 수 있는 칸 중 하나로 옮긴다.
+		Action.MOVE:
+			# 갈 수 있는 칸들.
+			var cells: Array[Vector2i] = state.resolver.movable_cells(actor, state.units)
+			# 칸이 없으면 아무것도 하지 않는다 (안전장치).
+			if cells.is_empty():
+				return
+			# 적 전용 난수로 한 칸을 고른다.
+			var cell: Vector2i = cells[state.ai_rng.randi_range(0, cells.size() - 1)]
+			# 이동 행동을 알린다 (화면은 뒤따르는 이동 이벤트로 연출한다).
+			state.report_enemy_action(actor, Action.MOVE, null)
+			# 옮기고 알린다 (unit_moved 신호와 로그가 나간다).
+			state.apply_move(actor, cell)

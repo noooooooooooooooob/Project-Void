@@ -85,6 +85,8 @@ func _enemy(id: StringName, speed: int) -> EnemyData:
 	data.display_name = String(id)
 	# 최대 체력.
 	data.max_hp = 10
+	# 무작위 이동을 끈다 (차례 진행을 정확히 확인하기 위해).
+	data.move_chance = 0.0
 	# 속도.
 	data.speed = speed
 	# 돌려준다.

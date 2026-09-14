@@ -49,6 +49,8 @@ var units: Array[Unit] = []
 var resolver: TargetResolver
 ## 덱 섞기에 쓰는 난수 생성기. 시드를 고정하면 전투를 똑같이 재현할 수 있다.
 var rng: RandomNumberGenerator
+## 적 AI 전용 난수 생성기. 덱 섞기와 따로 써서, 적이 난수를 몇 번 쓰든 카드 순서가 바뀌지 않는다.
+var ai_rng: RandomNumberGenerator
 ## 현재 라운드 번호 (1 부터).
 var round_index: int = 0
 ## 이번 라운드의 행동 순서 (속도가 빠른 순).
@@ -67,6 +69,10 @@ var phase: Phase = Phase.STANDBY
 func _init(encounter: EncounterData, p_rng: RandomNumberGenerator) -> void:
 	# 난수 생성기를 기억한다.
 	rng = p_rng
+	# 적 AI 전용 난수 생성기를 만든다.
+	ai_rng = RandomNumberGenerator.new()
+	# 같은 시드로 시작해, 전투 시드가 같으면 적 행동도 같게 한다.
+	ai_rng.seed = p_rng.seed
 	# 양쪽 격자 크기로 대상 판정기를 만든다.
 	resolver = TargetResolver.new(encounter.ally_grid, encounter.enemy_grid)
 

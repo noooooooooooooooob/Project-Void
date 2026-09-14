@@ -79,6 +79,8 @@ func _enemy(id: StringName, speed: int, damage: int) -> EnemyData:
 	data.block_amount = 5
 	# 회복 0.
 	data.rest_heal = 0
+	# 무작위 이동을 끈다 (이벤트 순서를 정확히 확인하기 위해).
+	data.move_chance = 0.0
 	# 돌려준다.
 	return data
 

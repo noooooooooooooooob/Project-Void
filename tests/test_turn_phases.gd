@@ -79,6 +79,8 @@ func _state(ally_cell: Vector2i) -> BattleState:
 	enemy.max_hp = 20
 	# 늦게 행동하도록 느리게.
 	enemy.speed = 1
+	# 무작위 이동을 끈다 (적이 확실히 공격·방어하도록).
+	enemy.move_chance = 0.0
 
 	# 전투 구성 (격자 기본 3×3).
 	var encounter: EncounterData = EncounterScript.new()
