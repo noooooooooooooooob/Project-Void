@@ -11,8 +11,9 @@ signal cell_clicked(team: Unit.Team, cell: Vector2i)
 signal pick_missed
 
 ## 타일 모습 상태.
-## BASE 유닛이 있는 기본, EMPTY 빈 칸(어둡게), CURRENT 지금 차례(노란 빛), VALID 칠 수 있음(초록 빛), INVALID 칠 수 없음(더 어둡게).
-enum TileState { BASE, EMPTY, CURRENT, VALID, INVALID }
+## BASE 유닛이 있는 기본, EMPTY 빈 칸(어둡게), CURRENT 지금 차례(노란 빛), VALID 칠 수 있음(초록 빛), INVALID 칠 수 없음(더 어둡게),
+## MOVABLE 이동할 수 있는 빈 칸(파란 빛).
+enum TileState { BASE, EMPTY, CURRENT, VALID, INVALID, MOVABLE }
 
 ## 타일 두께.
 const TILE_THICKNESS: float = 0.1
@@ -26,6 +27,8 @@ const ENEMY_TILE_COLOR := Color(0.55, 0.38, 0.38)
 const CURRENT_EMISSION := Color(1.0, 0.82, 0.3)
 ## 칠 수 있는 대상 타일이 내는 빛 색.
 const VALID_EMISSION := Color(0.45, 0.85, 0.45)
+## 이동할 수 있는 타일이 내는 빛 색.
+const MOVE_EMISSION := Color(0.45, 0.65, 1.0)
 
 ## 칸 좌표 ↔ 3D 위치 계산기 (build 에서 만든다).
 var layout: BoardLayout
@@ -86,6 +89,10 @@ func sync_from_state(state: BattleState) -> void:
 	for unit in state.units:
 		# 그 유닛의 화면 객체.
 		var view: UnitView = _views[unit]
+		# 규칙의 현재 칸 위치를 원래 자리로 삼는다 (이동 연출이 어긋나도 실제 상태로 맞춘다).
+		view.set_home(layout.cell_position(unit.team, unit.cell))
+		# 클릭 칸 정보도 현재 칸으로 다시 붙인다.
+		_tag(view.pick_body, unit.team, unit.cell)
 		# 끊긴 연출 자세를 되돌린다.
 		view.reset_pose()
 		# 체력·방어도를 규칙 값으로.
@@ -138,7 +145,7 @@ func show_target_hints(hints: Dictionary) -> void:
 		label.visible = true
 
 
-## 사거리 힌트 글자와 초록/어두운 타일 표시를 모두 지운다.
+## 사거리 힌트(글자와 초록/어두운 타일)와 이동 힌트(파란 타일)를 모두 지운다.
 func clear_target_hints() -> void:
 	# 모든 칸의 힌트를 확인한다.
 	for key in _hints:
@@ -146,9 +153,43 @@ func clear_target_hints() -> void:
 		(_hints[key] as Label3D).visible = false
 		# 그 칸의 현재 타일 상태 (없으면 EMPTY 로 본다).
 		var current: TileState = _tile_states.get(key, TileState.EMPTY)
-		# 힌트 때문에 바뀐 상태였으면 기본으로 되돌린다 (강조·빈 칸은 그대로).
+		# 사거리 힌트 때문에 바뀐 상태였으면 기본으로 되돌린다 (강조·빈 칸은 그대로).
 		if current == TileState.VALID or current == TileState.INVALID:
 			set_tile_state(key.x as Unit.Team, Vector2i(key.y, key.z), TileState.BASE)
+		# 이동 힌트는 유닛이 없는 칸이므로 빈 칸으로 되돌린다.
+		elif current == TileState.MOVABLE:
+			set_tile_state(key.x as Unit.Team, Vector2i(key.y, key.z), TileState.EMPTY)
+
+
+## 이동할 수 있는 칸들을 파란 빛으로 표시한다 (이전 힌트는 먼저 지운다).
+func show_move_hints(team: Unit.Team, cells: Array[Vector2i]) -> void:
+	# 이전 힌트를 지운다.
+	clear_target_hints()
+	# 칸마다.
+	for cell in cells:
+		# 이동 가능 상태로 칠한다.
+		set_tile_state(team, cell, TileState.MOVABLE)
+
+
+## 유닛 화면을 from_cell 에서 to_cell 로 옮긴다. 타일 강조와 클릭 칸 정보도 함께 옮긴다.
+## animate 가 true 면 미끄러짐이 끝날 때까지 await 할 수 있다.
+func move_view(unit: Unit, from_cell: Vector2i, to_cell: Vector2i, animate: bool) -> void:
+	# 원래 칸은 빈 칸으로.
+	set_tile_state(unit.team, from_cell, TileState.EMPTY)
+	# 새 칸은 지금 차례 강조로 (이동은 자기 차례에만 일어난다).
+	set_tile_state(unit.team, to_cell, TileState.CURRENT)
+	# 유닛 화면.
+	var view: UnitView = view_for(unit)
+	# 클릭하면 새 칸으로 판정되게 칸 정보를 바꾼다.
+	_tag(view.pick_body, unit.team, to_cell)
+	# 새 칸의 3D 위치.
+	var target: Vector3 = layout.cell_position(unit.team, to_cell)
+	# 연출이 있으면 미끄러진다.
+	if animate:
+		await view.slide_to(target)
+	# 없으면 즉시 옮긴다.
+	else:
+		view.set_home(target)
 
 
 ## 규칙 유닛에 대응하는 화면 객체를 찾는다. 없으면 null.
@@ -185,8 +226,8 @@ func set_tile_state(team: Unit.Team, cell: Vector2i, new_state: TileState) -> vo
 	var material: StandardMaterial3D = (_tiles[key] as MeshInstance3D).material_override
 	# 편에 따른 기본 색.
 	var base: Color = ALLY_TILE_COLOR if team == Unit.Team.ALLY else ENEMY_TILE_COLOR
-	# 강조·유효 상태일 때만 스스로 빛나게 한다.
-	material.emission_enabled = new_state == TileState.CURRENT or new_state == TileState.VALID
+	# 강조·유효·이동 가능 상태일 때만 스스로 빛나게 한다.
+	material.emission_enabled = new_state == TileState.CURRENT or new_state == TileState.VALID or new_state == TileState.MOVABLE
 	# 상태별로 색을 정한다.
 	match new_state:
 		# 기본: 편 색 그대로.
@@ -214,6 +255,14 @@ func set_tile_state(team: Unit.Team, cell: Vector2i, new_state: TileState) -> vo
 		# 칠 수 없음: 60% 어둡게.
 		TileState.INVALID:
 			material.albedo_color = base.darkened(0.6)
+		# 이동 가능: 편 색 + 파란 빛.
+		TileState.MOVABLE:
+			# 바탕은 편 색.
+			material.albedo_color = base
+			# 빛 색을 파랗게.
+			material.emission = MOVE_EMISSION
+			# 빛 세기.
+			material.emission_energy_multiplier = 0.6
 
 
 # 드래그로 놓은 카드처럼 마우스 이벤트가 보드에 오지 않는 경우에도 같은 판정 경로를 쓴다.

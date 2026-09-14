@@ -31,6 +31,8 @@ const FLASH_TIME: float = 0.24
 const POP_TIME: float = 0.6
 ## 쓰러질 때 서서히 사라지는 시간.
 const FADE_TIME: float = 0.4
+## 한 칸 이동할 때 미끄러지는 시간.
+const MOVE_TIME: float = 0.25
 
 ## 보여 주는 규칙 유닛.
 var unit: Unit
@@ -202,6 +204,18 @@ func set_home(world_position: Vector3) -> void:
 	home_position = world_position
 	# 지금 위치도 그 자리로 옮긴다.
 	position = world_position
+
+
+## 새 자리로 미끄러져 이동한다. 원래 자리를 먼저 바꾸므로 이후 돌진 연출도 새 자리로 돌아온다. await 가능.
+func slide_to(world_position: Vector3) -> void:
+	# 돌아올 자리를 새 위치로 바꾼다.
+	home_position = world_position
+	# 위치 트윈을 만든다.
+	var tween: Tween = create_tween()
+	# MOVE_TIME 동안 새 위치로 옮긴다.
+	tween.tween_property(self, "position", world_position, MOVE_TIME)
+	# 끝날 때까지 기다린다.
+	await tween.finished
 
 
 ## 연출 도중 끊겼을 수 있는 자세(위치, 색, 투명 처리)를 기본으로 되돌린다.

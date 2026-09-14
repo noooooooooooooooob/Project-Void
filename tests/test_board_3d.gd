@@ -24,6 +24,12 @@ func run() -> Array[Dictionary]:
 	_test_target_hints()
 	# 빈 칸 표시.
 	_test_mark_empty()
+	# move_view 가 위치·타일·클릭 칸을 옮긴다.
+	_test_move_view_updates_tiles_and_pick_cell()
+	# 이동 힌트 표시와 지우기.
+	_test_move_hints()
+	# 동기화가 유닛 화면을 규칙의 칸으로 맞춘다.
+	_test_sync_places_views_on_current_cells()
 	# 결과를 돌려준다.
 	return results()
 
@@ -257,5 +263,93 @@ func _test_mark_empty() -> void:
 	board.mark_empty(_unit(state, &"e2"))
 	# 빈 칸.
 	check_eq("marked tile is empty", board.tile_state(Unit.Team.ENEMY, Vector2i(1, 0)), Board3D.TileState.EMPTY)
+	# 지운다.
+	board.free()
+
+
+# 아군을 (0,1)→(1,1) 로 move_view 하면 화면 위치·원래 자리·두 타일 상태·클릭 칸 정보가 새 칸 기준인지.
+func _test_move_view_updates_tiles_and_pick_cell() -> void:
+	# 전투.
+	var state: BattleState = _state()
+	# 보드.
+	var board := Board3D.new()
+	# 만든다.
+	board.build(state, _texture(20))
+	# 시작 (아군 차례).
+	state.start_battle()
+	# 동기화 (아군 칸 강조).
+	board.sync_from_state(state)
+	# 아군 유닛.
+	var ally: Unit = _unit(state, &"a")
+	# 연출 없이 옮긴다.
+	board.move_view(ally, Vector2i(0, 1), Vector2i(1, 1), false)
+	# 새 칸의 3D 위치.
+	var target: Vector3 = board.layout.cell_position(Unit.Team.ALLY, Vector2i(1, 1))
+	# 화면 위치.
+	check("view stands on the new cell", board.view_for(ally).position.is_equal_approx(target))
+	# 원래 자리.
+	check("home follows the new cell", board.view_for(ally).home_position.is_equal_approx(target))
+	# 이전 칸은 빈 칸.
+	check_eq("old tile empty", board.tile_state(Unit.Team.ALLY, Vector2i(0, 1)), Board3D.TileState.EMPTY)
+	# 새 칸은 강조.
+	check_eq("new tile current", board.tile_state(Unit.Team.ALLY, Vector2i(1, 1)), Board3D.TileState.CURRENT)
+	# 클릭하면 새 칸으로 판정된다.
+	check_eq("pick body reports the new cell", board.view_for(ally).pick_body.get_meta(&"cell"), Vector2i(1, 1))
+	# 지운다.
+	board.free()
+
+
+# 이동 힌트를 주면 두 빈 칸이 MOVABLE 이 되고, 지우면 빈 칸으로 돌아가며 강조 칸은 그대로인지.
+func _test_move_hints() -> void:
+	# 전투.
+	var state: BattleState = _state()
+	# 보드.
+	var board := Board3D.new()
+	# 만든다.
+	board.build(state, _texture(20))
+	# 시작.
+	state.start_battle()
+	# 동기화.
+	board.sync_from_state(state)
+	# 힌트를 줄 두 빈 칸 (함수 인자가 타입 있는 배열이라 변수에 담는다).
+	var cells: Array[Vector2i] = [Vector2i(1, 1), Vector2i(0, 0)]
+	# 두 빈 칸에 이동 힌트.
+	board.show_move_hints(Unit.Team.ALLY, cells)
+	# (1,1) 이동 가능.
+	check_eq("first hint tile movable", board.tile_state(Unit.Team.ALLY, Vector2i(1, 1)), Board3D.TileState.MOVABLE)
+	# (0,0) 이동 가능.
+	check_eq("second hint tile movable", board.tile_state(Unit.Team.ALLY, Vector2i(0, 0)), Board3D.TileState.MOVABLE)
+	# 힌트를 지운다.
+	board.clear_target_hints()
+	# 빈 칸으로 돌아왔다.
+	check_eq("cleared move hint back to empty", board.tile_state(Unit.Team.ALLY, Vector2i(1, 1)), Board3D.TileState.EMPTY)
+	# 아군 칸 강조는 그대로.
+	check_eq("current tile untouched", board.tile_state(Unit.Team.ALLY, Vector2i(0, 1)), Board3D.TileState.CURRENT)
+	# 지운다.
+	board.free()
+
+
+# 규칙에서 아군 칸을 (2,2) 로 바꾼 뒤 동기화하면 화면 위치·클릭 칸·강조 타일이 (2,2) 기준인지.
+func _test_sync_places_views_on_current_cells() -> void:
+	# 전투.
+	var state: BattleState = _state()
+	# 보드.
+	var board := Board3D.new()
+	# 만든다.
+	board.build(state, _texture(20))
+	# 시작.
+	state.start_battle()
+	# 아군 유닛.
+	var ally: Unit = _unit(state, &"a")
+	# 화면을 거치지 않고 규칙에서만 옮긴다.
+	ally.cell = Vector2i(2, 2)
+	# 동기화.
+	board.sync_from_state(state)
+	# 화면 위치.
+	check("sync moves the view to the rules cell", board.view_for(ally).position.is_equal_approx(board.layout.cell_position(Unit.Team.ALLY, Vector2i(2, 2))))
+	# 클릭 칸.
+	check_eq("sync retags the pick body", board.view_for(ally).pick_body.get_meta(&"cell"), Vector2i(2, 2))
+	# 강조 타일.
+	check_eq("sync highlights the new cell", board.tile_state(Unit.Team.ALLY, Vector2i(2, 2)), Board3D.TileState.CURRENT)
 	# 지운다.
 	board.free()
