@@ -5,6 +5,7 @@ const CardDataScript := preload("res://Scripts/combat/data/card_data.gd")
 
 func run() -> Array[Dictionary]:
 	_test_set_cards_lays_out()
+	_test_set_cards_same_hand_keeps_views()
 	_test_selected_card_lifts()
 	_test_draw_card_appends()
 	_test_remove_card_prefers_pending_play()
@@ -12,6 +13,7 @@ func run() -> Array[Dictionary]:
 	_test_click_toggles_selection()
 	_test_drag_emits_drop()
 	_test_locked_hand_ignores_input()
+	_test_unaffordable_card_ignores_input()
 	return results()
 
 
@@ -62,6 +64,17 @@ func _test_set_cards_lays_out() -> void:
 	var middle: Dictionary = HandLayout.slot(1, 3, hand.anchor())
 	check("middle card centred on its slot", (views[1].position + CardView.SIZE / 2.0).is_equal_approx(middle["position"]))
 	check_eq("unaffordable card dimmed", views[2].modulate, CardView.UNAFFORDABLE_MODULATE)
+	hand.free()
+
+
+func _test_set_cards_same_hand_keeps_views() -> void:
+	var hand: HandView = _hand()
+	var cards: Array[CardData] = _cards([_card("a", 1), _card("b", 1)])
+	hand.set_cards(cards, 3, -1)
+	var first: CardView = hand.card_views()[0]
+	hand.set_cards(cards, 2, 1)
+	check("same hand keeps the existing views", hand.card_views()[0] == first)
+	check_eq("selection still applied", hand.selected_index(), 1)
 	hand.free()
 
 
@@ -164,4 +177,24 @@ func _test_locked_hand_ignores_input() -> void:
 	_press(view, Vector2(100, 100), false)
 	hand.interactive = false
 	check_eq("locking clears the selection", hand.selected_index(), -1)
+	hand.free()
+
+
+func _test_unaffordable_card_ignores_input() -> void:
+	var hand: HandView = _hand()
+	hand.interactive = true
+	hand.set_cards(_cards([_card("big", 9)]), 3, -1)
+	var picked: Array = []
+	var dropped: Array = []
+	hand.card_selected.connect(func(index: int) -> void: picked.append(index))
+	hand.card_dropped.connect(func(index: int, at: Vector2) -> void: dropped.append(index))
+	var view: CardView = hand.card_views()[0]
+	_press(view, Vector2(100, 100), true)
+	_press(view, Vector2(100, 100), false)
+	_press(view, Vector2(100, 100), true)
+	_move(view, Vector2(100, 40))
+	_press(view, Vector2(100, 40), false)
+	check_eq("unaffordable card cannot be selected", picked, [])
+	check_eq("unaffordable card cannot be dropped", dropped, [])
+	check("no aim arrow for an unaffordable card", not hand.is_aiming())
 	hand.free()

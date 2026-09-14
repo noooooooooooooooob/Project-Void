@@ -43,6 +43,7 @@ var _arrow: AimArrow
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_arrow = AimArrow.new()
+	_arrow.z_index = 100
 	add_child(_arrow)
 
 
@@ -51,6 +52,14 @@ func anchor() -> Vector2:
 
 
 func set_cards(cards: Array[CardData], sp: int, selected: int) -> void:
+	# 재생 직후 동기화가 날아오는 카드를 끊지 않게, 이미 같은 손패면 다시 만들지 않는다.
+	if _shows(cards):
+		_cancel_press()
+		_sp = sp
+		_selected = selected
+		_pending_play = -1
+		_layout(true)
+		return
 	for view in _cards:
 		_free_view(view)
 	_cards.clear()
@@ -177,6 +186,15 @@ func is_aiming() -> bool:
 	return _arrow.is_aiming()
 
 
+func _shows(cards: Array[CardData]) -> bool:
+	if cards.size() != _cards.size():
+		return false
+	for i in cards.size():
+		if _cards[i].card != cards[i]:
+			return false
+	return true
+
+
 func _make_view(card: CardData) -> CardView:
 	var view := CardView.new()
 	view.setup(card)
@@ -229,6 +247,11 @@ func _layout(animate: bool) -> void:
 			view.position = target["position"]
 			view.rotation = target["rotation"]
 			view.scale = target["scale"]
+	# 그리기 순서는 z_index 가 아니라 트리 순서를 따르므로, 들린 카드가 오른쪽 이웃에게
+	# 클릭을 뺏기지 않도록 맨 뒤로 옮긴다.
+	if _selected >= 0 and _selected < _cards.size():
+		move_child(_cards[_selected], -1)
+		move_child(_arrow, -1)
 
 
 func _on_flight_finished(view: CardView) -> void:
@@ -243,6 +266,9 @@ func _on_card_gui_input(event: InputEvent, view: CardView) -> void:
 	var button := event as InputEventMouseButton
 	if button != null and button.button_index == MOUSE_BUTTON_LEFT:
 		if button.pressed:
+			if view.card.sp_cost > _sp:
+				view.accept_event()
+				return
 			_press_view = view
 			_press_position = button.global_position
 			_dragging = false
