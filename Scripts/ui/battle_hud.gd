@@ -53,6 +53,7 @@ func sync_from_state(state: BattleState, selected_card: int) -> void:
 func show_turn(event: BattleEvent) -> void:
 	_turn_label.text = turn_bar_text(event.round_index, event.order, event.alive, event.turn_index)
 	if event.unit.is_ally():
+		# 드로우 연출이 이어지므로 손패를 비우고, 새 카드가 SP 부족으로 흐려지지 않게 현재 SP 로 시작한다.
 		_clear_hand(event.unit.sp)
 		_refresh_sp(event.unit)
 		_show_piles(event.unit.data.display_name, event.deck_count, event.discard_count)

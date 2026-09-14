@@ -15,6 +15,7 @@ func run() -> Array[Dictionary]:
 	_test_hand_signals_are_relayed()
 	_test_enemy_turn_clears_hand_and_dims_piles()
 	_test_ally_turn_shows_pile_snapshot()
+	_test_ally_turn_then_draw_keeps_cards_affordable()
 	_test_playback_helpers()
 	_test_log_and_banner()
 	return results()
@@ -172,6 +173,24 @@ func _test_ally_turn_shows_pile_snapshot() -> void:
 	check_eq("deck count from snapshot", hud.deck_pile().count_text(), "5")
 	check_eq("discard count from snapshot", hud.discard_pile().count_text(), "2")
 	check("piles lit on ally turn", not hud.deck_pile().is_dimmed())
+	hud.free()
+
+
+func _test_ally_turn_then_draw_keeps_cards_affordable() -> void:
+	var hud: BattleHud = _hud()
+	var state: BattleState = _started_state()
+	var ally: Unit = state.living_units(Unit.Team.ALLY)[0]
+	hud.show_turn(_turn_event(state, ally, 0))
+	check_eq("sp shown at turn start", hud.sp_text(), "SP\n●●●\n3 / 3")
+
+	for card in ally.hand:
+		var drawn := BattleEvent.new(BattleEvent.Kind.CARD_DRAWN)
+		drawn.unit = ally
+		drawn.card = card
+		hud.draw_card(drawn)
+	var views: Array[CardView] = hud.hand_view().card_views()
+	check_eq("affordable drawn card not dimmed", _view_named(views, "strike").modulate, Color.WHITE)
+	check_eq("unaffordable drawn card dimmed", _view_named(views, "big").modulate, CardView.UNAFFORDABLE_MODULATE)
 	hud.free()
 
 
