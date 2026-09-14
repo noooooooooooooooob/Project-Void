@@ -79,7 +79,7 @@ func build(state: BattleState, placeholder: Texture2D) -> void:
 
 ## 연출과 상관없이 규칙 상태 그대로 보드를 맞춘다 (재생이 끝난 뒤 어긋남 보정용).
 func sync_from_state(state: BattleState) -> void:
-	# 남아 있는 사거리 힌트를 지운다.
+	# 남아 있는 사거리·이동 힌트를 지운다.
 	clear_target_hints()
 	# 우선 모든 타일을 빈 칸으로 만든다.
 	for key in _tiles:

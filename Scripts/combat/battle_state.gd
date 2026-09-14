@@ -2,7 +2,7 @@
 ## 노드가 아니라서 화면 없이도(테스트, 밸런스 시뮬레이션) 전투를 끝까지 돌릴 수 있다.
 ## 상태가 바뀔 때마다 신호를 내고, 화면(BattleEventRecorder → BattlePlayback)은 그 신호만 보고 연출한다.
 ##
-## 흐름: start_battle() → (아군 차례에서 멈춤) → play_card() 여러 번 → end_turn() → (적 차례 자동 처리) → 다음 아군 차례에서 멈춤 ...
+## 흐름: start_battle() → (아군 차례에서 멈춤) → play_card()·move_unit() 여러 번 → end_turn() → (적 차례 자동 처리) → 다음 아군 차례에서 멈춤 ...
 ## 한 차례는 Phase 순서(스탠바이 → 드로우 → 턴 행동 → 종료 전 → 종료 후)로 진행하고, 아군은 턴 행동 단계에서 멈춘다.
 class_name BattleState
 # RefCounted: 노드가 아닌 가벼운 객체. 참조가 없어지면 자동으로 해제된다.

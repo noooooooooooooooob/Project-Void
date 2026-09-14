@@ -63,11 +63,11 @@ func _ready() -> void:
 	# 재생기에 HUD 를 넘긴다.
 	_playback.hud = _hud
 
-	# 칸 클릭 → 카드 사용 시도.
+	# 칸 클릭 → 카드 사용, 또는 카드 선택이 없으면 이동 시도.
 	_board.cell_clicked.connect(_on_cell_clicked)
 	# 빈 곳 클릭/놓기 → 드래그 취소 처리.
 	_board.pick_missed.connect(_on_pick_missed)
-	# 카드 선택 → 사거리 힌트.
+	# 카드 선택·해제 → 힌트 갱신 (선택이면 사거리, 해제면 이동 가능 칸).
 	_hud.card_selected.connect(_on_card_selected)
 	# 카드 드래그 놓기 → 놓은 위치 판정.
 	_hud.card_dropped.connect(_on_card_dropped)
@@ -154,7 +154,7 @@ func _on_pick_missed() -> void:
 	_clear_selection()
 
 
-## 칸을 클릭했다(또는 드래그로 놓았다). 선택한 카드를 그 칸의 적에게 쓰려고 시도한다.
+## 칸을 클릭했다(또는 드래그로 놓았다). 카드를 골랐으면 그 칸의 적에게 쓰고, 고르지 않았으면 그 아군 칸으로 이동을 시도한다.
 func _on_cell_clicked(team: Unit.Team, cell: Vector2i) -> void:
 	# 이 판정이 드래그 놓기에서 왔는지 기억해 둔다.
 	var from_drop: bool = _awaiting_drop

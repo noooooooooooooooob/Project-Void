@@ -50,7 +50,7 @@ func play(events: Array[BattleEvent]) -> void:
 			# 카드 사용: 손패에서 빼고 돌진.
 			BattleEvent.Kind.CARD_PLAYED:
 				await _card_played(event)
-			# 적 행동: 돌진 또는 제자리 뛰기.
+			# 적 행동: 돌진, 제자리 뛰기, 이동이면 연출 없음.
 			BattleEvent.Kind.ENEMY_ACTED:
 				await _enemy_acted(event)
 			# 피해: 체력 바 갱신·숫자·번쩍임.

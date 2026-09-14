@@ -6,7 +6,7 @@ class_name BattleEvent
 # RefCounted: 노드가 아닌 가벼운 객체. 참조가 없어지면 자동으로 해제된다.
 extends RefCounted
 
-## 기록 종류. BattleState 의 신호 하나에 종류 하나가 대응한다.
+## 기록 종류. BattleState 의 신호 하나에 종류 하나가 대응한다 (화면에 쓰지 않는 phase_started 는 기록하지 않아 종류가 없다).
 ## (새 종류는 뒤에만 추가한다 — 중간에 넣으면 기존 숫자 값이 밀린다.)
 enum Kind { TURN_STARTED, CARD_PLAYED, ENEMY_ACTED, DAMAGED, HEALED, BLOCK_GAINED, DIED, LOG, BATTLE_ENDED, CARD_DRAWN, DECK_RESHUFFLED, HAND_DISCARDED, UNIT_MOVED }
 

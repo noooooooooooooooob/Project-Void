@@ -1,4 +1,4 @@
-## BattleState 의 신호를 모두 구독해서 BattleEvent 목록으로 쌓아 두는 기록기.
+## BattleState 의 신호를 구독해서 BattleEvent 목록으로 쌓아 두는 기록기 (화면에 보여 주지 않는 phase_started 는 기록하지 않는다).
 ## 사용 흐름: 규칙 함수 호출(play_card 등) → 그동안 난 신호가 여기 쌓임 → take_events() 로 꺼내 BattlePlayback 에 넘김.
 ## 신호가 난 순간의 값(체력, 장수, 행동 순서)을 복사해 두므로, 재생이 늦게 일어나도 당시 상태를 정확히 보여 준다.
 class_name BattleEventRecorder
