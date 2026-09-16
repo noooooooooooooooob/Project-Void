@@ -244,6 +244,8 @@ _state.battle_ended.connect(func(ally_won: bool) -> void: battle_finished.emit(a
 
 그 외 `_ready()`, `_run()`, 입력 처리 등 기존 흐름은 전부 그대로다. `battle_3d.tscn`의 `encounter` 기본값(스커미시)도 그대로 둔다 — `GameRoot`가 `add_child()` 전에 덮어쓰므로 맵 플로우에는 영향이 없고, 씬을 단독으로 열어 손으로 테스트할 때는 기존처럼 스커미시가 뜬다.
 
+**구현 중 스펙과 다른 점**: `battle_root.gd`는 원래 `class_name`이 없었다. `GameRoot`가 `.encounter`/`.battle_finished`에 타입 명시로 접근하려면 이름이 필요해서 `class_name BattleRoot`를 한 줄 추가했다 — 동작 변화는 없다.
+
 ## 10. 파일 변경
 
 **추가**

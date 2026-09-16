@@ -1,4 +1,7 @@
+class_name BattleRoot
 extends Node3D
+
+signal battle_finished(ally_won: bool)
 
 const PLACEHOLDER_SPRITE: Texture2D = preload("res://Resources/sprites/placeholder_unit.png")
 const CAMERA_PITCH_DEG: float = 44.0
@@ -25,6 +28,7 @@ func _ready() -> void:
 	rng.randomize()
 	_state = BattleState.new(encounter, rng)
 	_recorder = BattleEventRecorder.new(_state)
+	_state.battle_ended.connect(func(ally_won: bool) -> void: battle_finished.emit(ally_won))
 
 	_board.build(_state, PLACEHOLDER_SPRITE)
 	_board.sync_from_state(_state)

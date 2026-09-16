@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Project Void"
-run/main_scene="res://Scenes/battle_3d.tscn"
+run/main_scene="res://Scenes/game_root.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
