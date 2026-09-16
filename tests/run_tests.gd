@@ -20,6 +20,11 @@ const TEST_SCRIPTS: Array[String] = [
 	"res://tests/test_pile_view.gd",
 	"res://tests/test_hand_layout.gd",
 	"res://tests/test_hand_view.gd",
+	"res://tests/test_map_graph.gd",
+	"res://tests/test_map_layout.gd",
+	"res://tests/test_encounter_generator.gd",
+	"res://tests/test_map_run_state.gd",
+	"res://tests/test_map_view.gd",
 ]
 
 var _started: bool = false
