@@ -1,9 +1,13 @@
 ## 전투 씬(battle_3d.tscn)의 루트 스크립트. 규칙·기록·보드·HUD·재생을 이어 붙이는 조립 담당.
 ## 플레이어 입력(카드 선택, 이동 버튼, 칸 클릭 — 카드 사용 또는 이동, 드래그 놓기, 차례 종료)을 받아 규칙을 부르고,
 ## 그 결과로 쌓인 이벤트를 재생한 뒤 화면을 실제 상태와 다시 맞춘다.
-# class_name 이 없다: 씬에만 붙어 쓰이고 다른 스크립트가 이 타입을 직접 참조하지 않는다.
+# class_name 이 필요하다: 맵 화면(game_root.gd)이 전투 씬을 이 타입으로 들고 있다.
 # Node3D: 3D 씬의 루트 노드.
+class_name BattleRoot
 extends Node3D
+
+## 전투가 끝났을 때 맵 쪽에 알리는 신호. 아군이 이겼으면 true.
+signal battle_finished(ally_won: bool)
 
 ## 유닛 그림이 없을 때 쓰는 임시 실루엣 그림.
 const PLACEHOLDER_SPRITE: Texture2D = preload("res://Resources/sprites/placeholder_unit.png")
@@ -56,6 +60,7 @@ func _ready() -> void:
 	_state = BattleState.new(encounter, rng)
 	# 규칙 신호를 기록하기 시작한다 (start_battle 보다 먼저 연결해야 첫 신호를 놓치지 않는다).
 	_recorder = BattleEventRecorder.new(_state)
+	_state.battle_ended.connect(func(ally_won: bool) -> void: battle_finished.emit(ally_won))
 
 	# 타일과 유닛 화면 객체를 만든다.
 	_board.build(_state, PLACEHOLDER_SPRITE)
