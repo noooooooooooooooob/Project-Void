@@ -1,5 +1,5 @@
 ## 전투 씬(battle_3d.tscn)의 루트 스크립트. 규칙·기록·보드·HUD·재생을 이어 붙이는 조립 담당.
-## 플레이어 입력(카드 선택, 칸 클릭 — 카드 사용 또는 이동, 드래그 놓기, 차례 종료)을 받아 규칙을 부르고,
+## 플레이어 입력(카드 선택, 이동 버튼, 칸 클릭 — 카드 사용 또는 이동, 드래그 놓기, 차례 종료)을 받아 규칙을 부르고,
 ## 그 결과로 쌓인 이벤트를 재생한 뒤 화면을 실제 상태와 다시 맞춘다.
 # class_name 이 없다: 씬에만 붙어 쓰이고 다른 스크립트가 이 타입을 직접 참조하지 않는다.
 # Node3D: 3D 씬의 루트 노드.
@@ -31,13 +31,16 @@ var _busy: bool = false
 # 드래그로 놓은 카드의 판정 결과를 기다리는 중. 빗나가거나 무효면 클릭과 달리 선택을 해제한다.
 ## 드래그로 놓은 위치의 칸 판정을 기다리는 중이면 true.
 var _awaiting_drop: bool = false
+# 카드와 함께 켜 두지 않는다: 카드를 고르면 꺼지고, 이동 버튼을 켜면 고르던 카드가 풀린다.
+## 이동 버튼으로 켠 이동 모드. true 일 때만 아군 칸 클릭이 이동이 된다.
+var _move_mode: bool = false
 
 # @onready: _ready 직전에 값을 채운다. %이름 은 씬 안에서 "고유 이름"으로 표시한 노드를 찾는다.
 ## 전투를 비추는 카메라.
 @onready var _camera: Camera3D = %Camera
 ## 타일·유닛 보드.
 @onready var _board: Board3D = %Board
-## 화면 위 HUD (손패, 더미, 로그, SP, 차례 종료 버튼).
+## 화면 위 HUD (손패, 더미, 로그, SP, 이동·차례 종료 버튼).
 @onready var _hud: BattleHud = %Hud
 ## 이벤트 재생기.
 @onready var _playback: BattlePlayback = %Playback
@@ -63,16 +66,18 @@ func _ready() -> void:
 	# 재생기에 HUD 를 넘긴다.
 	_playback.hud = _hud
 
-	# 칸 클릭 → 카드 사용, 또는 카드 선택이 없으면 이동 시도.
+	# 칸 클릭 → 카드 사용, 또는 이동 모드면 아군 칸으로 이동 시도.
 	_board.cell_clicked.connect(_on_cell_clicked)
 	# 빈 곳 클릭/놓기 → 드래그 취소 처리.
 	_board.pick_missed.connect(_on_pick_missed)
-	# 카드 선택·해제 → 힌트 갱신 (선택이면 사거리, 해제면 이동 가능 칸).
+	# 카드 선택·해제 → 힌트 갱신 (선택이면 사거리, 해제면 지움).
 	_hud.card_selected.connect(_on_card_selected)
 	# 카드 드래그 놓기 → 놓은 위치 판정.
 	_hud.card_dropped.connect(_on_card_dropped)
 	# 차례 종료 버튼.
 	_hud.end_turn_pressed.connect(_on_end_turn_pressed)
+	# 이동 버튼 → 이동 모드를 켜고 끈다.
+	_hud.move_mode_toggled.connect(_on_move_mode_toggled)
 	# 창 크기가 바뀌면 카메라 거리를 다시 계산한다.
 	get_viewport().size_changed.connect(_frame_camera)
 	# 처음 한 번 카메라를 맞춘다.
@@ -97,6 +102,9 @@ func _run(action: Callable) -> void:
 	_hud.sync_from_state(_state, _selected_card)
 	# 전투가 끝났으면 계속 잠그고, 아니면 입력을 푼다.
 	_set_busy(_state.finished)
+	# 규칙이 바뀌어 더는 이동할 수 없으면(SP 를 다 썼거나 갈 칸이 막혔다) 이동 모드를 끈다.
+	if _move_mode and _movable_cells_now().is_empty():
+		_move_mode = false
 	# 잠금이 풀린 상태에 맞는 힌트(이동 가능 칸 등)를 보여 준다.
 	_refresh_hints()
 
@@ -122,9 +130,9 @@ func _on_card_selected(index: int) -> void:
 	# 잠겨 있으면 무시한다.
 	if _busy:
 		return
-	# 고른 카드 번호를 기억한다.
-	_selected_card = index
-	# 선택 상태에 맞는 힌트를 새로 보여 준다 (카드면 사거리, 해제면 이동 가능 칸).
+	# 고른 카드 번호를 기억한다 (골랐으면 이동 모드가 꺼진다).
+	_select_card(index)
+	# 선택 상태에 맞는 힌트를 새로 보여 준다 (카드면 사거리, 이동 모드면 이동 가능 칸).
 	_refresh_hints()
 
 
@@ -133,8 +141,8 @@ func _on_card_dropped(index: int, screen_position: Vector2) -> void:
 	# 잠겨 있으면 무시한다.
 	if _busy:
 		return
-	# 끌던 카드를 선택된 카드로 삼는다.
-	_selected_card = index
+	# 끌던 카드를 선택된 카드로 삼는다 (이동 모드가 꺼진다).
+	_select_card(index)
 	# 힌트를 그 카드 기준으로 갱신한다.
 	_refresh_hints()
 	# 이제부터 오는 판정 결과는 드래그에서 온 것이다.
@@ -154,7 +162,7 @@ func _on_pick_missed() -> void:
 	_clear_selection()
 
 
-## 칸을 클릭했다(또는 드래그로 놓았다). 카드를 골랐으면 그 칸의 적에게 쓰고, 고르지 않았으면 그 아군 칸으로 이동을 시도한다.
+## 칸을 클릭했다(또는 드래그로 놓았다). 카드를 골랐으면 그 칸의 적에게 쓰고, 이동 모드면 그 아군 칸으로 이동을 시도한다.
 func _on_cell_clicked(team: Unit.Team, cell: Vector2i) -> void:
 	# 이 판정이 드래그 놓기에서 왔는지 기억해 둔다.
 	var from_drop: bool = _awaiting_drop
@@ -165,8 +173,8 @@ func _on_cell_clicked(team: Unit.Team, cell: Vector2i) -> void:
 		return
 	# 고른 카드가 없으면 이동을 시도한다.
 	if _selected_card < 0:
-		# 드래그가 아닌 아군 칸 클릭만 이동으로 본다.
-		if not from_drop and team == Unit.Team.ALLY:
+		# 이동 모드에서, 드래그가 아닌 아군 칸 클릭만 이동으로 본다.
+		if _move_mode and not from_drop and team == Unit.Team.ALLY:
 			_try_move(cell)
 		return
 	# 지금 차례인 유닛.
@@ -204,19 +212,45 @@ func _on_end_turn_pressed() -> void:
 	# 잠겨 있으면 무시한다.
 	if _busy:
 		return
+	# 차례가 넘어가므로 이동 모드를 끈다 (다음 아군이 켜진 채로 시작하지 않게).
+	_move_mode = false
 	# 차례를 끝내고 다음 아군 차례까지 진행·재생한다.
 	_run(_state.end_turn)
 
 
+## 이동 버튼을 켜거나 껐다. 켜면 고르던 카드를 놓는다 (이동과 카드는 함께 쓰지 않는다).
+func _on_move_mode_toggled(on: bool) -> void:
+	# 잠겨 있으면 무시한다 (버튼도 함께 잠기지만 안전장치). 버튼 눌림은 지금 모드로 되돌린다.
+	if _busy:
+		_hud.set_move_mode(_move_mode)
+		return
+	# 모드를 기억한다.
+	_move_mode = on
+	# 켰으면 고르던 카드를 놓는다 (힌트 갱신까지 함께 한다).
+	if on:
+		_clear_selection()
+		return
+	# 바뀐 상태에 맞는 힌트를 보여 준다.
+	_refresh_hints()
+
+
+## 고른 카드 번호를 기억한다. 카드를 골랐으면 이동 모드를 끈다 (둘은 함께 쓰지 않는다).
+func _select_card(index: int) -> void:
+	# 번호를 기억한다.
+	_selected_card = index
+	# 선택을 푼 것이면 이동 모드는 그대로 둔다.
+	if index < 0:
+		return
+	# 이동 모드를 끈다.
+	_move_mode = false
+	# 이동 버튼 눌림도 함께 푼다.
+	_hud.set_move_mode(false)
+
+
 ## 지금 차례 아군을 cell 로 이동시킨다. 이동할 수 없는 칸이면 무시한다.
 func _try_move(cell: Vector2i) -> void:
-	# 지금 차례인 유닛.
-	var actor: Unit = _state.current_unit()
-	# 아군 차례가 아니거나 SP 가 없으면 무시한다.
-	if actor == null or not actor.is_ally() or actor.sp < 1:
-		return
-	# 상하좌우 빈 칸이 아니면 무시한다.
-	if not _state.resolver.movable_cells(actor, _state.units).has(cell):
+	# 지금 갈 수 있는 칸이 아니면 무시한다 (힌트로 보여 준 칸과 같은 판정을 쓴다).
+	if not _movable_cells_now().has(cell):
 		return
 	# 이동을 실행하고 재생한다. 규칙이 거절하면(예상 밖 상황) 로그를 남긴다.
 	_run(func() -> void:
@@ -224,27 +258,50 @@ func _try_move(cell: Vector2i) -> void:
 			_hud.append_log("이동할 수 없는 칸"))
 
 
-## 지금 상황에 맞는 힌트를 보드에 보여 준다.
-## 카드 선택 중이면 사거리 힌트, 선택이 없고 이동할 수 있으면 이동 가능 칸, 그 외에는 지운다.
+## 지금 차례 유닛이 갈 수 있는 칸. "지금 이동할 수 있는가"의 유일한 판정이라 힌트·버튼·클릭이 모두 이 결과를 쓴다.
+## 잠겨 있거나, 전투가 끝났거나, 아군 차례가 아니거나, 쓰러졌거나, SP 가 없으면 빈 배열.
+func _movable_cells_now() -> Array[Vector2i]:
+	# 갈 칸이 없을 때 돌려줄 빈 배열 (돌려주는 타입이 정해져 있어 따로 만든다).
+	var none: Array[Vector2i] = []
+	# 지금 차례인 유닛.
+	var actor: Unit = _state.current_unit()
+	# 하나라도 어긋나면 이동할 수 없다.
+	if _busy or _state.finished or actor == null or not actor.is_ally() or not actor.is_alive() or actor.sp < 1:
+		return none
+	# 규칙에게 갈 칸을 묻는다.
+	return _state.resolver.movable_cells(actor, _state.units)
+
+
+# 이 함수는 화면만 바꾼다: _move_mode 를 여기서 끄지 않으므로 연출 중(_busy)에도 모드가 그대로 살아 있다.
+## 지금 상황에 맞는 힌트를 보드에 보여 주고, 이동 버튼 활성화·눌림을 맞춘다.
+## 카드 선택 중이면 사거리 힌트, 이동 모드면 이동 가능 칸, 그 외에는 지운다.
 func _refresh_hints() -> void:
+	# 갈 수 있는 칸.
+	var cells: Array[Vector2i] = _movable_cells_now()
+	# 갈 칸이 하나라도 있어야 이동 버튼을 쓸 수 있다.
+	var can_move: bool = not cells.is_empty()
+	# 이동 버튼 활성화를 알린다 (쓸 수 없으면 HUD 가 눌림도 푼다).
+	_hud.set_move_available(can_move)
+	# 눌림은 지금 쓸 수 있을 때만 켠다 (연출 중에 눌림+비활성으로 남지 않게).
+	_hud.set_move_mode(_move_mode and can_move)
 	# 카드를 골랐으면 사거리 힌트.
 	if _selected_card >= 0:
 		_refresh_target_hints()
 		return
-	# 지금 차례인 유닛.
-	var actor: Unit = _state.current_unit()
-	# 잠겨 있거나, 끝났거나, 아군 차례가 아니거나, SP 가 없으면 힌트를 지운다.
-	if _busy or _state.finished or actor == null or not actor.is_ally() or actor.sp < 1:
+	# 이동 모드가 아니거나 보여 줄 칸이 없으면 힌트를 지운다.
+	if not _move_mode or not can_move:
 		_board.clear_target_hints()
 		return
-	# 이동할 수 있는 칸을 표시한다.
-	_board.show_move_hints(actor.team, _state.resolver.movable_cells(actor, _state.units))
+	# 이동할 수 있는 칸을 표시한다 (칸이 있다는 것은 차례 유닛이 있다는 뜻이라 여기서는 null 이 아니다).
+	_board.show_move_hints(_state.current_unit().team, cells)
 
 
-## 카드 선택을 지우고 힌트를 다시 정한다 (입력 가능하면 이동 가능 칸, 잠겨 있으면 없음).
+## 카드 선택을 지우고 힌트를 다시 정한다 (이동 모드면 이동 가능 칸, 그 외에는 없음).
 func _clear_selection() -> void:
 	# 선택 없음으로.
 	_selected_card = -1
+	# 손패에서 들려 있던 카드도 내린다 (이미 내려 있으면 아무 일도 하지 않는다).
+	_hud.clear_card_selection()
 	# 선택이 없는 상태의 힌트로 바꾼다.
 	_refresh_hints()
 

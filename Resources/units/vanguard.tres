@@ -1,10 +1,10 @@
-[gd_resource type="Resource" script_class="AllyData" format=3]
+[gd_resource type="Resource" script_class="AllyData" format=3 uid="uid://dqsp883fisfdw"]
 
-[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="1_lv5et"]
-[ext_resource type="Resource" path="res://Resources/cards/strike.tres" id="2_khyhb"]
-[ext_resource type="Resource" path="res://Resources/cards/cleave.tres" id="3_q688b"]
-[ext_resource type="Resource" path="res://Resources/cards/shoot.tres" id="4_uyxi8"]
-[ext_resource type="Script" path="res://Scripts/combat/data/ally_data.gd" id="5_mv3tw"]
+[ext_resource type="Script" uid="uid://c7l28pr4irggh" path="res://Scripts/combat/data/card_data.gd" id="1_lv5et"]
+[ext_resource type="Resource" uid="uid://b3wxy8jjt744e" path="res://Resources/cards/strike.tres" id="2_khyhb"]
+[ext_resource type="Resource" uid="uid://cu38wj8qfosm7" path="res://Resources/cards/cleave.tres" id="3_q688b"]
+[ext_resource type="Resource" uid="uid://cyw41v4yf1j05" path="res://Resources/cards/shoot.tres" id="4_uyxi8"]
+[ext_resource type="Script" uid="uid://digrljfdhjmf2" path="res://Scripts/combat/data/ally_data.gd" id="5_mv3tw"]
 
 [resource]
 script = ExtResource("5_mv3tw")

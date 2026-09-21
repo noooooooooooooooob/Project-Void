@@ -1,13 +1,13 @@
-[gd_resource type="Resource" script_class="EncounterData" format=3]
+[gd_resource type="Resource" script_class="EncounterData" format=3 uid="uid://cfgh2xplajbgi"]
 
-[ext_resource type="Script" path="res://Scripts/combat/data/unit_placement.gd" id="1_qgfyp"]
-[ext_resource type="Resource" path="res://Resources/units/vanguard.tres" id="2_oble2"]
-[ext_resource type="Resource" path="res://Resources/units/archer.tres" id="3_r5rn2"]
-[ext_resource type="Resource" path="res://Resources/units/scout.tres" id="4_hx4xs"]
-[ext_resource type="Resource" path="res://Resources/units/brute.tres" id="5_jq73p"]
-[ext_resource type="Resource" path="res://Resources/units/stalker.tres" id="6_1i0vc"]
-[ext_resource type="Resource" path="res://Resources/units/sentry.tres" id="7_tyvmu"]
-[ext_resource type="Script" path="res://Scripts/combat/data/encounter_data.gd" id="8_fhev4"]
+[ext_resource type="Script" uid="uid://68liyn5saxug" path="res://Scripts/combat/data/unit_placement.gd" id="1_qgfyp"]
+[ext_resource type="Resource" uid="uid://dqsp883fisfdw" path="res://Resources/units/vanguard.tres" id="2_oble2"]
+[ext_resource type="Resource" uid="uid://gu2rw78byshp" path="res://Resources/units/archer.tres" id="3_r5rn2"]
+[ext_resource type="Resource" uid="uid://b7eost00fgvqo" path="res://Resources/units/scout.tres" id="4_hx4xs"]
+[ext_resource type="Resource" uid="uid://0rtubcoetgk3" path="res://Resources/units/brute.tres" id="5_jq73p"]
+[ext_resource type="Resource" uid="uid://b1gt6juh5371q" path="res://Resources/units/stalker.tres" id="6_1i0vc"]
+[ext_resource type="Resource" uid="uid://ckhc2lw27mw5n" path="res://Resources/units/sentry.tres" id="7_tyvmu"]
+[ext_resource type="Script" uid="uid://ckvfx8103ec2v" path="res://Scripts/combat/data/encounter_data.gd" id="8_fhev4"]
 
 [sub_resource type="Resource" id="Resource_l3lrf"]
 script = ExtResource("1_qgfyp")

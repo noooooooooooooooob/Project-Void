@@ -30,6 +30,8 @@ func run() -> Array[Dictionary]:
 	_test_locked_hand_ignores_input()
 	# SP 부족 카드는 입력 무시.
 	_test_unaffordable_card_ignores_input()
+	# 밖에서 선택을 푼다.
+	_test_deselect_lowers_without_signal()
 	# 결과를 돌려준다.
 	return results()
 
@@ -390,5 +392,31 @@ func _test_unaffordable_card_ignores_input() -> void:
 	check_eq("unaffordable card cannot be dropped", dropped, [])
 	# 화살표 없음.
 	check("no aim arrow for an unaffordable card", not hand.is_aiming())
+	# 지운다.
+	hand.free()
+
+
+# deselect 로 선택을 풀면 카드가 제자리로 내려오고 card_selected 는 나지 않는지.
+func _test_deselect_lowers_without_signal() -> void:
+	# 손패.
+	var hand: HandView = _hand()
+	# 3 장, 0 번 선택.
+	hand.set_cards(_cards([_card("a", 1), _card("b", 1), _card("c", 1)]), 3, 0)
+	# 선택 신호 기록.
+	var picked: Array = []
+	# 신호를 기록한다.
+	hand.card_selected.connect(func(index: int) -> void: picked.append(index))
+	# 밖에서 선택을 푼다.
+	hand.deselect()
+	# 선택 없음.
+	check_eq("deselect clears the selection", hand.selected_index(), -1)
+	# 0 번 카드 화면.
+	var view: CardView = hand.card_views()[0]
+	# 0 번 자리.
+	var slot: Dictionary = HandLayout.slot(0, 3, hand.anchor())
+	# 자리 중심으로 돌아왔다.
+	check("lowered back to its slot", view.position.is_equal_approx(slot["position"] - CardView.SIZE / 2.0))
+	# 신호는 나지 않는다 (푼 쪽이 이미 안다).
+	check_eq("deselect does not emit", picked, [])
 	# 지운다.
 	hand.free()

@@ -1,10 +1,10 @@
-[gd_resource type="Resource" script_class="AllyData" format=3]
+[gd_resource type="Resource" script_class="AllyData" format=3 uid="uid://gu2rw78byshp"]
 
-[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="1_4ub2x"]
-[ext_resource type="Resource" path="res://Resources/cards/shoot.tres" id="2_flb3i"]
-[ext_resource type="Resource" path="res://Resources/cards/volley.tres" id="3_tnbmc"]
-[ext_resource type="Resource" path="res://Resources/cards/piercing_shot.tres" id="4_88uvr"]
-[ext_resource type="Script" path="res://Scripts/combat/data/ally_data.gd" id="5_kacer"]
+[ext_resource type="Script" uid="uid://c7l28pr4irggh" path="res://Scripts/combat/data/card_data.gd" id="1_4ub2x"]
+[ext_resource type="Resource" uid="uid://cyw41v4yf1j05" path="res://Resources/cards/shoot.tres" id="2_flb3i"]
+[ext_resource type="Resource" uid="uid://c6xtex48jqom8" path="res://Resources/cards/volley.tres" id="3_tnbmc"]
+[ext_resource type="Resource" uid="uid://dchtg3ucib8eu" path="res://Resources/cards/piercing_shot.tres" id="4_88uvr"]
+[ext_resource type="Script" uid="uid://digrljfdhjmf2" path="res://Scripts/combat/data/ally_data.gd" id="5_kacer"]
 
 [resource]
 script = ExtResource("5_kacer")

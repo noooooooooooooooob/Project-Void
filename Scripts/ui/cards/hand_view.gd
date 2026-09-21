@@ -48,12 +48,8 @@ var interactive: bool = false:
 		if not value:
 			# 누르고 있던 카드와 조준 화살표를 취소한다.
 			_cancel_press()
-			# 선택된 카드가 있으면.
-			if _selected >= 0:
-				# 선택을 푼다.
-				_selected = -1
-				# 들렸던 카드를 제자리로 내린다.
-				_layout(true)
+			# 들려 있던 카드를 내린다.
+			deselect()
 
 ## 손패 카드 화면들 (왼쪽부터 순서대로). 규칙의 손패 순서와 같다.
 var _cards: Array[CardView] = []
@@ -318,6 +314,17 @@ func card_views() -> Array[CardView]:
 func selected_index() -> int:
 	# 번호를 돌려준다.
 	return _selected
+
+
+## 선택된 카드가 있으면 선택을 풀고 제자리로 내린다. card_selected 는 내지 않는다 (푼 쪽이 이미 안다).
+func deselect() -> void:
+	# 선택이 없으면 할 일이 없다.
+	if _selected < 0:
+		return
+	# 선택을 푼다.
+	_selected = -1
+	# 들렸던 카드를 제자리로 내린다.
+	_layout(true)
 
 
 ## 조준 화살표가 보이는 중이면 true.

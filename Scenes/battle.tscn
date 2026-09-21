@@ -1,0 +1,74 @@
+[gd_scene format=3 uid="uid://diytx2o1d8357"]
+
+[node name="BattleRoot" type="Control" unique_id=438964999]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Layout" type="VBoxContainer" parent="." unique_id=927789022]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TurnLabel" type="RichTextLabel" parent="Layout" unique_id=623046369]
+unique_name_in_owner = true
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
+
+[node name="Field" type="HBoxContainer" parent="Layout" unique_id=1767300721]
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+
+[node name="AllyGrid" type="GridContainer" parent="Layout/Field" unique_id=1169050839]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Spacer" type="Control" parent="Layout/Field" unique_id=334680777]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+
+[node name="EnemyGrid" type="GridContainer" parent="Layout/Field" unique_id=2083604204]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BattleLog" type="RichTextLabel" parent="Layout" unique_id=1386836352]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+
+[node name="Bottom" type="HBoxContainer" parent="Layout" unique_id=1450164761]
+layout_mode = 2
+
+[node name="SpPanel" type="PanelContainer" parent="Layout/Bottom" unique_id=1992149702]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+
+[node name="SpLabel" type="Label" parent="Layout/Bottom/SpPanel" unique_id=1319295478]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HandBox" type="HBoxContainer" parent="Layout/Bottom" unique_id=1751821900]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EndTurnButton" type="Button" parent="Layout/Bottom" unique_id=242546585]
+unique_name_in_owner = true
+layout_mode = 2
+text = "차례 종료"

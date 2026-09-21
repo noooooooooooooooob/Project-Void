@@ -1,5 +1,5 @@
 ## 전투 화면 위에 겹쳐 그리는 2D HUD (battle_hud.tscn 의 루트).
-## 행동 순서 바, 로그, SP 패널, 덱·묘지 더미, 부채꼴 손패(HandView), 차례 종료 버튼, 승패 배너를 관리한다.
+## 행동 순서 바, 로그, SP 패널, 덱·묘지 더미, 부채꼴 손패(HandView), 이동·차례 종료 버튼, 승패 배너를 관리한다.
 ## BattlePlayback 이 연출 함수(draw_card, reshuffle ...)를 부르고, BattleRoot 는 입력 신호를 받는다.
 class_name BattleHud
 # Control: 2D UI 노드의 기본 클래스.
@@ -11,6 +11,8 @@ signal card_selected(index: int)
 signal card_dropped(index: int, screen_position: Vector2)
 ## 차례 종료 버튼을 눌렀다.
 signal end_turn_pressed
+## 이동 버튼을 켜거나(true) 껐다(false).
+signal move_mode_toggled(on: bool)
 
 ## 순서 바에서 지금 차례인 유닛 이름 색 (노란색).
 const CURRENT_TURN_COLOR := Color(1.0, 0.82, 0.3)
@@ -30,6 +32,8 @@ const DISCARD_PILE_NAME: String = "묘지"
 @onready var _sp_label: Label = %SpLabel
 ## 차례 종료 버튼.
 @onready var _end_turn_button: Button = %EndTurnButton
+## 이동 모드 버튼 (토글).
+@onready var _move_button: Button = %MoveButton
 ## 전투 로그.
 @onready var _log: RichTextLabel = %BattleLog
 ## 화면 가운데 승패 배너.
@@ -41,14 +45,18 @@ const DISCARD_PILE_NAME: String = "묘지"
 ## 오른쪽 아래 묘지 더미.
 @onready var _discard_pile: PileView = %DiscardPile
 
-## 입력을 받을 수 있는 상태인지 (차례 종료 버튼 활성화에 쓴다).
+## 입력을 받을 수 있는 상태인지 (손패와 두 버튼의 활성화에 쓴다).
 var _interactive: bool = false
+## 지금 이동할 수 있는지 (아군 차례 + SP 남음 + 갈 칸 있음). 이동 버튼 활성화에 쓴다.
+var _move_available: bool = false
 
 
 ## 씬이 준비되면 버튼·손패 신호를 연결하고 초기 표시를 정한다.
 func _ready() -> void:
 	# 버튼을 누르면 end_turn_pressed 를 낸다.
 	_end_turn_button.pressed.connect(_on_end_turn_button_pressed)
+	# 이동 버튼을 켜고 끄면 move_mode_toggled 를 낸다.
+	_move_button.toggled.connect(_on_move_button_toggled)
 	# 손패 카드 선택을 밖으로 전달한다.
 	_hand.card_selected.connect(_on_hand_card_selected)
 	# 손패 카드 놓기를 밖으로 전달한다.
@@ -123,6 +131,27 @@ func set_interactive(enabled: bool) -> void:
 	_hand.interactive = enabled
 	# 버튼 활성화를 반영한다.
 	_apply_interactive()
+
+
+## 지금 이동할 수 있는지 알린다 (BattleRoot 가 상태를 볼 때마다 부른다).
+## 이동할 수 없으면 이동 버튼이 잠기고 눌려 있던 모드도 풀린다.
+func set_move_available(available: bool) -> void:
+	# 상태를 기억한다.
+	_move_available = available
+	# 버튼 활성화를 반영한다.
+	_apply_interactive()
+
+
+## 이동 모드 표시를 밖에서 맞춘다 (BattleRoot 가 모드를 화면과 맞출 때마다 부른다). 신호는 내지 않는다.
+func set_move_mode(on: bool) -> void:
+	# 눌림만 바꾸고 toggled 는 내지 않는다 (부른 쪽이 이미 아는 변화라 되돌아올 필요가 없다).
+	_move_button.set_pressed_no_signal(on)
+
+
+## 손패의 카드 선택을 푼다 (이동 모드로 바꿀 때). card_selected 는 내지 않는다.
+func clear_card_selection() -> void:
+	# 손패에 그대로 넘긴다.
+	_hand.deselect()
 
 
 ## 곧 사용될 카드의 손패 위치를 손패에 알려 준다.
@@ -228,6 +257,24 @@ func end_turn_enabled() -> bool:
 	return not _end_turn_button.disabled
 
 
+## 이동 버튼 노드 (테스트용 접근자).
+func move_button() -> Button:
+	# 이동 버튼을 돌려준다.
+	return _move_button
+
+
+## 이동 버튼이 활성화되어 있는지 (테스트용).
+func move_enabled() -> bool:
+	# 비활성이 아니면 활성.
+	return not _move_button.disabled
+
+
+## 이동 모드가 켜져 있는지 (테스트용).
+func move_pressed() -> bool:
+	# 버튼 눌림 상태를 돌려준다.
+	return _move_button.button_pressed
+
+
 ## 승패 배너가 보이는지 (테스트용).
 func banner_visible() -> bool:
 	# 보이기 상태를 돌려준다.
@@ -316,10 +363,15 @@ func _set_counts(deck_count: int, discard_count: int) -> void:
 	_discard_pile.set_count(discard_count)
 
 
-## 입력 가능 상태를 차례 종료 버튼에 반영한다.
+## 입력 가능 상태를 두 버튼에 반영한다. 이동 버튼은 이동할 수 있을 때만 쓸 수 있고, 쓸 수 없으면 눌림도 푼다.
 func _apply_interactive() -> void:
 	# 입력 불가면 버튼을 비활성화한다.
 	_end_turn_button.disabled = not _interactive
+	# 이동 버튼은 입력이 가능하고 갈 칸이 있을 때만 쓸 수 있다.
+	_move_button.disabled = not (_interactive and _move_available)
+	# 쓸 수 없게 되면 켜져 있던 모드를 푼다 (부른 쪽이 아는 변화라 신호는 내지 않는다).
+	if _move_button.disabled:
+		_move_button.set_pressed_no_signal(false)
 
 
 ## 손패의 카드 선택 신호를 HUD 신호로 전달한다.
@@ -338,3 +390,9 @@ func _on_hand_card_dropped(index: int, screen_position: Vector2) -> void:
 func _on_end_turn_button_pressed() -> void:
 	# end_turn_pressed 를 낸다.
 	end_turn_pressed.emit()
+
+
+## 이동 버튼 토글을 HUD 신호로 전달한다.
+func _on_move_button_toggled(on: bool) -> void:
+	# move_mode_toggled 를 낸다.
+	move_mode_toggled.emit(on)

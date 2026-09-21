@@ -36,6 +36,16 @@ func run() -> Array[Dictionary]:
 	_test_playback_helpers()
 	# 로그와 배너.
 	_test_log_and_banner()
+	# 이동 버튼 토글이 신호로 나간다.
+	_test_move_button_is_relayed()
+	# 입력 잠금이 이동 버튼도 잠근다.
+	_test_move_button_locks_with_input()
+	# 이동할 수 없게 되면 잠기고 눌림이 풀린다.
+	_test_move_unavailable_disables_and_releases()
+	# 밖에서 모드를 끄면 신호 없이 눌림만 풀린다.
+	_test_set_move_mode_does_not_emit()
+	# HUD 가 손패 선택을 풀어 준다.
+	_test_clear_card_selection()
 	# 결과를 돌려준다.
 	return results()
 
@@ -446,5 +456,113 @@ func _test_log_and_banner() -> void:
 	check("banner shown", hud.banner_visible())
 	# 문구.
 	check_eq("defeat banner text", hud.banner_text(), "패배...")
+	# 지운다.
+	hud.free()
+
+
+# 이동 버튼을 켜고 끄면 move_mode_toggled 가 그대로 나가는지.
+func _test_move_button_is_relayed() -> void:
+	# HUD.
+	var hud: BattleHud = _hud()
+	# 입력 허용.
+	hud.set_interactive(true)
+	# 이동할 수 있는 상황.
+	hud.set_move_available(true)
+	# 토글 기록.
+	var toggled: Array = []
+	# HUD 토글 신호를 기록한다.
+	hud.move_mode_toggled.connect(func(on: bool) -> void: toggled.append(on))
+	# 버튼을 켠다.
+	hud.move_button().button_pressed = true
+	# 버튼을 끈다.
+	hud.move_button().button_pressed = false
+	# 두 번 다 전달됨.
+	check_eq("move toggle relayed", toggled, [true, false])
+	# 지운다.
+	hud.free()
+
+
+# 이동할 수 있어도 입력이 잠기면 이동 버튼이 잠기는지.
+func _test_move_button_locks_with_input() -> void:
+	# HUD.
+	var hud: BattleHud = _hud()
+	# 이동할 수 있는 상황.
+	hud.set_move_available(true)
+	# 허용.
+	hud.set_interactive(true)
+	# 활성.
+	check("move enabled while interactive", hud.move_enabled())
+	# 잠금.
+	hud.set_interactive(false)
+	# 비활성.
+	check("move locked with input", not hud.move_enabled())
+	# 지운다.
+	hud.free()
+
+
+# 이동할 수 없게 되면 버튼이 잠기고 눌림이 풀리며, 그 풀림은 신호를 내지 않는지.
+func _test_move_unavailable_disables_and_releases() -> void:
+	# HUD.
+	var hud: BattleHud = _hud()
+	# 허용.
+	hud.set_interactive(true)
+	# 이동할 수 있는 상황.
+	hud.set_move_available(true)
+	# 모드를 켠다.
+	hud.move_button().button_pressed = true
+	# 여기서부터 신호를 기록한다.
+	var toggled: Array = []
+	# HUD 토글 신호를 기록한다.
+	hud.move_mode_toggled.connect(func(on: bool) -> void: toggled.append(on))
+	# 이동할 수 없게 된다 (SP 를 다 썼거나 갈 칸이 없다).
+	hud.set_move_available(false)
+	# 비활성.
+	check("move disabled when unavailable", not hud.move_enabled())
+	# 눌림 풀림.
+	check("move released when unavailable", not hud.move_pressed())
+	# 신호는 나지 않는다.
+	check_eq("releasing does not emit", toggled, [])
+	# 지운다.
+	hud.free()
+
+
+# 밖에서 이동 모드를 끄면 눌림만 풀리고 신호는 나지 않는지 (카드를 골랐을 때).
+func _test_set_move_mode_does_not_emit() -> void:
+	# HUD.
+	var hud: BattleHud = _hud()
+	# 허용.
+	hud.set_interactive(true)
+	# 이동할 수 있는 상황.
+	hud.set_move_available(true)
+	# 모드를 켠다.
+	hud.move_button().button_pressed = true
+	# 여기서부터 신호를 기록한다.
+	var toggled: Array = []
+	# HUD 토글 신호를 기록한다.
+	hud.move_mode_toggled.connect(func(on: bool) -> void: toggled.append(on))
+	# 밖에서 모드를 끈다.
+	hud.set_move_mode(false)
+	# 눌림 풀림.
+	check("move mode cleared", not hud.move_pressed())
+	# 버튼은 여전히 활성 (아직 이동할 수 있다).
+	check("move stays enabled", hud.move_enabled())
+	# 신호는 나지 않는다.
+	check_eq("clearing does not emit", toggled, [])
+	# 지운다.
+	hud.free()
+
+
+# HUD 가 손패 선택을 풀어 주는지 (이동 모드로 바꿀 때).
+func _test_clear_card_selection() -> void:
+	# HUD.
+	var hud: BattleHud = _hud()
+	# 0 번 선택 상태로 동기화.
+	hud.sync_from_state(_started_state(), 0)
+	# 선택되어 있다.
+	check_eq("card selected before", hud.hand_view().selected_index(), 0)
+	# 선택을 푼다.
+	hud.clear_card_selection()
+	# 선택 없음.
+	check_eq("card selection cleared", hud.hand_view().selected_index(), -1)
 	# 지운다.
 	hud.free()

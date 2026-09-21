@@ -1,10 +1,10 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cyxnbexit4sxi"]
 
-[ext_resource type="Script" path="res://Scripts/ui/battle_hud.gd" id="1_hud"]
-[ext_resource type="Script" path="res://Scripts/ui/cards/hand_view.gd" id="2_hand"]
-[ext_resource type="Script" path="res://Scripts/ui/cards/pile_view.gd" id="3_pile"]
+[ext_resource type="Script" uid="uid://boftou8i5ta3g" path="res://Scripts/ui/battle_hud.gd" id="1_hud"]
+[ext_resource type="Script" uid="uid://bs1ox4ceed3sp" path="res://Scripts/ui/cards/hand_view.gd" id="2_hand"]
+[ext_resource type="Script" uid="uid://c4hkyvjd236dd" path="res://Scripts/ui/cards/pile_view.gd" id="3_pile"]
 
-[node name="BattleHud" type="Control"]
+[node name="BattleHud" type="Control" unique_id=232713584]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -14,7 +14,7 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_hud")
 
-[node name="TurnLabel" type="RichTextLabel" parent="."]
+[node name="TurnLabel" type="RichTextLabel" parent="." unique_id=1877341708]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 10
@@ -30,19 +30,19 @@ fit_content = true
 scroll_active = false
 autowrap_mode = 0
 
-[node name="LogPanel" type="PanelContainer" parent="."]
+[node name="LogPanel" type="PanelContainer" parent="." unique_id=527105846]
 layout_mode = 1
 offset_left = 16.0
 offset_top = 56.0
 offset_right = 216.0
 offset_bottom = 380.0
 
-[node name="BattleLog" type="RichTextLabel" parent="LogPanel"]
+[node name="BattleLog" type="RichTextLabel" parent="LogPanel" unique_id=1546726053]
 unique_name_in_owner = true
 layout_mode = 2
 scroll_following = true
 
-[node name="SpPanel" type="PanelContainer" parent="."]
+[node name="SpPanel" type="PanelContainer" parent="." unique_id=1768860178]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 2
@@ -55,13 +55,13 @@ offset_bottom = -178.0
 grow_vertical = 0
 mouse_filter = 2
 
-[node name="SpLabel" type="Label" parent="SpPanel"]
+[node name="SpLabel" type="Label" parent="SpPanel" unique_id=1434562348]
 unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="DeckPile" type="Control" parent="."]
+[node name="DeckPile" type="Control" parent="." unique_id=2099581422]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 2
@@ -75,7 +75,7 @@ grow_vertical = 0
 mouse_filter = 2
 script = ExtResource("3_pile")
 
-[node name="DiscardPile" type="Control" parent="."]
+[node name="DiscardPile" type="Control" parent="." unique_id=551072182]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 3
@@ -92,7 +92,7 @@ grow_vertical = 0
 mouse_filter = 2
 script = ExtResource("3_pile")
 
-[node name="EndTurnButton" type="Button" parent="."]
+[node name="EndTurnButton" type="Button" parent="." unique_id=784550203]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 3
@@ -108,7 +108,24 @@ grow_horizontal = 0
 grow_vertical = 0
 text = "차례 종료"
 
-[node name="HandView" type="Control" parent="."]
+[node name="MoveButton" type="Button" parent="." unique_id=150441505]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -130.0
+offset_top = -120.0
+offset_right = -16.0
+offset_bottom = -72.0
+grow_horizontal = 0
+grow_vertical = 0
+toggle_mode = true
+text = "이동"
+
+[node name="HandView" type="Control" parent="." unique_id=494327413]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -119,7 +136,7 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_hand")
 
-[node name="Banner" type="Label" parent="."]
+[node name="Banner" type="Label" parent="." unique_id=2112177484]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
@@ -134,7 +151,6 @@ offset_right = 300.0
 offset_bottom = 60.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
 theme_override_font_sizes/font_size = 64
 horizontal_alignment = 1
 vertical_alignment = 1
