@@ -15,3 +15,5 @@ extends Resource
 @export var ally_units: Array[UnitPlacement] = []
 ## 적군 유닛과 각자 서는 칸 목록. 아군 다음 번호부터 id 가 매겨진다.
 @export var enemy_units: Array[UnitPlacement] = []
+## 전투 배경으로 쓸 이미지. 비워 두면 기본 단색 배경을 쓴다.
+@export var background: Texture2D

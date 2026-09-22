@@ -15,7 +15,7 @@ func _ready() -> void:
 	rng.randomize()
 	run_state = MapRunState.new(rng)
 
-	map_view = MapView.new()
+	map_view = MapView.new(run_state.graph)
 	add_child(map_view)
 	map_view.node_selected.connect(_on_node_selected)
 	map_view.sync_from_state(run_state)
@@ -39,6 +39,7 @@ func _on_battle_finished(ally_won: bool, node_id: int) -> void:
 	_battle.queue_free()
 	_battle = null
 
+	var previous_graph: MapGraph = run_state.graph
 	if ally_won:
 		var was_boss: bool = node_id == run_state.graph.boss_id
 		run_state.resolve_win(node_id)
@@ -50,5 +51,8 @@ func _on_battle_finished(ally_won: bool, node_id: int) -> void:
 		run_state.reset()
 		map_view.show_result(DEFEATED_TEXT)
 
+	# 보스 클리어나 패배로 런이 새로 시작되면 run_state 는 새 그래프를 만든다 — 화면도 그 그래프로 다시 짜야 한다.
+	if run_state.graph != previous_graph:
+		map_view.rebuild(run_state.graph)
 	map_view.sync_from_state(run_state)
 	map_view.show()

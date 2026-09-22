@@ -48,6 +48,8 @@ var _move_mode: bool = false
 @onready var _hud: BattleHud = %Hud
 ## 이벤트 재생기.
 @onready var _playback: BattlePlayback = %Playback
+## 배경(하늘)을 담당하는 월드 환경.
+@onready var _environment: WorldEnvironment = %Environment
 
 
 ## 씬이 준비되면 전투를 만들고 각 부분을 연결한 뒤 전투를 시작한다.
@@ -61,6 +63,9 @@ func _ready() -> void:
 	# 규칙 신호를 기록하기 시작한다 (start_battle 보다 먼저 연결해야 첫 신호를 놓치지 않는다).
 	_recorder = BattleEventRecorder.new(_state)
 	_state.battle_ended.connect(func(ally_won: bool) -> void: battle_finished.emit(ally_won))
+
+	# 인카운터에 배경 이미지가 있으면 기본 단색 대신 그 이미지를 하늘로 쓴다.
+	_apply_background(encounter.background)
 
 	# 타일과 유닛 화면 객체를 만든다.
 	_board.build(_state, PLACEHOLDER_SPRITE)
@@ -90,6 +95,20 @@ func _ready() -> void:
 
 	# 전투를 시작한다 (첫 아군 차례까지 진행하고 그 연출을 재생).
 	_run(_state.start_battle)
+
+
+## 배경 이미지가 있으면 하늘을 그 이미지로 바꾼다. 없으면 씬 기본 단색 배경을 그대로 둔다.
+func _apply_background(texture: Texture2D) -> void:
+	if texture == null:
+		return
+	var env: Environment = _environment.environment.duplicate()
+	var sky_material := PanoramaSkyMaterial.new()
+	sky_material.panorama = texture
+	var sky := Sky.new()
+	sky.sky_material = sky_material
+	env.background_mode = Environment.BG_SKY
+	env.sky = sky
+	_environment.environment = env
 
 
 # 규칙은 action 안에서 동기로 끝나고, 화면은 기록된 이벤트를 재생한 뒤 실제 상태로 한 번 더 맞춘다.

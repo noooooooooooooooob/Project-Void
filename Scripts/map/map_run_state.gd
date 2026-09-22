@@ -34,7 +34,7 @@ func resolve_win(node_id: int) -> void:
 
 # 시드 있는 rng 를 계속 이어 쓴다 — 패배해도 세션 전체가 하나의 시드로 재현 가능해야 한다.
 func reset() -> void:
-	graph = MapGraph.new()
+	graph = MapGraph.new(rng)
 	current_node_id = graph.start_id
 	cleared = {graph.start_id: true}
 

@@ -26,6 +26,7 @@ fov = 40.0
 rotation_degrees = Vector3(-55, 30, 0)
 
 [node name="Environment" type="WorldEnvironment" parent="."]
+unique_name_in_owner = true
 environment = SubResource("Environment_battle")
 
 [node name="Board" type="Node3D" parent="."]
