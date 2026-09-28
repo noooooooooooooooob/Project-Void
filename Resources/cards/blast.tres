@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" uid="uid://c7l28pr4irggh" path="res://Scripts/combat/data/card_data.gd" id="1_blast"]
+
+[resource]
+script = ExtResource("1_blast")
+id = &"blast"
+display_name = "폭발탄"
+sp_cost = 2
+attack_type = 1
+shape = 3
+attack_range = 3
+damage = 3

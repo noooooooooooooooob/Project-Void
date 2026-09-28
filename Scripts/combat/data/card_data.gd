@@ -15,7 +15,9 @@ enum AttackType { MELEE, RANGED }
 ## SINGLE(단일): 고른 대상 한 명만.
 ## PIERCE(관통): 대상과 같은 행(cell.y)에 있는 그 편 유닛 전부 — 앞뒤로 꿰뚫는다.
 ## SWEEP(횡렬): 대상과 같은 열(cell.x)에 있는 그 편 유닛 전부 — 옆으로 쓸어낸다.
-enum Shape { SINGLE, PIERCE, SWEEP }
+## AREA(광역 2×2): 고른 대상 칸을 왼쪽 위 모서리로 삼는 2×2 블록 안의 그 편 유닛 전부.
+## LINE(관통로): 대상과 같은 행(cell.y)에서 앞줄(0 열)부터 대상 열까지 — 대상까지 가는 길목의 유닛을 모두 휩쓴다.
+enum Shape { SINGLE, PIERCE, SWEEP, AREA, LINE }
 
 ## 코드에서 카드를 구분하는 고유 이름 (예: &"slash").
 @export var id: StringName = &""

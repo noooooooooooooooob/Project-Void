@@ -5,10 +5,11 @@
 [ext_resource type="Resource" uid="uid://c6xtex48jqom8" path="res://Resources/cards/volley.tres" id="3_tnbmc"]
 [ext_resource type="Resource" uid="uid://dchtg3ucib8eu" path="res://Resources/cards/piercing_shot.tres" id="4_88uvr"]
 [ext_resource type="Script" uid="uid://digrljfdhjmf2" path="res://Scripts/combat/data/ally_data.gd" id="5_kacer"]
+[ext_resource type="Resource" path="res://Resources/cards/blast.tres" id="6_blast"]
 
 [resource]
 script = ExtResource("5_kacer")
-deck = Array[ExtResource("1_4ub2x")]([ExtResource("2_flb3i"), ExtResource("2_flb3i"), ExtResource("2_flb3i"), ExtResource("3_tnbmc"), ExtResource("4_88uvr"), ExtResource("4_88uvr")])
+deck = Array[ExtResource("1_4ub2x")]([ExtResource("2_flb3i"), ExtResource("2_flb3i"), ExtResource("2_flb3i"), ExtResource("3_tnbmc"), ExtResource("4_88uvr"), ExtResource("4_88uvr"), ExtResource("6_blast"), ExtResource("6_blast")])
 id = &"archer"
 display_name = "사수"
 max_hp = 20

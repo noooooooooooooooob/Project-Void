@@ -148,9 +148,10 @@ func _state(ally_cell: Vector2i, enemy: EnemyData) -> BattleState:
 func _record(state: BattleState) -> Array:
 	# 기록 배열.
 	var seen: Array = []
-	# 카드 사용.
-	state.card_played.connect(func(_actor: Unit, card: CardData, primary: Unit) -> void:
-		seen.append("card:%s:%s" % [card.id, primary.data.id]))
+	# 카드 사용 (겨냥한 칸에 살아 있는 유닛이 있으면 그 id, 없으면 "empty").
+	state.card_played.connect(func(_actor: Unit, card: CardData, target_team: Unit.Team, target_cell: Vector2i) -> void:
+		var hit: Unit = _unit_at(state, target_team, target_cell)
+		seen.append("card:%s:%s" % [card.id, "empty" if hit == null else String(hit.data.id)]))
 	# 적 행동 (대상이 없으면 "null").
 	state.enemy_acted.connect(func(_actor: Unit, action: EnemyBrain.Action, target: Unit) -> void:
 		seen.append("acted:%d:%s" % [action, "null" if target == null else String(target.data.id)]))
@@ -167,6 +168,17 @@ func _record(state: BattleState) -> Array:
 	return seen
 
 
+# 그 편의 그 칸에 살아 있는 유닛을 찾는다 (없으면 null).
+func _unit_at(state: BattleState, team: Unit.Team, cell: Vector2i) -> Unit:
+	# 모든 유닛을 확인한다.
+	for unit in state.units:
+		# 같은 편, 같은 칸, 살아 있음이면 그 유닛.
+		if unit.team == team and unit.cell == cell and unit.is_alive():
+			return unit
+	# 못 찾았다.
+	return null
+
+
 # 카드를 쓰면 card_played 가 unit_damaged 보다 먼저 나오는지 (화면이 돌진 → 피격 순서로 보여 주기 위해).
 func _test_card_played_precedes_damage() -> void:
 	# 사거리 9, 회복 4 적.
@@ -179,7 +191,7 @@ func _test_card_played_precedes_damage() -> void:
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 
 	# 0 번 카드를 적에게 쓴다.
-	check("card play accepted", state.play_card(0, foe))
+	check("card play accepted", state.play_card(0, foe.team, foe.cell))
 	# 사용 → 피해 순서.
 	check_eq("card_played comes before damage", seen, ["card:zap:e", "damaged:3"])
 

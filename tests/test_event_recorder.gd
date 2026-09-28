@@ -251,7 +251,7 @@ func _test_card_play_records_action_then_damage() -> void:
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 
 	# 카드 사용.
-	state.play_card(0, foe)
+	state.play_card(0, foe.team, foe.cell)
 	# 기록 꺼내기.
 	var events: Array[BattleEvent] = recorder.take_events()
 	# 종류 별칭.
@@ -286,7 +286,7 @@ func _test_kill_records_death_and_battle_end() -> void:
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 
 	# 카드 사용 (처치).
-	state.play_card(0, foe)
+	state.play_card(0, foe.team, foe.cell)
 	# 기록 꺼내기.
 	var events: Array[BattleEvent] = recorder.take_events()
 	# 종류 별칭.

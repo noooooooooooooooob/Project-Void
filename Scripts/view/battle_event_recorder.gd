@@ -85,22 +85,40 @@ func _on_turn_started(unit: Unit) -> void:
 	_events.append(event)
 
 
-## 카드 사용: 누가 어떤 카드를 누구에게 썼는지와 사용 직후 더미 장수.
-func _on_card_played(actor: Unit, card: CardData, primary: Unit) -> void:
+## 카드 사용: 누가 어떤 카드를 어느 칸에 썼는지와 사용 직후 더미 장수.
+func _on_card_played(actor: Unit, card: CardData, target_team: Unit.Team, target_cell: Vector2i) -> void:
 	# 카드 사용 기록을 만든다.
 	var event := BattleEvent.new(BattleEvent.Kind.CARD_PLAYED)
 	# 카드를 쓴 유닛.
 	event.unit = actor
 	# 쓴 카드.
 	event.card = card
-	# 고른 대상.
-	event.target = primary
+	# 겨냥한 칸.
+	event.target_team = target_team
+	event.target_cell = target_cell
+	# 그 칸에 살아 있는 유닛이 있으면 화면(돌진 연출, 로그)이 쓸 수 있게 함께 남긴다 (없으면 null).
+	event.target = _living_unit_at(target_team, target_cell)
 	# 사용 직후 덱 장수.
 	event.deck_count = actor.deck.size()
 	# 사용 직후 묘지 장수 (쓴 카드가 이미 들어가 있음).
 	event.discard_count = actor.discard.size()
 	# 목록에 추가한다.
 	_events.append(event)
+
+
+## 그 편의 그 칸에 살아 있는 유닛을 찾는다 (없으면 null). CARD_PLAYED 기록에 화면용 대상을 함께 남기는 데 쓴다.
+func _living_unit_at(team: Unit.Team, cell: Vector2i) -> Unit:
+	# 상태를 꺼낸다 (이미 해제됐으면 null).
+	var state: BattleState = _state_ref.get_ref()
+	if state == null:
+		return null
+	# 모든 유닛을 확인한다.
+	for unit in state.units:
+		# 같은 편, 같은 칸, 살아 있음이면 그 유닛.
+		if unit.team == team and unit.cell == cell and unit.is_alive():
+			return unit
+	# 아무도 없다.
+	return null
 
 
 ## 적 행동: 누가 무엇을 누구에게 했는지.

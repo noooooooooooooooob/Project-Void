@@ -1,5 +1,6 @@
 ## 2.5D 전투 보드: 양쪽 격자 타일, 유닛 화면 객체(UnitView), 타일 위 사거리 힌트 글자를 만들고 관리한다.
 ## 마우스 클릭을 3D 광선으로 바꿔 어떤 칸이 눌렸는지 알려 준다 (cell_clicked / pick_missed).
+## 마우스 위치도 매 물리 스텝 같은 방식으로 판정해 커서가 가리키는 칸이 바뀔 때 알려 준다 (cell_hovered / hover_cleared).
 ## 규칙 상태는 바꾸지 않는다 — BattleRoot 가 신호를 받아 규칙을 호출한다.
 class_name Board3D
 # Node3D: 3D 공간에 위치를 가지는 노드.
@@ -9,11 +10,16 @@ extends Node3D
 signal cell_clicked(team: Unit.Team, cell: Vector2i)
 ## 클릭(또는 request_pick)했지만 아무 칸도 맞지 않았다.
 signal pick_missed
+## 마우스 커서가 새로운 칸 위로 들어왔다 (칸이 바뀔 때마다 한 번).
+signal cell_hovered(team: Unit.Team, cell: Vector2i)
+## 마우스 커서가 어떤 칸도 가리키지 않게 됐다 (칸 밖으로 나가거나 광선이 아무것도 맞히지 못함).
+signal hover_cleared
 
 ## 타일 모습 상태.
 ## BASE 유닛이 있는 기본, EMPTY 빈 칸(어둡게), CURRENT 지금 차례(노란 빛), VALID 칠 수 있음(초록 빛), INVALID 칠 수 없음(더 어둡게),
-## MOVABLE 이동할 수 있는 빈 칸(파란 빛).
-enum TileState { BASE, EMPTY, CURRENT, VALID, INVALID, MOVABLE }
+## MOVABLE 이동할 수 있는 빈 칸(파란 빛),
+## SHAPE_HIT 커서가 가리키는 칸 기준 범위 모양 안이며 칠 수 있음(하얀 빛), SHAPE_OUT 범위 모양 안이지만 사거리 밖이거나 막힘(주황 빛).
+enum TileState { BASE, EMPTY, CURRENT, VALID, INVALID, MOVABLE, SHAPE_HIT, SHAPE_OUT }
 
 ## 타일 두께.
 const TILE_THICKNESS: float = 0.1
@@ -29,6 +35,10 @@ const CURRENT_EMISSION := Color(1.0, 0.82, 0.3)
 const VALID_EMISSION := Color(0.45, 0.85, 0.45)
 ## 이동할 수 있는 타일이 내는 빛 색.
 const MOVE_EMISSION := Color(0.45, 0.65, 1.0)
+## 커서 기준 범위 모양 안이며 칠 수 있는 타일이 내는 빛 색.
+const SHAPE_HIT_EMISSION := Color(0.95, 0.95, 0.95)
+## 커서 기준 범위 모양 안이지만 사거리 밖·막힌 타일이 내는 빛 색.
+const SHAPE_OUT_EMISSION := Color(1.0, 0.5, 0.15)
 
 ## 칸 좌표 ↔ 3D 위치 계산기 (build 에서 만든다).
 var layout: BoardLayout
@@ -48,6 +58,14 @@ var _views: Dictionary = {}
 var _pending_click: Vector2 = Vector2.ZERO
 ## 판정 대기 중인 클릭이 있으면 true.
 var _has_pending_click: bool = false
+## 가장 최근에 알려진 마우스 화면 좌표 (매 물리 스텝의 커서 위치 판정에 쓴다).
+var _mouse_position: Vector2 = Vector2.ZERO
+## 지금 커서가 어떤 칸을 가리키고 있으면 true.
+var _has_hover: bool = false
+## 커서가 가리키는 칸의 편 (has_hover 가 true 일 때만 뜻이 있다).
+var _hover_team: Unit.Team = Unit.Team.ALLY
+## 커서가 가리키는 칸 좌표 (has_hover 가 true 일 때만 뜻이 있다).
+var _hover_cell: Vector2i = Vector2i.ZERO
 
 
 ## 전투 상태를 보고 타일과 유닛 화면 객체를 모두 만든다 (전투 시작 시 한 번).
@@ -127,26 +145,27 @@ func mark_empty(team: Unit.Team, cell: Vector2i) -> void:
 	set_tile_state(team, cell, TileState.EMPTY)
 
 
-## 카드를 골랐을 때 대상 후보 칸마다 칠 수 있는지 색과 글자로 보여 준다.
-## hints: Unit → {"valid": bool, "text": String} (BattleRoot 가 만들어 준다).
-func show_target_hints(hints: Dictionary) -> void:
+## 카드를 골랐을 때 대상 편의 칸마다(유닛이 있든 없든) 칠 수 있는지 색과 글자로 보여 준다.
+## hints: Vector2i(칸) → {"valid": bool, "text": String} (BattleRoot 가 만들어 준다). 유닛이 없는 칸도 광역·관통로
+## 카드로 겨냥할 수 있으므로 유닛이 아니라 칸을 키로 쓴다.
+func show_target_hints(team: Unit.Team, hints: Dictionary) -> void:
 	# 이전 힌트를 먼저 지운다.
 	clear_target_hints()
-	# 대상 후보마다.
-	for target in hints:
-		# 그 후보의 힌트 정보.
-		var info: Dictionary = hints[target]
+	# 후보 칸마다.
+	for cell in hints:
+		# 그 칸의 힌트 정보.
+		var info: Dictionary = hints[cell]
 		# 칠 수 있으면 초록 빛, 없으면 어둡게.
-		set_tile_state(target.team, target.cell, TileState.VALID if info["valid"] else TileState.INVALID)
+		set_tile_state(team, cell, TileState.VALID if info["valid"] else TileState.INVALID)
 		# 그 칸의 힌트 글자.
-		var label: Label3D = hint_label(target.team, target.cell)
+		var label: Label3D = hint_label(team, cell)
 		# "✓ 거리 2", "거리 4", "막힘" 같은 문장을 넣는다.
 		label.text = info["text"]
 		# 보이게 한다.
 		label.visible = true
 
 
-## 사거리 힌트(글자와 초록/어두운 타일)와 이동 힌트(파란 타일)를 모두 지운다.
+## 사거리 힌트(글자와 초록/어두운 타일)와 이동 힌트(파란 타일), 범위 미리보기(하양/주황 타일)를 모두 지운다.
 func clear_target_hints() -> void:
 	# 모든 칸의 힌트를 확인한다.
 	for key in _hints:
@@ -154,12 +173,44 @@ func clear_target_hints() -> void:
 		(_hints[key] as Label3D).visible = false
 		# 그 칸의 현재 타일 상태 (없으면 EMPTY 로 본다).
 		var current: TileState = _tile_states.get(key, TileState.EMPTY)
-		# 사거리 힌트 때문에 바뀐 상태였으면 기본으로 되돌린다 (강조·빈 칸은 그대로).
-		if current == TileState.VALID or current == TileState.INVALID:
-			set_tile_state(key.x as Unit.Team, Vector2i(key.y, key.z), TileState.BASE)
+		# 그 칸의 편·좌표.
+		var team: Unit.Team = key.x as Unit.Team
+		var cell := Vector2i(key.y, key.z)
+		# 사거리 힌트·범위 미리보기 때문에 바뀐 상태였으면 되돌린다. 이제는 유닛 없는 칸도 힌트가 붙으므로
+		# 무조건 BASE 로 되돌리면 안 되고, 지금 살아 있는 유닛이 서 있는 칸일 때만 BASE, 아니면 EMPTY 로 되돌린다.
+		if current == TileState.VALID or current == TileState.INVALID or current == TileState.SHAPE_HIT or current == TileState.SHAPE_OUT:
+			set_tile_state(team, cell, TileState.BASE if _occupied_by_living_view(team, cell) else TileState.EMPTY)
 		# 이동 힌트는 유닛이 없는 칸이므로 빈 칸으로 되돌린다.
 		elif current == TileState.MOVABLE:
-			set_tile_state(key.x as Unit.Team, Vector2i(key.y, key.z), TileState.EMPTY)
+			set_tile_state(team, cell, TileState.EMPTY)
+
+
+## 그 편의 그 칸에 지금 살아 있는 유닛이 서 있는지 (규칙 유닛을 직접 들고 있지 않으므로 화면 객체 사전의 키로 판정한다).
+## 사거리 힌트를 지울 때 기본/빈 칸 중 무엇으로 되돌릴지 정하는 데 쓴다.
+func _occupied_by_living_view(team: Unit.Team, cell: Vector2i) -> bool:
+	# _views 의 키가 규칙 유닛이므로 그대로 편·칸·생존을 물을 수 있다.
+	for unit in _views:
+		if unit.team == team and unit.cell == cell and unit.is_alive():
+			return true
+	# 아무도 없다.
+	return false
+
+
+## 커서가 가리키는 칸을 기준으로 한 범위 모양 미리보기를 그 칸들에만(유닛이 있든 없든) 덧그린다 (나머지 칸은 손대지 않는다).
+## hints: Vector2i(칸) → {"valid": bool, "text": String} (BattleRoot 가 만들어 준다). 기존 사거리 힌트를 먼저 그려 둔 뒤에 불러야 한다.
+func show_shape_preview(team: Unit.Team, hits: Dictionary) -> void:
+	# 범위 모양에 든 칸마다.
+	for cell in hits:
+		# 그 칸의 힌트 정보.
+		var info: Dictionary = hits[cell]
+		# 칠 수 있으면 하얀 빛, 사거리 밖·막힘이면 주황 빛.
+		set_tile_state(team, cell, TileState.SHAPE_HIT if info["valid"] else TileState.SHAPE_OUT)
+		# 그 칸의 힌트 글자.
+		var label: Label3D = hint_label(team, cell)
+		# 문장을 넣는다.
+		label.text = info["text"]
+		# 보이게 한다.
+		label.visible = true
 
 
 ## 이동할 수 있는 칸들을 파란 빛으로 표시한다 (이전 힌트는 먼저 지운다).
@@ -211,6 +262,15 @@ func tile_state(team: Unit.Team, cell: Vector2i) -> TileState:
 	return _tile_states[Vector3i(team, cell.x, cell.y)]
 
 
+## 지금 커서가 칸을 가리키고 있는지와 그 편·칸을 돌려준다. "has" 가 false 면 team/cell 값은 뜻이 없다.
+func hover_state() -> Dictionary:
+	# 가리키는 칸이 없으면 has 만 false.
+	if not _has_hover:
+		return {"has": false}
+	# 있으면 편과 칸도 함께.
+	return {"has": true, "team": _hover_team, "cell": _hover_cell}
+
+
 ## 칸의 힌트 글자 노드를 돌려준다.
 func hint_label(team: Unit.Team, cell: Vector2i) -> Label3D:
 	# (편, 열, 행) 키로 찾는다.
@@ -227,8 +287,8 @@ func set_tile_state(team: Unit.Team, cell: Vector2i, new_state: TileState) -> vo
 	var material: StandardMaterial3D = (_tiles[key] as MeshInstance3D).material_override
 	# 편에 따른 기본 색.
 	var base: Color = ALLY_TILE_COLOR if team == Unit.Team.ALLY else ENEMY_TILE_COLOR
-	# 강조·유효·이동 가능 상태일 때만 스스로 빛나게 한다.
-	material.emission_enabled = new_state == TileState.CURRENT or new_state == TileState.VALID or new_state == TileState.MOVABLE
+	# 강조·유효·이동 가능·범위 미리보기 상태일 때만 스스로 빛나게 한다.
+	material.emission_enabled = new_state == TileState.CURRENT or new_state == TileState.VALID or new_state == TileState.MOVABLE or new_state == TileState.SHAPE_HIT or new_state == TileState.SHAPE_OUT
 	# 상태별로 색을 정한다.
 	match new_state:
 		# 기본: 편 색 그대로.
@@ -264,6 +324,22 @@ func set_tile_state(team: Unit.Team, cell: Vector2i, new_state: TileState) -> vo
 			material.emission = MOVE_EMISSION
 			# 빛 세기.
 			material.emission_energy_multiplier = 0.6
+		# 범위 미리보기 안이며 칠 수 있음: 편 색 + 하얀 빛.
+		TileState.SHAPE_HIT:
+			# 바탕은 편 색.
+			material.albedo_color = base
+			# 빛 색을 하얗게.
+			material.emission = SHAPE_HIT_EMISSION
+			# 빛 세기.
+			material.emission_energy_multiplier = 1.0
+		# 범위 미리보기 안이지만 사거리 밖·막힘: 편 색 + 주황 빛.
+		TileState.SHAPE_OUT:
+			# 바탕은 편 색.
+			material.albedo_color = base
+			# 빛 색을 주황으로.
+			material.emission = SHAPE_OUT_EMISSION
+			# 빛 세기.
+			material.emission_energy_multiplier = 0.8
 
 
 # 드래그로 놓은 카드처럼 마우스 이벤트가 보드에 오지 않는 경우에도 같은 판정 경로를 쓴다.
@@ -275,18 +351,34 @@ func request_pick(screen_position: Vector2) -> void:
 	_has_pending_click = true
 
 
-## GUI 가 처리하지 않고 넘긴 입력을 받는다. 왼쪽 버튼을 뗄 때 클릭으로 예약한다.
+# 카드를 끌 때는 마우스가 카드(Control)에 잡혀 있어 보드가 이동 이벤트를 직접 받지 못한다.
+# 손패 쪽(HandView → BattleRoot)이 끄는 동안 커서 위치를 대신 알려 줄 때 쓴다.
+## 커서 판정에 쓸 화면 좌표를 밖에서 갱신한다. 다음 물리 스텝에 이 위치로 커서가 가리키는 칸을 다시 판정한다.
+func update_pointer(screen_position: Vector2) -> void:
+	# 커서 위치만 갱신한다 (판정은 _physics_process 가 한다).
+	_mouse_position = screen_position
+
+
+## GUI 가 처리하지 않고 넘긴 입력을 받는다. 마우스가 움직이면 커서 판정에 쓸 위치를 기억하고,
+## 왼쪽 버튼을 뗄 때 클릭으로 예약한다.
 func _unhandled_input(event: InputEvent) -> void:
 	# 잠겨 있으면 무시한다.
 	if not input_enabled:
+		return
+	# 마우스 이동 이벤트로 형 변환한다 (아니면 null).
+	var motion := event as InputEventMouseMotion
+	# 이동 이벤트면 커서 판정에 쓸 위치만 갱신하고 끝낸다 (다른 노드도 이동 이벤트를 볼 수 있게 소비하지 않는다).
+	if motion != null:
+		_mouse_position = motion.position
 		return
 	# 마우스 버튼 이벤트로 형 변환한다 (아니면 null).
 	var button := event as InputEventMouseButton
 	# 마우스 버튼이 아니거나, 왼쪽 버튼이 아니거나, 누르는 순간이면 무시한다 (떼는 순간만 클릭).
 	if button == null or button.button_index != MOUSE_BUTTON_LEFT or button.pressed:
 		return
-	# 클릭 위치를 기억한다.
+	# 클릭 위치를 기억한다 (커서 판정 위치도 함께 맞춘다).
 	_pending_click = button.position
+	_mouse_position = button.position
 	# 대기 표시를 켠다.
 	_has_pending_click = true
 	# 이 입력을 처리했다고 알려 다른 노드로 더 전달되지 않게 한다.
@@ -294,35 +386,68 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 # 공간 질의는 물리 스텝 안에서 하는 것이 안전하다.
-## 예약된 클릭이 있으면 카메라에서 광선을 쏴 맞은 칸을 찾아 신호를 낸다.
+## 예약된 클릭을 판정해 신호를 내고, 잠겨 있지 않으면 매 스텝 커서 위치도 함께 판정한다.
 func _physics_process(_delta: float) -> void:
-	# 대기 중인 클릭이 없으면 할 일이 없다.
-	if not _has_pending_click:
+	# 대기 중인 클릭이 있으면 판정해 신호를 낸다.
+	if _has_pending_click:
+		# 한 번만 처리하도록 대기 표시를 끈다.
+		_has_pending_click = false
+		# 클릭 위치를 광선으로 판정한다.
+		var result: Dictionary = _raycast_cell(_pending_click)
+		# 아무 칸도 안 맞았으면 빗나감.
+		if result.is_empty():
+			pick_missed.emit()
+		else:
+			# 맞은 칸으로 클릭 신호를 낸다.
+			cell_clicked.emit(result["team"], result["cell"])
+	# 잠겨 있으면 커서 판정은 하지 않는다 (연출 중에는 힌트도 없다).
+	if input_enabled:
+		_update_hover()
+
+
+## 지금 마우스 위치를 판정해 커서가 가리키는 칸이 바뀌었으면 신호를 낸다.
+func _update_hover() -> void:
+	# 지금 마우스 위치를 광선으로 판정한다.
+	var result: Dictionary = _raycast_cell(_mouse_position)
+	# 아무 칸도 안 맞았다.
+	if result.is_empty():
+		# 이전에 칸을 가리키고 있었을 때만 벗어남을 알린다 (매 스텝 중복해서 알리지 않는다).
+		if _has_hover:
+			_has_hover = false
+			hover_cleared.emit()
 		return
-	# 한 번만 처리하도록 대기 표시를 끈다.
-	_has_pending_click = false
+	# 이전과 같은 칸이면 다시 알릴 필요가 없다.
+	if _has_hover and result["team"] == _hover_team and result["cell"] == _hover_cell:
+		return
+	# 새 칸을 기억하고 알린다.
+	_has_hover = true
+	_hover_team = result["team"]
+	_hover_cell = result["cell"]
+	cell_hovered.emit(_hover_team, _hover_cell)
+
+
+## 화면 좌표에서 클릭 판정 레이어로 광선을 쏴 맞은 칸을 찾는다. 못 맞혔으면 빈 사전.
+func _raycast_cell(screen_position: Vector2) -> Dictionary:
 	# 현재 화면을 비추는 3D 카메라.
 	var camera: Camera3D = get_viewport().get_camera_3d()
-	# 카메라가 없으면 광선을 쏠 수 없으므로 빗나감으로 처리한다.
+	# 카메라가 없으면 광선을 쏠 수 없다.
 	if camera == null:
-		pick_missed.emit()
-		return
+		return {}
 	# 화면 좌표에 해당하는 광선의 시작점 (카메라 위치).
-	var from: Vector3 = camera.project_ray_origin(_pending_click)
+	var from: Vector3 = camera.project_ray_origin(screen_position)
 	# 광선 방향으로 RAY_LENGTH 만큼 간 끝점.
-	var to: Vector3 = from + camera.project_ray_normal(_pending_click) * RAY_LENGTH
+	var to: Vector3 = from + camera.project_ray_normal(screen_position) * RAY_LENGTH
 	# 클릭 판정 레이어만 맞히는 광선 질의를 만든다.
 	var query := PhysicsRayQueryParameters3D.create(from, to, UnitView.PICK_LAYER_BIT)
 	# 물리 공간에 광선을 쏴서 가장 먼저 맞은 물체를 얻는다.
 	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
-	# 아무것도 안 맞았으면 빗나감.
+	# 아무것도 안 맞았다.
 	if hit.is_empty():
-		pick_missed.emit()
-		return
+		return {}
 	# 맞은 물리 몸체.
 	var collider: Object = hit["collider"]
-	# 몸체에 붙여 둔 편·칸 정보로 칸 클릭 신호를 낸다.
-	cell_clicked.emit(collider.get_meta(&"team"), collider.get_meta(&"cell"))
+	# 몸체에 붙여 둔 편·칸 정보를 돌려준다.
+	return {"team": collider.get_meta(&"team"), "cell": collider.get_meta(&"cell")}
 
 
 ## 한 편의 격자 타일, 타일 클릭 몸체, 힌트 글자를 칸마다 만든다.

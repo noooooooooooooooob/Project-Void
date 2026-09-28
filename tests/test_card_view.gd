@@ -13,6 +13,8 @@ func run() -> Array[Dictionary]:
 	_test_melee_single_card_face()
 	# 앞뒷면 전환.
 	_test_face_toggle()
+	# 광역·관통로 카드의 아래 글자.
+	_test_area_and_line_card_footers()
 	# SP 부족 흐림.
 	_test_affordable_dimming()
 	# 결과를 돌려준다.
@@ -73,6 +75,27 @@ func _test_melee_single_card_face() -> void:
 	check_eq("melee border", view.border_color(), CardView.MELEE_COLOR)
 	# 지운다.
 	view.free()
+
+
+# 광역(AREA)·관통로(LINE) 카드도 SHAPE_NAMES 에 이름이 있어 아래 글자에 제대로 나오는지.
+func _test_area_and_line_card_footers() -> void:
+	# 광역 카드 화면.
+	var area_view := CardView.new()
+	# 폭발탄(비용 2, 원거리, 광역, 사거리 3, 피해 3) 으로 채운다.
+	area_view.setup(_card("폭발탄", 2, CardData.AttackType.RANGED, CardData.Shape.AREA, 3, 3))
+	# 아래 두 줄 글자.
+	check_eq("area footer", area_view.footer_text(), "사거리 3\n원거리 · 광역")
+	# 지운다.
+	area_view.free()
+
+	# 관통로 카드 화면.
+	var line_view := CardView.new()
+	# 꿰뚫기(비용 2, 근접, 관통로, 사거리 3, 피해 4) 로 채운다.
+	line_view.setup(_card("꿰뚫기", 2, CardData.AttackType.MELEE, CardData.Shape.LINE, 3, 4))
+	# 아래 두 줄 글자.
+	check_eq("line footer", line_view.footer_text(), "사거리 3\n근접 · 관통로")
+	# 지운다.
+	line_view.free()
 
 
 # 처음엔 앞면이고 set_face_up(false) 로 뒷면이 되는지.

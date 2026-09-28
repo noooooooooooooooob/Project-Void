@@ -18,8 +18,9 @@ signal unit_died(unit: Unit)
 signal battle_ended(ally_won: bool)
 ## 전투 로그에 한 줄을 남긴다.
 signal log_message(text: String)
-## 아군이 카드를 썼다. primary 는 플레이어가 고른 대상 (범위 공격이면 실제로는 더 맞을 수 있음).
-signal card_played(actor: Unit, card: CardData, primary: Unit)
+## 아군이 카드를 썼다. target_team/target_cell 은 플레이어가 겨냥한 칸 (그 칸이 비어 있어도 광역·관통로 카드는
+## 범위 안의 다른 칸을 맞힐 수 있다 — 실제로 맞는 유닛은 resolver.expand_shape_cell 로 다시 계산해야 한다).
+signal card_played(actor: Unit, card: CardData, target_team: Unit.Team, target_cell: Vector2i)
 ## 적이 행동을 정했다. 공격이 아니면 target 은 null.
 signal enemy_acted(actor: Unit, action: EnemyBrain.Action, target: Unit)
 ## 유닛이 회복했다. amount 는 최대 체력에 막혀 실제로 오른 양이다.
@@ -186,9 +187,11 @@ func check_end() -> void:
 	battle_ended.emit(ally_won)
 
 
-## 지금 차례인 아군이 손패의 hand_index 번째 카드를 primary 대상에게 쓴다.
+## 지금 차례인 아군이 손패의 hand_index 번째 카드를 target_team 편의 target_cell 칸에 쓴다.
+## 그 칸에 유닛이 없어도(빈 칸을 겨냥한 광역·관통로 카드) 사거리 안이고 막히지 않았으면 쓸 수 있다 —
+## 실제로 맞는 유닛이 없을 수도 있다(빗나간 셈이 되어 SP 만 쓴다).
 ## 규칙에 맞지 않으면 아무것도 바꾸지 않고 false 를 돌려준다. 성공하면 true.
-func play_card(hand_index: int, primary: Unit) -> bool:
+func play_card(hand_index: int, target_team: Unit.Team, target_cell: Vector2i) -> bool:
 	# 끝난 전투에서는 카드를 쓸 수 없다.
 	if finished:
 		return false
@@ -207,8 +210,8 @@ func play_card(hand_index: int, primary: Unit) -> bool:
 	# SP 가 모자라면 실패.
 	if card.sp_cost > actor.sp:
 		return false
-	# 대상이 유효하지 않으면(사거리 밖, 막힘, 같은 편 등) 실패.
-	if not resolver.is_valid_target(actor, primary, card.attack_type, card.attack_range, units):
+	# 겨냥한 칸이 유효하지 않으면(사거리 밖, 막힘, 같은 편 등) 실패.
+	if not resolver.is_valid_cell(actor, target_team, target_cell, card.attack_type, card.attack_range, units):
 		return false
 
 	# 여기부터는 검사를 모두 통과했으므로 상태를 바꾼다.
@@ -219,18 +222,29 @@ func play_card(hand_index: int, primary: Unit) -> bool:
 	# 쓴 카드는 묘지로 간다.
 	actor.discard.append(card)
 	# 카드 사용 신호를 낸다 (피해 신호보다 먼저 나가야 화면이 돌진 → 피격 순으로 연출한다).
-	card_played.emit(actor, card, primary)
-	# 로그에 "사용자 → 대상 (카드)" 형식으로 남긴다.
-	write_log("%s → %s (%s)" % [actor.data.display_name, primary.data.display_name, card.display_name])
+	card_played.emit(actor, card, target_team, target_cell)
+	# 로그에 "사용자 → 대상 (카드)" 형식으로 남긴다 (겨냥한 칸이 비어 있으면 "빈 칸"으로 남긴다).
+	write_log("%s → %s (%s)" % [actor.data.display_name, _describe_cell(target_team, target_cell), card.display_name])
 
 	# 범위 모양에 따라 맞는 유닛마다 피해를 준다.
-	for victim in resolver.expand_shape(primary, card.shape, units):
+	for victim in resolver.expand_shape_cell(target_team, target_cell, card.shape, units):
 		apply_damage(victim, card.damage)
 
 	# 이번 공격으로 전투가 끝났는지 확인한다.
 	check_end()
 	# 성공.
 	return true
+
+
+## 그 편의 그 칸에 살아 있는 유닛이 있으면 그 이름을, 없으면 "빈 칸"을 돌려준다 (카드 사용 로그용).
+func _describe_cell(team: Unit.Team, cell: Vector2i) -> String:
+	# 모든 유닛을 확인한다.
+	for unit in units:
+		# 같은 편, 같은 칸, 살아 있음이면 그 이름.
+		if unit.team == team and unit.cell == cell and unit.is_alive():
+			return unit.data.display_name
+	# 아무도 없으면.
+	return "빈 칸"
 
 
 ## 지금 차례인 아군이 SP 1 을 써서 to_cell 로 한 칸 이동한다.

@@ -23,6 +23,8 @@ const SHAPE_NAMES: Dictionary = {
 	CardData.Shape.SINGLE: "단일",
 	CardData.Shape.SWEEP: "횡렬",
 	CardData.Shape.PIERCE: "관통",
+	CardData.Shape.AREA: "광역",
+	CardData.Shape.LINE: "관통로",
 }
 
 ## 이 화면이 보여 주는 카드 데이터.

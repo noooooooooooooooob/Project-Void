@@ -180,7 +180,7 @@ func _test_play_card_damages_and_spends_sp() -> void:
 	ally.hand = [strike]
 
 	# 사용.
-	var played: bool = state.play_card(0, front)
+	var played: bool = state.play_card(0, front.team, front.cell)
 	# 성공.
 	check("card was played", played)
 	# 체력 4.
@@ -211,7 +211,7 @@ func _test_play_card_rejected_without_sp() -> void:
 	ally.hand = [pricey]
 
 	# 거절.
-	check("play rejected", not state.play_card(0, front))
+	check("play rejected", not state.play_card(0, front.team, front.cell))
 	# 체력 그대로.
 	check_eq("target untouched", front.hp, 10)
 	# SP 그대로.
@@ -238,7 +238,7 @@ func _test_play_card_rejected_on_blocked_target() -> void:
 	ally.hand = [strike]
 
 	# 거절.
-	check("melee cannot reach behind the front", not state.play_card(0, back))
+	check("melee cannot reach behind the front", not state.play_card(0, back.team, back.cell))
 	# 후열 체력 그대로.
 	check_eq("back rank untouched", back.hp, 10)
 
@@ -263,7 +263,7 @@ func _test_play_card_rejected_when_battle_finished() -> void:
 	state.finished = true
 
 	# 거절.
-	check("play rejected once battle is finished", not state.play_card(0, front))
+	check("play rejected once battle is finished", not state.play_card(0, front.team, front.cell))
 	# 체력 그대로.
 	check_eq("target untouched", front.hp, 10)
 	# SP 그대로.
@@ -292,7 +292,7 @@ func _test_play_card_rejected_when_no_current_actor() -> void:
 	ally.hand = [strike]
 
 	# 거절.
-	check("play rejected without a current actor", not state.play_card(0, front))
+	check("play rejected without a current actor", not state.play_card(0, front.team, front.cell))
 	# 체력 그대로.
 	check_eq("target untouched", front.hp, 10)
 	# SP 그대로.
@@ -321,7 +321,7 @@ func _test_play_card_rejected_when_current_unit_is_enemy() -> void:
 	ally.hand = [strike]
 
 	# 거절.
-	check("play rejected when current unit is an enemy", not state.play_card(0, front))
+	check("play rejected when current unit is an enemy", not state.play_card(0, front.team, front.cell))
 	# 체력 그대로.
 	check_eq("target untouched", front.hp, 10)
 	# SP 그대로.
@@ -352,7 +352,7 @@ func _test_play_card_rejected_when_current_unit_is_dead() -> void:
 	ally.hp = 0
 
 	# 거절.
-	check("play rejected when current unit is dead", not state.play_card(0, front))
+	check("play rejected when current unit is dead", not state.play_card(0, front.team, front.cell))
 	# 체력 그대로.
 	check_eq("target untouched", front.hp, 10)
 	# SP 그대로.
@@ -381,9 +381,9 @@ func _test_play_card_rejected_on_hand_index_out_of_bounds() -> void:
 	ally.hand = [strike]
 
 	# -1 거절.
-	check("negative hand index rejected", not state.play_card(-1, front))
+	check("negative hand index rejected", not state.play_card(-1, front.team, front.cell))
 	# 5 거절.
-	check("too-large hand index rejected", not state.play_card(5, front))
+	check("too-large hand index rejected", not state.play_card(5, front.team, front.cell))
 	# 체력 그대로.
 	check_eq("target untouched", front.hp, 10)
 	# SP 그대로.
@@ -412,7 +412,7 @@ func _test_sweep_hits_multiple() -> void:
 	ally.hand = [volley]
 
 	# front 는 (0,1), back 은 (1,1) 이라 SWEEP(같은 col)은 front 만 맞는다.
-	check("sweep played", state.play_card(0, front))
+	check("sweep played", state.play_card(0, front.team, front.cell))
 	# 전열 10 - 3 = 7.
 	check_eq("front damaged", front.hp, 7)
 	# 후열(units[2]) 그대로.
@@ -437,7 +437,7 @@ func _test_battle_ends_when_enemies_wiped() -> void:
 	ally.hand = [nuke]
 
 	# 사용 (같은 행의 두 적 처치).
-	state.play_card(0, front)
+	state.play_card(0, front.team, front.cell)
 	# 끝났다.
 	check("battle finished", state.finished)
 	# 아군 승리.

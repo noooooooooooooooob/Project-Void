@@ -265,18 +265,26 @@ func _test_hand_signals_are_relayed() -> void:
 	var picked: Array = []
 	# 놓기 기록.
 	var dropped: Array = []
+	# 끄는 중 커서 이동 기록.
+	var dragged: Array = []
 	# HUD 선택 신호를 기록한다.
 	hud.card_selected.connect(func(index: int) -> void: picked.append(index))
 	# HUD 놓기 신호를 기록한다.
 	hud.card_dropped.connect(func(index: int, at: Vector2) -> void: dropped.append([index, at]))
+	# HUD 드래그 이동 신호를 기록한다.
+	hud.card_drag_moved.connect(func(at: Vector2) -> void: dragged.append(at))
 	# 손패가 선택 신호를 낸다.
 	hud.hand_view().card_selected.emit(1)
 	# 손패가 놓기 신호를 낸다.
 	hud.hand_view().card_dropped.emit(0, Vector2(10, 20))
+	# 손패가 드래그 이동 신호를 낸다.
+	hud.hand_view().card_drag_moved.emit(Vector2(30, 40))
 	# 선택 전달됨.
 	check_eq("selection relayed", picked, [1])
 	# 놓기 전달됨.
 	check_eq("drop relayed", dropped, [[0, Vector2(10, 20)]])
+	# 드래그 이동 전달됨.
+	check_eq("drag move relayed", dragged, [Vector2(30, 40)])
 	# 지운다.
 	hud.free()
 

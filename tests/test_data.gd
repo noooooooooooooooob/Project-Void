@@ -77,3 +77,23 @@ func _test_starter_cards_exist() -> void:
 	check_eq("volley shape is SWEEP", volley.shape, CardData.Shape.SWEEP)
 	# 사거리 4.
 	check_eq("volley range", volley.attack_range, 4)
+
+	# blast.tres 를 불러온다 (광역 2×2 테스트용 카드).
+	var blast: CardData = load("res://Resources/cards/blast.tres")
+	# 불러와졌는지.
+	check("blast.tres loads", blast != null)
+	# 못 불러왔으면 멈춘다.
+	if blast == null:
+		return
+	# 범위 광역.
+	check_eq("blast shape is AREA", blast.shape, CardData.Shape.AREA)
+
+	# skewer.tres 를 불러온다 (관통로 테스트용 카드).
+	var skewer: CardData = load("res://Resources/cards/skewer.tres")
+	# 불러와졌는지.
+	check("skewer.tres loads", skewer != null)
+	# 못 불러왔으면 멈춘다.
+	if skewer == null:
+		return
+	# 범위 관통로.
+	check_eq("skewer shape is LINE", skewer.shape, CardData.Shape.LINE)

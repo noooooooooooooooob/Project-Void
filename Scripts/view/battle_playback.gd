@@ -7,6 +7,10 @@ extends Node
 
 ## play() 가 모든 이벤트를 재생하고 끝났을 때.
 signal finished
+# 코루틴 호출 결과를 배열에 담아 나중에 await 하는 방식은 GDScript 정적 분석에 걸린다.
+# 그 대신 신호 + 남은 수 세기로 "여럿을 동시에 시작하고 모두 끝나길 기다리기"를 구현한다.
+## (내부용) 광역 공격으로 여러 유닛이 동시에 맞을 때, 그중 한 유닛의 재생이 끝날 때마다 낸다.
+signal _damage_batch_unit_finished
 
 ## 적 차례가 시작될 때 잠깐 쉬는 시간 (누구 차례인지 눈에 들어오게).
 const ENEMY_TURN_PAUSE: float = 0.2
@@ -40,8 +44,22 @@ var instant: bool = false
 
 ## 이벤트 목록을 앞에서부터 하나씩 재생한다. 호출하는 쪽은 await 로 끝날 때까지 기다린다.
 func play(events: Array[BattleEvent]) -> void:
-	# 이벤트를 순서대로 하나씩 꺼낸다.
-	for event in events:
+	# 다음에 볼 이벤트 번호 (묶음으로 처리한 만큼 한 번에 건너뛸 수 있어 for 대신 while 을 쓴다).
+	var i: int = 0
+	while i < events.size():
+		# 이번 이벤트.
+		var event: BattleEvent = events[i]
+		# 피해·쓰러짐은 한 번의 광역 공격으로 여럿에게 한꺼번에 날 수 있다 — 이어지는 만큼 모아 동시에 재생한다
+		# (한 명씩 순서대로 재생하면 광역 공격인데도 한 명씩 차례로 맞는 것처럼 보인다).
+		if event.kind == BattleEvent.Kind.DAMAGED or event.kind == BattleEvent.Kind.DIED:
+			# 이어지는 피해·쓰러짐 기록을 모두 모은다.
+			var batch: Array[BattleEvent] = []
+			while i < events.size() and (events[i].kind == BattleEvent.Kind.DAMAGED or events[i].kind == BattleEvent.Kind.DIED):
+				batch.append(events[i])
+				i += 1
+			# 모은 묶음을 동시에 재생한다.
+			await _play_damage_batch(batch)
+			continue
 		# 종류에 따라 알맞은 연출 함수로 보낸다.
 		match event.kind:
 			# 차례 시작: 현재 유닛 표시·순서 바 갱신.
@@ -53,18 +71,12 @@ func play(events: Array[BattleEvent]) -> void:
 			# 적 행동: 돌진, 제자리 뛰기, 이동이면 연출 없음.
 			BattleEvent.Kind.ENEMY_ACTED:
 				await _enemy_acted(event)
-			# 피해: 체력 바 갱신·숫자·번쩍임.
-			BattleEvent.Kind.DAMAGED:
-				await _damaged(event)
 			# 회복: 체력 바 갱신·숫자.
 			BattleEvent.Kind.HEALED:
 				await _healed(event)
 			# 방어도: 방어도 표시·숫자.
 			BattleEvent.Kind.BLOCK_GAINED:
 				await _block_gained(event)
-			# 쓰러짐: 사라지기.
-			BattleEvent.Kind.DIED:
-				await _died(event)
 			# 로그: 기다림 없이 한 줄 추가.
 			BattleEvent.Kind.LOG:
 				hud.append_log(event.text)
@@ -95,8 +107,53 @@ func play(events: Array[BattleEvent]) -> void:
 			# 이동: 유닛이 새 칸으로 미끄러진다.
 			BattleEvent.Kind.UNIT_MOVED:
 				await _unit_moved(event)
+		# 다음 이벤트로.
+		i += 1
 	# 모든 이벤트를 재생했음을 알린다.
 	finished.emit()
+
+
+# 같은 유닛이 한 묶음 안에서 두 번 나올 일은 지금 규칙상 없지만(한 칸은 한 공격에 한 번만 맞는다),
+# 있더라도 그 유닛 안에서는 순서가 흐트러지지 않도록 유닛별로 따로 코루틴을 돌린다.
+## 같은 순간(한 번의 공격)에 겹치는 피해·쓰러짐 기록들을 유닛별로 나눠 모두 동시에 재생한다.
+func _play_damage_batch(batch: Array[BattleEvent]) -> void:
+	# 유닛 → 그 유닛의 기록들(원래 순서 유지).
+	var by_unit: Dictionary = {}
+	# 묶음을 유닛별로 나눈다.
+	for event in batch:
+		# 이 유닛의 기록 목록이 아직 없으면 새로 만들어 등록한다.
+		if not by_unit.has(event.unit):
+			var new_list: Array[BattleEvent] = []
+			by_unit[event.unit] = new_list
+		# 이 유닛의 기록 목록을 꺼내 이번 기록을 더한다 (사전이 들고 있는 배열 자체를 바꾸므로 다시 넣을 필요는 없다).
+		var unit_events: Array[BattleEvent] = by_unit[event.unit]
+		unit_events.append(event)
+
+	# 배열 한 칸짜리 상자에 남은 유닛 수를 담는다 (GDScript 지역 변수는 코루틴끼리 참조로 공유되지 않으므로 상자로 감싼다).
+	var remaining: Array[int] = [by_unit.size()]
+	# 유닛마다 재생을 시작한다. await 로 결과를 받지 않고 그냥 불러 둔다 — 끝나면 스스로 remaining 을 줄이고 신호를 낸다.
+	for unit in by_unit:
+		# 이 유닛의 기록 목록.
+		var unit_events: Array[BattleEvent] = by_unit[unit]
+		_play_unit_damage(unit_events, remaining)
+	# 남은 수가 0 이 될 때까지 기다린다. 연출 없이(instant) 이미 다 끝났으면 조건이 곧장 거짓이라 기다리지 않는다.
+	while remaining[0] > 0:
+		await _damage_batch_unit_finished
+
+
+## 한 유닛의 피해·쓰러짐 기록들을 그 유닛 안에서만 순서대로 재생한다. 다 끝나면 remaining 을 줄이고 신호를 낸다.
+func _play_unit_damage(unit_events: Array[BattleEvent], remaining: Array[int]) -> void:
+	# 기록마다.
+	for event in unit_events:
+		# 피해면 피해 연출, 아니면(쓰러짐) 쓰러짐 연출.
+		if event.kind == BattleEvent.Kind.DAMAGED:
+			await _damaged(event)
+		else:
+			await _died(event)
+	# 이 유닛은 끝났다.
+	remaining[0] -= 1
+	# 기다리는 쪽을 깨운다.
+	_damage_batch_unit_finished.emit()
 
 
 ## 차례 시작 연출.
@@ -127,8 +184,8 @@ func _card_played(event: BattleEvent) -> void:
 	var view: UnitView = board.view_for(event.unit)
 	# 머리 위에 카드 이름을 띄운다.
 	view.pop_text(event.card.display_name, Color.WHITE)
-	# 대상의 원래 자리 쪽으로 돌진했다가 돌아올 때까지 기다린다.
-	await view.lunge_toward(board.view_for(event.target).home_position)
+	# 겨냥한 칸 쪽으로 돌진했다가 돌아올 때까지 기다린다 (그 칸에 유닛이 없어도 칸 자체의 위치로 돌진한다).
+	await view.lunge_toward(board.layout.cell_position(event.target_team, event.target_cell))
 
 
 ## 적 행동 연출: 공격이면 돌진, 방어·휴식이면 제자리 뛰기, 이동이면 없음(UNIT_MOVED 가 보여 준다).

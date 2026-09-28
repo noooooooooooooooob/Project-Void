@@ -1,5 +1,6 @@
 ## 화면 아래 가운데의 부채꼴 손패. 카드 화면(CardView)들을 만들고 배치하고 연출한다.
 ## 입력: 카드를 눌렀다 떼면 선택 토글(card_selected), 12px 이상 끌었다 놓으면 놓기(card_dropped).
+## 끄는 동안에는 매 이동마다 커서 위치를 알린다(card_drag_moved) — 보드가 마우스 이동 이벤트를 못 받기 때문.
 ## 연출: 드로우(덱에서 날아와 뒤집힘), 사용(흐려지며 사라짐), 버리기(묘지로 날아감), 리셔플(뒷면들이 묘지→덱).
 ## 규칙 상태를 모르고, BattleHud 가 알려 주는 카드·SP 만으로 동작한다.
 class_name HandView
@@ -10,6 +11,8 @@ extends Control
 signal card_selected(index: int)
 ## index 번째 카드를 끌어다 화면 좌표 screen_position 에 놓았다.
 signal card_dropped(index: int, screen_position: Vector2)
+## 카드를 끄는 동안 커서가 화면 좌표 screen_position 으로 움직였다 (놓기 전, 매 이동마다).
+signal card_drag_moved(screen_position: Vector2)
 
 ## 부채꼴 중심점이 화면 아래 끝에서 올라와 있는 거리.
 const BOTTOM_OFFSET: float = 110.0
@@ -515,9 +518,10 @@ func _on_card_gui_input(event: InputEvent, view: CardView) -> void:
 		_layout(true)
 		# 선택을 알린다 (루트가 사거리 힌트를 보여 준다).
 		card_selected.emit(_selected)
-	# 끌기 중이면 카드 위쪽 가운데에서 커서까지 화살표를 그린다.
+	# 끌기 중이면 카드 위쪽 가운데에서 커서까지 화살표를 그리고, 커서 위치를 알린다 (보드가 그 칸을 미리보기로 비출 수 있게).
 	if _dragging:
 		_arrow.show_aim(view.global_position + Vector2(CardView.SIZE.x / 2.0, 0.0), motion.global_position)
+		card_drag_moved.emit(motion.global_position)
 	# 이동 이벤트를 소비한다.
 	view.accept_event()
 

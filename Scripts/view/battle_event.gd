@@ -14,8 +14,12 @@ enum Kind { TURN_STARTED, CARD_PLAYED, ENEMY_ACTED, DAMAGED, HEALED, BLOCK_GAINE
 var kind: Kind
 ## 주인공 유닛 (차례를 받은 유닛, 카드를 쓴 유닛, 맞은 유닛 등).
 var unit: Unit
-## 대상 유닛 (카드 대상, 적 공격 대상). 없으면 null.
+## 대상 유닛 (적 공격 대상, 혹은 카드로 겨냥한 칸에 살아 있는 유닛이 있었다면 그 유닛). 없으면 null.
 var target: Unit
+## 카드로 겨냥한 칸의 편 (CARD_PLAYED). 그 칸에 유닛이 없어도 뜻이 있다.
+var target_team: Unit.Team = Unit.Team.ALLY
+## 카드로 겨냥한 칸 좌표 (CARD_PLAYED).
+var target_cell: Vector2i = Vector2i.ZERO
 ## 관련 카드 (사용한 카드, 뽑은 카드).
 var card: CardData
 ## 적이 고른 행동 (ENEMY_ACTED 에서만 의미가 있음).

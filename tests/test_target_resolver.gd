@@ -31,6 +31,16 @@ func run() -> Array[Dictionary]:
 	_test_expand_pierce()
 	# 횡렬 범위.
 	_test_expand_sweep()
+	# 광역 2×2 범위.
+	_test_expand_area()
+	# 관통로 범위.
+	_test_expand_line()
+	# 빈 칸도 사거리 판정을 받을 수 있는지.
+	_test_is_valid_cell_allows_empty_cell()
+	# 빈 칸을 겨냥해도 범위 안의 다른 유닛은 맞는지.
+	_test_expand_shape_cell_hits_neighbors_from_empty_anchor()
+	# 범위 모양이 덮는 칸 목록에 빈 칸도 포함되고 격자 밖은 빠지는지.
+	_test_shape_cells_includes_empty_cells_and_clips_to_grid()
 	# 가운데 칸의 이동 후보 네 칸.
 	_test_movable_cells_in_the_middle()
 	# 모서리 칸의 이동 후보 두 칸.
@@ -224,6 +234,103 @@ func _test_expand_sweep() -> void:
 	check_eq("sweep hits the whole column", hit.size(), 2)
 	# 다른 열 제외.
 	check("sweep excludes other columns", not hit.has(other_col))
+
+
+# 광역: 대상 칸을 왼쪽 위로 삼는 2×2 블록 안의 적만 맞고, 블록 밖·아군은 맞지 않는지.
+func _test_expand_area() -> void:
+	# 양쪽 3×3.
+	var resolver: TargetResolver = ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 고른 대상 (블록 왼쪽 위 모서리, (0,0)).
+	var primary: Unit = _unit(2, Unit.Team.ENEMY, Vector2i(0, 0))
+	# 블록 안 오른쪽 (1,0).
+	var right: Unit = _unit(3, Unit.Team.ENEMY, Vector2i(1, 0))
+	# 블록 안 아래 (0,1).
+	var below: Unit = _unit(4, Unit.Team.ENEMY, Vector2i(0, 1))
+	# 블록 안 대각선 (1,1).
+	var diagonal: Unit = _unit(5, Unit.Team.ENEMY, Vector2i(1, 1))
+	# 블록 밖 (2,0).
+	var outside: Unit = _unit(6, Unit.Team.ENEMY, Vector2i(2, 0))
+	# 블록 안 좌표지만 아군.
+	var ally: Unit = _unit(1, Unit.Team.ALLY, Vector2i(1, 0))
+	# 전장 유닛 목록.
+	var all: Array[Unit] = [ally, primary, right, below, diagonal, outside]
+	# 광역으로 맞는 유닛들.
+	var hit: Array[Unit] = resolver.expand_shape(primary, CardData.Shape.AREA, all)
+	# 대상 + 오른쪽 + 아래 + 대각선 = 4 명.
+	check_eq("area hits the whole 2x2 block", hit.size(), 4)
+	# 블록 밖 제외.
+	check("area excludes cells outside the block", not hit.has(outside))
+	# 아군 제외.
+	check("area never hits the attacker camp", not hit.has(ally))
+
+
+# 관통로: 대상과 같은 행에서 앞줄부터 대상 열까지만 맞고, 대상 뒤·다른 행은 맞지 않는지.
+func _test_expand_line() -> void:
+	# 양쪽 3×3.
+	var resolver: TargetResolver = ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 고른 대상 (1 행, 1 열 — 중간).
+	var primary: Unit = _unit(2, Unit.Team.ENEMY, Vector2i(1, 1))
+	# 같은 행 앞줄 (길목).
+	var front: Unit = _unit(3, Unit.Team.ENEMY, Vector2i(0, 1))
+	# 같은 행 대상 뒤 (길 밖).
+	var behind: Unit = _unit(4, Unit.Team.ENEMY, Vector2i(2, 1))
+	# 다른 행.
+	var other_row: Unit = _unit(5, Unit.Team.ENEMY, Vector2i(0, 0))
+	# 전장 유닛 목록.
+	var all: Array[Unit] = [primary, front, behind, other_row]
+	# 관통로로 맞는 유닛들.
+	var hit: Array[Unit] = resolver.expand_shape(primary, CardData.Shape.LINE, all)
+	# 대상 + 앞줄 = 2 명.
+	check_eq("line hits the path up to the target", hit.size(), 2)
+	# 대상 뒤는 제외.
+	check("line excludes cells behind the target", not hit.has(behind))
+	# 다른 행 제외.
+	check("line excludes other rows", not hit.has(other_row))
+
+
+# 사거리 안의 빈 칸은 칠 수 있다고(true) 판정하고, 사거리 밖의 빈 칸은 거절하는지.
+func _test_is_valid_cell_allows_empty_cell() -> void:
+	# 양쪽 3×3.
+	var resolver: TargetResolver = ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 공격자 (앞줄 0 행).
+	var a: Unit = _unit(1, Unit.Team.ALLY, Vector2i(0, 0))
+	# 전장 유닛 목록 (공격자뿐 — 겨냥할 칸에는 아무도 없다).
+	var all: Array[Unit] = [a]
+	# 사거리 3 이면 거리 1 인 빈 칸(0,0)을 겨냥할 수 있다.
+	check("empty cell in range is valid", resolver.is_valid_cell(a, Unit.Team.ENEMY, Vector2i(0, 0), CardData.AttackType.RANGED, 3, all))
+	# 사거리 3 이면 거리 5 인 빈 칸(2,2)은 겨냥할 수 없다.
+	check("empty cell out of range is invalid", not resolver.is_valid_cell(a, Unit.Team.ENEMY, Vector2i(2, 2), CardData.AttackType.RANGED, 3, all))
+
+
+# 빈 칸을 겨냥한 광역 카드가 그 블록 안의 다른(실제로 서 있는) 유닛은 맞히는지.
+func _test_expand_shape_cell_hits_neighbors_from_empty_anchor() -> void:
+	# 양쪽 3×3.
+	var resolver: TargetResolver = ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 겨냥한 칸(0,0)에는 아무도 없다. 블록 안(1,0)에만 적이 있다.
+	var neighbor: Unit = _unit(1, Unit.Team.ENEMY, Vector2i(1, 0))
+	# 블록 밖(2,0)의 적은 맞지 않는다.
+	var outside: Unit = _unit(2, Unit.Team.ENEMY, Vector2i(2, 0))
+	# 전장 유닛 목록.
+	var all: Array[Unit] = [neighbor, outside]
+	# 빈 칸(0,0)을 광역으로 겨냥했을 때 맞는 유닛들.
+	var hit: Array[Unit] = resolver.expand_shape_cell(Unit.Team.ENEMY, Vector2i(0, 0), CardData.Shape.AREA, all)
+	# 블록 안의 이웃만 맞는다.
+	check_eq("empty-anchored area still hits the neighbor", hit, [neighbor])
+
+
+# shape_cells 가 관통(행 전체)·광역(2×2, 격자 밖은 클립)이 덮는 칸을 유닛 유무와 상관없이 모두 돌려주는지.
+func _test_shape_cells_includes_empty_cells_and_clips_to_grid() -> void:
+	# 3×3 격자.
+	var resolver: TargetResolver = ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 관통: 1 행을 겨냥하면 그 행의 세 칸(유닛 유무와 상관없이) 모두.
+	var pierce_cells: Array[Vector2i] = resolver.shape_cells(Vector2i(1, 1), CardData.Shape.PIERCE, Vector2i(3, 3))
+	var expected_pierce: Array[Vector2i] = [Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1)]
+	check_eq("pierce covers the whole row regardless of units", pierce_cells, expected_pierce)
+
+	# 광역: 격자 오른쪽 아래 모서리(2,2)를 겨냥하면 격자 밖으로 나가는 칸은 잘려서 한 칸만 남는다.
+	var area_cells: Array[Vector2i] = resolver.shape_cells(Vector2i(2, 2), CardData.Shape.AREA, Vector2i(3, 3))
+	var expected_area: Array[Vector2i] = [Vector2i(2, 2)]
+	check_eq("area clips to the grid at a corner", area_cells, expected_area)
 
 
 # 3×3 가운데(1,1) 유닛은 위·아래·앞·뒤 순서로 네 칸에 갈 수 있는지.

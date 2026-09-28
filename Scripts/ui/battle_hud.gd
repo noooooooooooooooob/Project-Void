@@ -9,6 +9,8 @@ extends Control
 signal card_selected(index: int)
 ## 카드를 끌어다 화면 좌표 screen_position 에 놓았다.
 signal card_dropped(index: int, screen_position: Vector2)
+## 카드를 끄는 동안 커서가 화면 좌표 screen_position 으로 움직였다. HandView 의 신호를 그대로 전달한다.
+signal card_drag_moved(screen_position: Vector2)
 ## 차례 종료 버튼을 눌렀다.
 signal end_turn_pressed
 ## 이동 버튼을 켜거나(true) 껐다(false).
@@ -61,6 +63,8 @@ func _ready() -> void:
 	_hand.card_selected.connect(_on_hand_card_selected)
 	# 손패 카드 놓기를 밖으로 전달한다.
 	_hand.card_dropped.connect(_on_hand_card_dropped)
+	# 손패 카드 끄는 중 커서 이동을 밖으로 전달한다.
+	_hand.card_drag_moved.connect(_on_hand_card_drag_moved)
 	# 묘지 더미 이름은 항상 "묘지".
 	_discard_pile.set_owner_name(DISCARD_PILE_NAME)
 	# 처음에는 차례인 아군이 없으므로 SP 패널을 숨긴다.
@@ -384,6 +388,12 @@ func _on_hand_card_selected(index: int) -> void:
 func _on_hand_card_dropped(index: int, screen_position: Vector2) -> void:
 	# 그대로 다시 낸다.
 	card_dropped.emit(index, screen_position)
+
+
+## 손패의 카드 끄는 중 커서 이동 신호를 HUD 신호로 전달한다.
+func _on_hand_card_drag_moved(screen_position: Vector2) -> void:
+	# 그대로 다시 낸다.
+	card_drag_moved.emit(screen_position)
 
 
 ## 차례 종료 버튼 신호를 HUD 신호로 전달한다.

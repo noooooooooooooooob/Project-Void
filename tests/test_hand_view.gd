@@ -299,10 +299,14 @@ func _test_drag_emits_drop() -> void:
 	var picked: Array = []
 	# 놓기 신호 기록.
 	var dropped: Array = []
+	# 끄는 동안 커서 이동 신호 기록.
+	var drag_positions: Array = []
 	# 선택 신호를 기록한다.
 	hand.card_selected.connect(func(index: int) -> void: picked.append(index))
 	# 놓기 신호를 [번호, 위치] 로 기록한다.
 	hand.card_dropped.connect(func(index: int, at: Vector2) -> void: dropped.append([index, at]))
+	# 끄는 동안 커서 이동 위치를 기록한다.
+	hand.card_drag_moved.connect(func(at: Vector2) -> void: drag_positions.append(at))
 	# 0 번 카드 화면.
 	var view: CardView = hand.card_views()[0]
 	# 누르기.
@@ -313,6 +317,11 @@ func _test_drag_emits_drop() -> void:
 	check_eq("dragging selects the card", picked, [0])
 	# 화살표가 보인다.
 	check("aim arrow shown while dragging", hand.is_aiming())
+	# 끄는 동안 커서 위치도 알렸다 (보드가 마우스 이동을 직접 못 받으므로 이 신호로 대신 판정한다).
+	check_eq("drag reports the cursor position", drag_positions, [Vector2(500, 500)])
+	# 계속 끄는 중 한 번 더 움직이면 다시 알린다.
+	_move(view, Vector2(650, 300))
+	check_eq("drag reports every move while dragging", drag_positions, [Vector2(500, 500), Vector2(650, 300)])
 	# 멀리서 떼기.
 	_press(view, Vector2(700, 200), false)
 	# 놓기 신호: 0 번, (700, 200).

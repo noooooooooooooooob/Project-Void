@@ -22,6 +22,8 @@ func run() -> Array[Dictionary]:
 	_test_show_current_moves_highlight()
 	# 사거리 힌트 보이기·지우기.
 	_test_target_hints()
+	# 커서 기준 범위 미리보기 보이기·지우기.
+	_test_shape_preview()
 	# 빈 칸 표시.
 	_test_mark_empty()
 	# move_view 가 위치·타일·클릭 칸을 옮긴다.
@@ -207,7 +209,7 @@ func _test_show_current_moves_highlight() -> void:
 	board.free()
 
 
-# 힌트를 주면 유효/무효 타일 상태와 글자가 보이고, 지우면 기본 상태·숨김으로 돌아가는지.
+# 힌트를 주면 유효/무효 타일 상태와 글자가 보이고(유닛이 없는 빈 칸도 포함해서), 지우면 기본 상태·숨김으로 돌아가는지.
 func _test_target_hints() -> void:
 	# 전투.
 	var state: BattleState = _state()
@@ -219,31 +221,91 @@ func _test_target_hints() -> void:
 	state.start_battle()
 	# 동기화.
 	board.sync_from_state(state)
-	# 칠 수 있는 적.
-	var near: Unit = _unit(state, &"e1")
-	# 막힌 적.
-	var far: Unit = _unit(state, &"e2")
+	# 칠 수 있는 적 e1 이 선 칸.
+	var near: Vector2i = Vector2i(0, 0)
+	# 막힌 적 e2 가 선 칸.
+	var far: Vector2i = Vector2i(1, 0)
+	# 적 격자 안이지만 아무도 없는 칸.
+	var empty: Vector2i = Vector2i(0, 1)
 
-	# 두 적에 대한 힌트를 보여 준다.
-	board.show_target_hints({
+	# 칸 셋에 대한 힌트를 보여 준다 (유닛이 없는 칸도 포함).
+	board.show_target_hints(Unit.Team.ENEMY, {
 		near: {"valid": true, "text": "✓ 거리 1"},
 		far: {"valid": false, "text": "막힘"},
+		empty: {"valid": true, "text": "✓ 거리 2"},
 	})
 	# e1 칸 유효.
-	check_eq("valid target tile", board.tile_state(Unit.Team.ENEMY, Vector2i(0, 0)), Board3D.TileState.VALID)
+	check_eq("valid target tile", board.tile_state(Unit.Team.ENEMY, near), Board3D.TileState.VALID)
 	# e2 칸 무효.
-	check_eq("invalid target tile", board.tile_state(Unit.Team.ENEMY, Vector2i(1, 0)), Board3D.TileState.INVALID)
+	check_eq("invalid target tile", board.tile_state(Unit.Team.ENEMY, far), Board3D.TileState.INVALID)
 	# e2 칸 글자.
-	check_eq("hint text", board.hint_label(Unit.Team.ENEMY, Vector2i(1, 0)).text, "막힘")
+	check_eq("hint text", board.hint_label(Unit.Team.ENEMY, far).text, "막힘")
 	# e1 칸 글자 보임.
-	check("hint shown", board.hint_label(Unit.Team.ENEMY, Vector2i(0, 0)).visible)
+	check("hint shown", board.hint_label(Unit.Team.ENEMY, near).visible)
+	# 빈 칸도 유효로 하이라이트된다.
+	check_eq("empty cell also highlighted", board.tile_state(Unit.Team.ENEMY, empty), Board3D.TileState.VALID)
+	# 빈 칸 글자도 보인다.
+	check("empty cell hint shown", board.hint_label(Unit.Team.ENEMY, empty).visible)
 
 	# 힌트를 지운다.
 	board.clear_target_hints()
 	# 기본으로 돌아왔다.
-	check_eq("cleared tile back to base", board.tile_state(Unit.Team.ENEMY, Vector2i(0, 0)), Board3D.TileState.BASE)
+	check_eq("cleared tile back to base", board.tile_state(Unit.Team.ENEMY, near), Board3D.TileState.BASE)
 	# 글자 숨김.
-	check("hint hidden", not board.hint_label(Unit.Team.ENEMY, Vector2i(0, 0)).visible)
+	check("hint hidden", not board.hint_label(Unit.Team.ENEMY, near).visible)
+	# 빈 칸은 원래대로 EMPTY 로 돌아온다 (유닛이 없던 칸이므로 BASE 가 아니다).
+	check_eq("empty cell cleared back to empty", board.tile_state(Unit.Team.ENEMY, empty), Board3D.TileState.EMPTY)
+	# 지운다.
+	board.free()
+
+
+# 범위 미리보기가 지정한 칸만(유닛이 없는 칸 포함) 하양(칠 수 있음)/주황(사거리 밖·막힘)으로 바꾸고, 지우면 기본으로 돌아가는지.
+# 물리 판정이 한 번도 돈 적 없는 보드는 커서가 어떤 칸도 가리키지 않는지도 함께 본다.
+func _test_shape_preview() -> void:
+	# 전투.
+	var state: BattleState = _state()
+	# 보드.
+	var board := Board3D.new()
+	# 만든다.
+	board.build(state, _texture(20))
+	# 시작.
+	state.start_battle()
+	# 동기화.
+	board.sync_from_state(state)
+	# 칠 수 있는 적 e1 이 선 칸.
+	var near: Vector2i = Vector2i(0, 0)
+	# 사거리 밖 적 e2 가 선 칸.
+	var far: Vector2i = Vector2i(1, 0)
+	# 범위 모양 안이지만 아무도 없는 칸.
+	var empty: Vector2i = Vector2i(0, 1)
+
+	# 실제 흐름과 같은 순서로 기본 사거리 힌트를 먼저 깐다.
+	board.show_target_hints(Unit.Team.ENEMY, {
+		near: {"valid": true, "text": "✓ 거리 1"},
+		far: {"valid": false, "text": "거리 3"},
+	})
+	# 범위 미리보기를 덧그린다: e1 은 칠 수 있음, e2 는 사거리 밖, 빈 칸도 칠 수 있음으로 포함된다.
+	board.show_shape_preview(Unit.Team.ENEMY, {
+		near: {"valid": true, "text": "✓ 거리 1"},
+		far: {"valid": false, "text": "거리 3"},
+		empty: {"valid": true, "text": "✓ 거리 2"},
+	})
+	# e1 칸은 하얀 미리보기.
+	check_eq("shape hit tile", board.tile_state(Unit.Team.ENEMY, near), Board3D.TileState.SHAPE_HIT)
+	# e2 칸은 주황 미리보기.
+	check_eq("shape out tile", board.tile_state(Unit.Team.ENEMY, far), Board3D.TileState.SHAPE_OUT)
+	# 빈 칸도 하얀 미리보기로 덧그려진다.
+	check_eq("empty cell included in shape preview", board.tile_state(Unit.Team.ENEMY, empty), Board3D.TileState.SHAPE_HIT)
+
+	# 힌트를 지운다.
+	board.clear_target_hints()
+	# 모두 기본/빈 칸으로 돌아왔다.
+	check_eq("shape hit tile cleared", board.tile_state(Unit.Team.ENEMY, near), Board3D.TileState.BASE)
+	check_eq("shape out tile cleared", board.tile_state(Unit.Team.ENEMY, far), Board3D.TileState.BASE)
+	check_eq("empty cell cleared back to empty", board.tile_state(Unit.Team.ENEMY, empty), Board3D.TileState.EMPTY)
+
+	# 트리에 붙지 않아 물리 스텝이 돈 적 없는 보드는 커서가 어떤 칸도 가리키지 않는다.
+	check("hover_state defaults to no hover", not board.hover_state()["has"])
 	# 지운다.
 	board.free()
 

@@ -4,9 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-"Project Void" is a Godot 4.7 project (Forward Plus renderer, Jolt Physics for 3D, `d3d12` rendering driver on Windows). It is an early-stage scaffold: there is no gameplay code yet beyond `Scripts/new_script.gd`, which is still Godot's unmodified default template. Treat anything under `Scripts/` as a starting point, not an established pattern to follow.
+"Project Void" is a Godot 4.7 project (Forward Plus renderer, Jolt Physics for 3D, `d3d12` rendering driver on Windows). It is a card-battler prototype with two connected systems under `Scripts/`:
 
-There is no build system, linter, or test suite configured — this is a GDScript/Godot project, not a compiled one. "Running" the project means opening/running it in the Godot editor (see MCP tools below).
+- **`Scripts/combat/`** — turn-based battle rules (`battle_state.gd`, `unit.gd`, `enemy_brain.gd`, `target_resolver.gd`) plus data resources (`data/`: ally/enemy/card/encounter/unit data, `unit_placement.gd`). Rules code is pure logic; it emits signals that `Scripts/view/` and `Scripts/ui/` play back.
+- **`Scripts/map/`** — the run map between battles: a grid-based graph generator that scatters and merges random paths (`map_graph.gd`), layout math (`map_layout.gd`), node data (`map_node.gd`), run state (`map_run_state.gd`), and encounter generation (`encounter_generator.gd`).
+- **`Scripts/view/`** — 2.5D battle board (`board_3d.gd`, `board_layout.gd`, `unit_view.gd`), event recording/playback (`view/battle_event*.gd`, `battle_playback.gd`), the battle scene root (`battle_root.gd`), the map screen (`map_view.gd`), and `game_root.gd`, which wires the map and battle scenes together as the main scene.
+- **`Scripts/ui/`** — battle HUD, hand/pile/card views, and the drag-to-target aim arrow.
+
+Design/plan docs for each feature live in `docs/superpowers/specs/` and `docs/superpowers/plans/` (dated filenames). Check there for the intent behind a system before changing it.
+
+There is a `tests/` directory with GDScript test files (`test_*.gd`, run via a `TestCase`-based runner) covering combat rules, the map, and the board — there is no separate build system or linter beyond these. "Running" the project means opening/running it in the Godot editor (see MCP tools below).
 
 ## Godot MCP bridge (the addons/ directory)
 

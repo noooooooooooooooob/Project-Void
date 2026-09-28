@@ -80,10 +80,16 @@ func _ready() -> void:
 	_board.cell_clicked.connect(_on_cell_clicked)
 	# 빈 곳 클릭/놓기 → 드래그 취소 처리.
 	_board.pick_missed.connect(_on_pick_missed)
+	# 커서가 가리키는 칸이 바뀜 → 카드를 골랐으면 그 칸 기준 범위 미리보기.
+	_board.cell_hovered.connect(_on_cell_hovered)
+	# 커서가 칸을 벗어남 → 기본 사거리 힌트로 되돌림.
+	_board.hover_cleared.connect(_on_hover_cleared)
 	# 카드 선택·해제 → 힌트 갱신 (선택이면 사거리, 해제면 지움).
 	_hud.card_selected.connect(_on_card_selected)
 	# 카드 드래그 놓기 → 놓은 위치 판정.
 	_hud.card_dropped.connect(_on_card_dropped)
+	# 카드를 끄는 동안 커서 이동 → 보드가 그 위치로 커서 판정을 하게 알려 준다 (드래그 중엔 보드가 직접 마우스 이동을 못 받는다).
+	_hud.card_drag_moved.connect(_on_card_drag_moved)
 	# 차례 종료 버튼.
 	_hud.end_turn_pressed.connect(_on_end_turn_pressed)
 	# 이동 버튼 → 이동 모드를 켜고 끈다.
@@ -175,6 +181,11 @@ func _on_card_dropped(index: int, screen_position: Vector2) -> void:
 	_board.request_pick(screen_position)
 
 
+## 카드를 끄는 동안 커서가 움직였다. 보드에 위치를 넘겨 다음 물리 스텝에 그 칸으로 커서 판정을 하게 한다.
+func _on_card_drag_moved(screen_position: Vector2) -> void:
+	_board.update_pointer(screen_position)
+
+
 ## 클릭·놓기가 아무 칸에도 맞지 않았다.
 func _on_pick_missed() -> void:
 	# 일반 클릭의 빗나감이면 선택을 유지한다 (다른 대상을 다시 누를 수 있게).
@@ -186,7 +197,8 @@ func _on_pick_missed() -> void:
 	_clear_selection()
 
 
-## 칸을 클릭했다(또는 드래그로 놓았다). 카드를 골랐으면 그 칸의 적에게 쓰고, 이동 모드면 그 아군 칸으로 이동을 시도한다.
+## 칸을 클릭했다(또는 드래그로 놓았다). 카드를 골랐으면 그 칸에 쓰고(적 칸이면 유닛이 없어도 광역·관통로 카드로
+## 범위 안의 다른 유닛을 맞힐 수 있다), 이동 모드면 그 아군 칸으로 이동을 시도한다.
 func _on_cell_clicked(team: Unit.Team, cell: Vector2i) -> void:
 	# 이 판정이 드래그 놓기에서 왔는지 기억해 둔다.
 	var from_drop: bool = _awaiting_drop
@@ -203,20 +215,18 @@ func _on_cell_clicked(team: Unit.Team, cell: Vector2i) -> void:
 		return
 	# 지금 차례인 유닛.
 	var actor: Unit = _state.current_unit()
-	# 적 칸이면 그 칸에 살아 있는 적을 찾는다 (아군 칸은 대상이 아니다).
-	var target: Unit = _unit_at(team, cell) if team == Unit.Team.ENEMY else null
-	# 차례 유닛이 없거나, 대상이 없거나, 선택 번호가 손패 범위를 벗어나면 사용하지 않는다.
-	if actor == null or target == null or _selected_card >= actor.hand.size():
+	# 차례 유닛이 없거나, 아군 칸을 눌렀거나(카드는 적 칸만 겨냥한다), 선택 번호가 손패 범위를 벗어나면 쓰지 않는다.
+	if actor == null or team != Unit.Team.ENEMY or _selected_card >= actor.hand.size():
 		# 드래그였다면 카드를 손패로 돌려보낸다(선택 해제).
 		if from_drop:
 			_clear_selection()
 		return
 	# 사용하려는 카드.
 	var card: CardData = actor.hand[_selected_card]
-	# 클릭은 선택을 유지한 채 다른 대상을 고를 수 있게 규칙 호출 전에 거르고, 드래그는 손패로 돌려보낸다.
-	if not _state.resolver.is_valid_target(actor, target, card.attack_type, card.attack_range, _state.units):
+	# 클릭은 선택을 유지한 채 다른 칸을 다시 고를 수 있게 규칙 호출 전에 거르고, 드래그는 손패로 돌려보낸다.
+	if not _state.resolver.is_valid_cell(actor, team, cell, card.attack_type, card.attack_range, _state.units):
 		# 로그로 알린다.
-		_hud.append_log("사용할 수 없는 대상")
+		_hud.append_log("사용할 수 없는 위치")
 		# 드래그였다면 선택을 푼다.
 		if from_drop:
 			_clear_selection()
@@ -227,8 +237,8 @@ func _on_cell_clicked(team: Unit.Team, cell: Vector2i) -> void:
 	_hud.set_pending_play(card_index)
 	# 카드 사용을 실행한다. 규칙이 거절하면(예상 밖 상황) 로그를 남긴다.
 	_run(func() -> void:
-		if not _state.play_card(card_index, target):
-			_hud.append_log("사용할 수 없는 대상"))
+		if not _state.play_card(card_index, team, cell):
+			_hud.append_log("사용할 수 없는 위치"))
 
 
 ## 차례 종료 버튼을 눌렀다.
@@ -308,9 +318,13 @@ func _refresh_hints() -> void:
 	_hud.set_move_available(can_move)
 	# 눌림은 지금 쓸 수 있을 때만 켠다 (연출 중에 눌림+비활성으로 남지 않게).
 	_hud.set_move_mode(_move_mode and can_move)
-	# 카드를 골랐으면 사거리 힌트.
+	# 카드를 골랐으면 사거리 힌트. 커서가 이미 적 칸을 가리키고 있으면 그 칸 기준 범위 미리보기까지 함께 보여 준다.
 	if _selected_card >= 0:
-		_refresh_target_hints()
+		var hover: Dictionary = _board.hover_state()
+		if hover.get("has", false):
+			_apply_hover_preview(hover["team"], hover["cell"])
+		else:
+			_refresh_target_hints()
 		return
 	# 이동 모드가 아니거나 보여 줄 칸이 없으면 힌트를 지운다.
 	if not _move_mode or not can_move:
@@ -330,7 +344,49 @@ func _clear_selection() -> void:
 	_refresh_hints()
 
 
-## 고른 카드 기준으로 살아 있는 적마다 칠 수 있는지와 이유를 계산해 보드에 보여 준다.
+## 커서가 새 칸을 가리키게 됐다. 카드를 고른 상태에서 적이 선 칸이면 그 칸 기준 범위 모양을 덧그린다.
+func _on_cell_hovered(team: Unit.Team, cell: Vector2i) -> void:
+	_apply_hover_preview(team, cell)
+
+
+## 커서가 어떤 칸도 가리키지 않게 됐다. 기본 사거리 힌트로 되돌린다.
+func _on_hover_cleared() -> void:
+	_refresh_target_hints()
+
+
+## 커서가 가리키는 칸에 맞춰 힌트를 다시 그린다. 카드를 고른 상태에서 적 칸을 가리키면(유닛이 있든 없든) 카드의
+## 범위 모양이 거기서 맞힐 칸들을 하양(칠 수 있음)/주황(사거리 밖·막힘) 으로 덧그려 기본 사거리 힌트 위에 겹쳐 보여 준다.
+func _apply_hover_preview(team: Unit.Team, cell: Vector2i) -> void:
+	# 기본 힌트를 먼저 다시 그린다 (이전 커서가 남긴 범위 미리보기를 지운다).
+	_refresh_target_hints()
+	# 카드를 고르지 않았으면 힌트 자체가 없으니 더 할 일이 없다.
+	if _selected_card < 0:
+		return
+	# 대상은 적 칸에서만 고를 수 있다.
+	if team != Unit.Team.ENEMY:
+		return
+	# 지금 차례인 유닛.
+	var actor: Unit = _state.current_unit()
+	# 차례 유닛이 없거나 아군이 아니거나 선택 번호가 손패 범위 밖이면 힌트를 만들 수 없다.
+	if actor == null or not actor.is_ally() or _selected_card >= actor.hand.size():
+		return
+	# 고른 카드.
+	var card: CardData = actor.hand[_selected_card]
+	# 커서가 가리키는 칸을 겨냥했다고 보고, 카드의 범위 모양이 덮는 칸들을 모두 구한다 (유닛 유무와 상관없이).
+	var cells: Array[Vector2i] = _state.resolver.shape_cells(cell, card.shape, _state.resolver.enemy_grid)
+	# 칸 → 힌트 정보.
+	var hits: Dictionary = {}
+	# 범위 안의 칸마다.
+	for shape_cell in cells:
+		# 사거리·막힘까지 따진 실제 유효 여부 (기본 힌트와 같은 판정).
+		var valid: bool = _state.resolver.is_valid_cell(actor, team, shape_cell, card.attack_type, card.attack_range, _state.units)
+		# 판정 결과와 표시할 문장.
+		hits[shape_cell] = {"valid": valid, "text": _hint_text(_state.resolver.reach_cell(actor, team, shape_cell), card.attack_range, valid)}
+	# 보드에 덧그린다.
+	_board.show_shape_preview(team, hits)
+
+
+## 고른 카드 기준으로 적 격자의 모든 칸(유닛이 있든 없든)에 칠 수 있는지와 이유를 계산해 보드에 보여 준다.
 func _refresh_target_hints() -> void:
 	# 지금 차례인 유닛.
 	var actor: Unit = _state.current_unit()
@@ -340,21 +396,25 @@ func _refresh_target_hints() -> void:
 		return
 	# 고른 카드.
 	var card: CardData = actor.hand[_selected_card]
-	# 적 유닛 → 힌트 정보.
+	# 적 격자 크기.
+	var grid: Vector2i = _state.resolver.enemy_grid
+	# 칸 → 힌트 정보.
 	var hints: Dictionary = {}
-	# 살아 있는 적마다.
-	for target in _state.living_units(Unit.Team.ENEMY):
-		# 규칙과 같은 함수로 칠 수 있는지 판정한다.
-		var valid: bool = _state.resolver.is_valid_target(actor, target, card.attack_type, card.attack_range, _state.units)
-		# 판정 결과와 표시할 문장을 담는다.
-		hints[target] = {"valid": valid, "text": _hint_text(_state.resolver.reach(actor, target), card.attack_range, valid)}
+	# 적 격자의 모든 칸마다 (유닛이 없는 칸도 광역·관통로 카드의 겨냥 지점이 될 수 있다).
+	for row in grid.y:
+		for col in grid.x:
+			# 이번 칸.
+			var cell := Vector2i(col, row)
+			# 규칙과 같은 함수로 칠 수 있는지 판정한다.
+			var valid: bool = _state.resolver.is_valid_cell(actor, Unit.Team.ENEMY, cell, card.attack_type, card.attack_range, _state.units)
+			# 판정 결과와 표시할 문장을 담는다.
+			hints[cell] = {"valid": valid, "text": _hint_text(_state.resolver.reach_cell(actor, Unit.Team.ENEMY, cell), card.attack_range, valid)}
 	# 보드에 보여 준다.
-	_board.show_target_hints(hints)
+	_board.show_target_hints(Unit.Team.ENEMY, hints)
 
 
-# 칠 수 있는지는 is_valid_target 이 정하고, 여기서는 못 치는 이유만 고른다.
-# 살아 있는 적만 넘어오므로 사거리 안인데 무효라면 근접 블로킹뿐이다.
-## 힌트 글자를 만든다: 칠 수 있으면 "✓ 거리 N", 사거리 밖이면 "거리 N", 그 외는 "막힘".
+# 칠 수 있는지는 is_valid_cell 이 정하고, 여기서는 못 치는 이유만 고른다.
+## 힌트 글자를 만든다: 칠 수 있으면 "✓ 거리 N", 사거리 밖이면 "거리 N", 그 외(근접 막힘)는 "막힘".
 func _hint_text(distance: int, attack_range: int, valid: bool) -> String:
 	# 칠 수 있으면 체크 표시와 거리.
 	if valid:
@@ -364,17 +424,6 @@ func _hint_text(distance: int, attack_range: int, valid: bool) -> String:
 		return "거리 %d" % distance
 	# 남은 이유는 근접 막힘.
 	return "막힘"
-
-
-## 편과 칸 좌표에 살아 있는 유닛을 찾는다. 없으면 null.
-func _unit_at(team: Unit.Team, cell: Vector2i) -> Unit:
-	# 모든 유닛을 확인한다.
-	for unit in _state.units:
-		# 같은 편, 같은 칸, 살아 있음이면 그 유닛이다.
-		if unit.team == team and unit.cell == cell and unit.is_alive():
-			return unit
-	# 못 찾았다.
-	return null
 
 
 ## 보드 전체가 화면에 들어오도록 카메라 위치·각도·시야각을 정한다.

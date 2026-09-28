@@ -203,7 +203,7 @@ func _test_kill_plays_to_banner() -> void:
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 
 	# 카드를 쓴다 (적 처치, 전투 종료).
-	state.play_card(0, foe)
+	state.play_card(0, foe.team, foe.cell)
 	# 그 이벤트들을 재생한다.
 	playback.play(recorder.take_events())
 	# 체력 글자 0/20.

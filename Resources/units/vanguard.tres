@@ -5,10 +5,11 @@
 [ext_resource type="Resource" uid="uid://cu38wj8qfosm7" path="res://Resources/cards/cleave.tres" id="3_q688b"]
 [ext_resource type="Resource" uid="uid://cyw41v4yf1j05" path="res://Resources/cards/shoot.tres" id="4_uyxi8"]
 [ext_resource type="Script" uid="uid://digrljfdhjmf2" path="res://Scripts/combat/data/ally_data.gd" id="5_mv3tw"]
+[ext_resource type="Resource" path="res://Resources/cards/skewer.tres" id="6_skewer"]
 
 [resource]
 script = ExtResource("5_mv3tw")
-deck = Array[ExtResource("1_lv5et")]([ExtResource("2_khyhb"), ExtResource("2_khyhb"), ExtResource("2_khyhb"), ExtResource("3_q688b"), ExtResource("3_q688b"), ExtResource("4_uyxi8")])
+deck = Array[ExtResource("1_lv5et")]([ExtResource("2_khyhb"), ExtResource("2_khyhb"), ExtResource("2_khyhb"), ExtResource("3_q688b"), ExtResource("3_q688b"), ExtResource("4_uyxi8"), ExtResource("6_skewer"), ExtResource("6_skewer")])
 id = &"vanguard"
 display_name = "선봉"
 max_hp = 30
