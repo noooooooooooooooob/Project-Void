@@ -20,9 +20,12 @@ var _cell_id: Dictionary = {}
 
 
 func _init(rng: RandomNumberGenerator) -> void:
+	# 가운데 열 번호를 구하는 나눗셈이라 소수점이 버려지는 게 의도한 동작이다.
+	@warning_ignore("integer_division")
 	nodes.append(MapNode.new(start_id, -1, COLS / 2, false))
 	_generate(rng)
 	boss_id = nodes.size()
+	@warning_ignore("integer_division")
 	nodes.append(MapNode.new(boss_id, ROWS, COLS / 2, true))
 	_connect_last_row_to_boss()
 
