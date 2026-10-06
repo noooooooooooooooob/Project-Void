@@ -20,6 +20,10 @@ const CAMERA_MARGIN: float = 1.8
 # 아래쪽 HUD 에 보드가 가리지 않게 바라보는 점을 카메라 쪽으로 당긴다.
 ## 카메라가 바라보는 점을 보드 중심에서 옮기는 양.
 const CAMERA_TARGET_OFFSET := Vector3(0.0, 0.0, 0.6)
+## 전투 효과음 묶음.
+const BATTLE_SOUNDS: BattleSounds = preload("res://Resources/audio/battle_sounds.tres")
+## 원거리 화살 그림.
+const ARROW_TEXTURE: Texture2D = preload("res://Art/effects/arrow.png")
 
 ## 이 씬에서 치를 전투 구성 (인스펙터에서 skirmish.tres 등을 넣는다).
 @export var encounter: EncounterData
@@ -38,6 +42,8 @@ var _awaiting_drop: bool = false
 # 카드와 함께 켜 두지 않는다: 카드를 고르면 꺼지고, 이동 버튼을 켜면 고르던 카드가 풀린다.
 ## 이동 버튼으로 켠 이동 모드. true 일 때만 아군 칸 클릭이 이동이 된다.
 var _move_mode: bool = false
+## 카메라 타격 연출 (기본 구도 위에 푸시인·흔들림, 히트스톱·슬로모션).
+var _camera_fx: BattleCamera
 
 # @onready: _ready 직전에 값을 채운다. %이름 은 씬 안에서 "고유 이름"으로 표시한 노드를 찾는다.
 ## 전투를 비추는 카메라.
@@ -75,6 +81,22 @@ func _ready() -> void:
 	_playback.board = _board
 	# 재생기에 HUD 를 넘긴다.
 	_playback.hud = _hud
+	# 카메라 연출을 만들어 카메라를 맡긴다.
+	_camera_fx = BattleCamera.new()
+	_camera_fx.camera = _camera
+	add_child(_camera_fx)
+	# 효과음 재생기.
+	var battle_audio := BattleAudio.new()
+	battle_audio.sounds = BATTLE_SOUNDS
+	add_child(battle_audio)
+	# 화면 펄스 (HUD 아래 층).
+	var pulse := ScreenPulse.new()
+	add_child(pulse)
+	# 재생기에 연출 부품을 넘긴다.
+	_playback.camera_fx = _camera_fx
+	_playback.audio = battle_audio
+	_playback.screen_fx = pulse
+	_playback.projectile_texture = ARROW_TEXTURE
 
 	# 칸 클릭 → 카드 사용, 또는 이동 모드면 아군 칸으로 이동 시도.
 	_board.cell_clicked.connect(_on_cell_clicked)
@@ -442,7 +464,9 @@ func _frame_camera() -> void:
 	var pitch: float = deg_to_rad(CAMERA_PITCH_DEG)
 	# 시야각을 적용한다.
 	_camera.fov = CAMERA_FOV_DEG
-	# 바라볼 점에서 뒤(+z)·위(+y)로 distance 만큼 떨어진 곳에 카메라를 둔다.
-	_camera.position = target + Vector3(0.0, sin(pitch) * distance, cos(pitch) * distance)
-	# 바라볼 점을 향하게 회전시킨다.
-	_camera.look_at(target, Vector3.UP)
+	# 바라볼 점에서 뒤(+z)·위(+y)로 distance 만큼 떨어진 곳.
+	var camera_position: Vector3 = target + Vector3(0.0, sin(pitch) * distance, cos(pitch) * distance)
+	# 그 자리에서 바라볼 점을 보는 회전.
+	var view := Transform3D(Basis.IDENTITY, camera_position).looking_at(target, Vector3.UP)
+	# 연출이 이 구도 위에 오프셋을 더한다.
+	_camera_fx.set_base(view.origin, view.basis)

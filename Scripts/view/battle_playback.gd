@@ -11,6 +11,8 @@ signal finished
 # 그 대신 신호 + 남은 수 세기로 "여럿을 동시에 시작하고 모두 끝나길 기다리기"를 구현한다.
 ## (내부용) 광역 공격으로 여러 유닛이 동시에 맞을 때, 그중 한 유닛의 재생이 끝날 때마다 낸다.
 signal _damage_batch_unit_finished
+## (내부용) 공격자의 돌진이 끝났을 때.
+signal _lunge_finished
 
 ## 적 차례가 시작될 때 잠깐 쉬는 시간 (누구 차례인지 눈에 들어오게).
 const ENEMY_TURN_PAUSE: float = 0.2
@@ -32,6 +34,18 @@ const RESHUFFLE_WAIT: float = 0.45
 const DISCARD_WAIT: float = 0.35
 ## 쓴 카드가 손패에서 사라진 뒤 돌진 연출 전까지 기다리는 시간.
 const PLAY_REMOVE_WAIT: float = 0.2
+## 피해 순간 히트스톱 길이 (실제 초).
+const HIT_STOP_TIME: float = 0.06
+## 처치 순간 히트스톱 길이 (실제 초).
+const KILL_HIT_STOP_TIME: float = 0.1
+## 넉백 최대 거리.
+const MAX_KNOCKBACK: float = 0.35
+## 원거리는 앞으로 나가지 않고 쏘는 순간 살짝 뒤로 물러난다.
+const RANGED_RECOIL: float = -0.1
+## 이 이상 피해면 화면 펄스를 약하게 준다.
+const BIG_HIT_DAMAGE: int = 8
+# 큰 타격 펄스 세기.
+const _BIG_HIT_PULSE: float = 0.5
 
 ## 유닛·타일을 보여 주는 3D 보드.
 var board: Board3D
@@ -40,6 +54,20 @@ var hud: BattleHud
 # 테스트용. 트윈과 대기를 건너뛰고 표시값만 반영해서 play() 가 동기로 끝난다.
 ## true 면 연출 없이 최종 표시값만 즉시 반영한다.
 var instant: bool = false
+## 카메라 연출 (없으면 카메라 연출 없이 재생).
+var camera_fx: BattleCamera
+## 효과음 재생기 (없으면 소리 없이 재생).
+var audio: BattleAudio
+## 화면 펄스 (없으면 펄스 없이 재생).
+var screen_fx: ScreenPulse
+## 원거리 화살 그림 (없으면 흰 줄).
+var projectile_texture: Texture2D
+
+# 지금 재생 중인 타격 묶음을 만든 공격의 종류. 공격 없이 나온 피해는 근접으로 친다.
+var _impact_type: CardData.AttackType = CardData.AttackType.MELEE
+# 타격 묶음을 만든 공격자의 자리 (넉백 방향). _has_impact_origin 이 false 면 넉백하지 않는다.
+var _impact_origin: Vector3 = Vector3.ZERO
+var _has_impact_origin: bool = false
 
 
 ## 이벤트 목록을 앞에서부터 하나씩 재생한다. 호출하는 쪽은 await 로 끝날 때까지 기다린다.
@@ -49,28 +77,48 @@ func play(events: Array[BattleEvent]) -> void:
 	while i < events.size():
 		# 이번 이벤트.
 		var event: BattleEvent = events[i]
-		# 피해·쓰러짐은 한 번의 광역 공격으로 여럿에게 한꺼번에 날 수 있다 — 이어지는 만큼 모아 동시에 재생한다
-		# (한 명씩 순서대로 재생하면 광역 공격인데도 한 명씩 차례로 맞는 것처럼 보인다).
-		if event.kind == BattleEvent.Kind.DAMAGED or event.kind == BattleEvent.Kind.DIED:
-			# 이어지는 피해·쓰러짐 기록을 모두 모은다.
+		# 피해·쓰러짐은 이어지는 만큼 모아 동시에 재생한다 (광역 공격이 한꺼번에 보이게).
+		if _is_damage(event.kind):
 			var batch: Array[BattleEvent] = []
-			while i < events.size() and (events[i].kind == BattleEvent.Kind.DAMAGED or events[i].kind == BattleEvent.Kind.DIED):
+			while i < events.size() and _is_damage(events[i].kind):
 				batch.append(events[i])
 				i += 1
-			# 모은 묶음을 동시에 재생한다.
 			await _play_damage_batch(batch)
+			_release_camera()
 			continue
-		# 종류에 따라 알맞은 연출 함수로 보낸다.
+		# 돌진한 공격의 결과가 아니면 구도를 되돌린다.
+		if not keeps_camera_push(event.kind):
+			_release_camera()
 		match event.kind:
 			# 차례 시작: 현재 유닛 표시·순서 바 갱신.
 			BattleEvent.Kind.TURN_STARTED:
 				await _turn_started(event)
-			# 카드 사용: 손패에서 빼고 돌진.
-			BattleEvent.Kind.CARD_PLAYED:
-				await _card_played(event)
-			# 적 행동: 돌진, 제자리 뛰기, 이동이면 연출 없음.
-			BattleEvent.Kind.ENEMY_ACTED:
-				await _enemy_acted(event)
+			# 카드 사용·적 행동: 뒤따르는 피해가 있으면 무기가 닿는 순간에 그 피해를 재생한다.
+			BattleEvent.Kind.CARD_PLAYED, BattleEvent.Kind.ENEMY_ACTED:
+				var impact: int = impact_start(events, i) if not instant and _is_attack(event) else -1
+				# 피해가 없으면(빗나감·방어·휴식) 돌진·깡충만.
+				if impact < 0:
+					var no_hits: Array[BattleEvent] = []
+					if event.kind == BattleEvent.Kind.CARD_PLAYED:
+						await _card_played(event, no_hits, no_hits)
+					else:
+						await _enemy_acted(event, no_hits, no_hits)
+				else:
+					# 타격 묶음의 끝.
+					var end: int = impact
+					while end < events.size() and _is_damage(events[end].kind):
+						end += 1
+					# 사이의 로그와 타격 묶음.
+					var logs: Array[BattleEvent] = events.slice(i + 1, impact)
+					var hits: Array[BattleEvent] = events.slice(impact, end)
+					if event.kind == BattleEvent.Kind.CARD_PLAYED:
+						await _card_played(event, logs, hits)
+					else:
+						await _enemy_acted(event, logs, hits)
+					_release_camera()
+					# 묶음 끝 다음 이벤트로.
+					i = end
+					continue
 			# 회복: 체력 바 갱신·숫자.
 			BattleEvent.Kind.HEALED:
 				await _healed(event)
@@ -82,35 +130,96 @@ func play(events: Array[BattleEvent]) -> void:
 				hud.append_log(event.text)
 			# 전투 종료: 승패 배너와 로그.
 			BattleEvent.Kind.BATTLE_ENDED:
-				# 화면 가운데에 승리/패배 배너를 띄운다.
 				hud.show_banner(event.ally_won)
-				# 로그에도 결과를 남긴다.
 				hud.append_log("전투 종료 — %s" % ("승리" if event.ally_won else "패배"))
-			# 드로우: 카드가 덱에서 손패로 날아오기 시작하고, 조금만 기다린 뒤 다음 장으로.
+			# 드로우.
 			BattleEvent.Kind.CARD_DRAWN:
-				# 비행을 시작한다 (끝날 때까지 기다리지 않음).
 				hud.draw_card(event)
-				# 다음 장이 약간 늦게 출발하도록 짧게 기다린다.
 				await _wait(DRAW_WAIT)
-			# 리셔플: 묘지 → 덱 연출을 시작하고 기다린다.
+			# 리셔플.
 			BattleEvent.Kind.DECK_RESHUFFLED:
-				# 뒷면 카드들이 날아가기 시작한다.
 				hud.reshuffle(event)
-				# 연출이 보이도록 기다린다.
 				await _wait(RESHUFFLE_WAIT)
-			# 손패 버리기: 손패 → 묘지 연출을 시작하고 기다린다.
+			# 손패 버리기.
 			BattleEvent.Kind.HAND_DISCARDED:
-				# 손패 카드들이 묘지로 날아가기 시작한다.
 				hud.discard_hand(event)
-				# 연출이 보이도록 기다린다.
 				await _wait(DISCARD_WAIT)
-			# 이동: 유닛이 새 칸으로 미끄러진다.
+			# 이동.
 			BattleEvent.Kind.UNIT_MOVED:
 				await _unit_moved(event)
 		# 다음 이벤트로.
 		i += 1
+	# 남은 푸시를 푼다.
+	_release_camera()
 	# 모든 이벤트를 재생했음을 알린다.
 	finished.emit()
+
+
+## 공격 이벤트 뒤(로그는 건너뜀)에 이어지는 피해·사망 묶음의 첫 인덱스. 다른 이벤트가 끼거나 없으면 −1.
+static func impact_start(events: Array[BattleEvent], attack_index: int) -> int:
+	for i in range(attack_index + 1, events.size()):
+		var kind: BattleEvent.Kind = events[i].kind
+		# 피해·사망이면 여기.
+		if kind == BattleEvent.Kind.DAMAGED or kind == BattleEvent.Kind.DIED:
+			return i
+		# 로그 말고 다른 것이 끼면 이 공격의 결과가 아니다.
+		if kind != BattleEvent.Kind.LOG:
+			return -1
+	# 없음.
+	return -1
+
+
+## 피해량에 비례해 밀리는 거리. 막힌(0) 공격은 밀지 않는다.
+static func knockback_distance(amount: int) -> float:
+	return 0.0 if amount <= 0 else minf(0.1 + 0.03 * amount, MAX_KNOCKBACK)
+
+
+## 돌진한 공격의 결과(피해·사망과 그 사이 로그)만 푸시인을 유지한다.
+static func keeps_camera_push(kind: BattleEvent.Kind) -> bool:
+	return kind == BattleEvent.Kind.DAMAGED or kind == BattleEvent.Kind.DIED or kind == BattleEvent.Kind.LOG
+
+
+## 원거리 발사음은 화살이 나가는 순간에 낸다. 근접 휘두르기는 예비동작부터 들려야 타격을 이끈다.
+static func attack_sound_at_strike(type: CardData.AttackType) -> bool:
+	return type == CardData.AttackType.RANGED
+
+
+# 피해·사망 이벤트인지.
+static func _is_damage(kind: BattleEvent.Kind) -> bool:
+	return kind == BattleEvent.Kind.DAMAGED or kind == BattleEvent.Kind.DIED
+
+
+# 대상이 있는 공격인지 (카드 사용, 또는 대상 있는 적 공격).
+static func _is_attack(event: BattleEvent) -> bool:
+	return event.kind == BattleEvent.Kind.CARD_PLAYED or (event.action == EnemyBrain.Action.ATTACK and event.target != null)
+
+
+# 연출 부품이 쓸 수 있는지 (instant 면 모두 끈다).
+func _has_camera() -> bool:
+	return camera_fx != null and not instant
+
+
+func _has_audio() -> bool:
+	return audio != null and audio.sounds != null and not instant
+
+
+func _has_pulse() -> bool:
+	return screen_fx != null and not instant
+
+
+# 카메라 푸시를 푼다.
+func _release_camera() -> void:
+	if _has_camera():
+		camera_fx.release()
+
+
+# 맞은 유닛을 공격자 반대 방향(바닥 평면)으로 밀 변위. 공격자를 모르면 0.
+func _knockback(view: UnitView, amount: int) -> Vector3:
+	if not _has_impact_origin:
+		return Vector3.ZERO
+	var away: Vector3 = view.home_position - _impact_origin
+	away.y = 0.0
+	return away.normalized() * knockback_distance(amount) if away.length_squared() > 0.0 else Vector3.ZERO
 
 
 # 같은 유닛이 한 묶음 안에서 두 번 나올 일은 지금 규칙상 없지만(한 칸은 한 공격에 한 번만 맞는다),
@@ -171,8 +280,8 @@ func _turn_started(event: BattleEvent) -> void:
 		await _wait(ENEMY_TURN_PAUSE)
 
 
-## 카드 사용 연출: 손패에서 카드를 빼고, 사용자가 대상 쪽으로 돌진한다.
-func _card_played(event: BattleEvent) -> void:
+## 카드 사용 연출: 손패에서 카드를 빼고, 사용자가 대상 쪽으로 공격한다. hits 가 있으면 무기가 닿는 순간 재생한다.
+func _card_played(event: BattleEvent, logs: Array[BattleEvent], hits: Array[BattleEvent]) -> void:
 	# 손패에서 쓴 카드를 없애고 SP·묘지 숫자를 갱신한다 (instant 에서도 해야 하므로 먼저).
 	hud.remove_played_card(event)
 	# 테스트 모드면 움직임 연출은 건너뛴다.
@@ -180,30 +289,70 @@ func _card_played(event: BattleEvent) -> void:
 		return
 	# 카드가 사라지는 것이 보이도록 잠깐 기다린다.
 	await _wait(PLAY_REMOVE_WAIT)
-	# 카드를 쓴 유닛의 화면 객체.
+	# 카드를 쓴 유닛.
 	var view: UnitView = board.view_for(event.unit)
-	# 머리 위에 카드 이름을 띄운다.
+	# 머리 위에 카드 이름.
 	view.pop_text(event.card.display_name, Color.WHITE)
-	# 겨냥한 칸 쪽으로 돌진했다가 돌아올 때까지 기다린다 (그 칸에 유닛이 없어도 칸 자체의 위치로 돌진한다).
-	await view.lunge_toward(board.layout.cell_position(event.target_team, event.target_cell))
+	# 겨냥한 칸 쪽으로 공격한다 (유닛이 없어도 칸 위치로).
+	await _attack(view, board.layout.cell_position(event.target_team, event.target_cell), event.card.attack_type, logs, hits)
 
 
-## 적 행동 연출: 공격이면 돌진, 방어·휴식이면 제자리 뛰기, 이동이면 없음(UNIT_MOVED 가 보여 준다).
-func _enemy_acted(event: BattleEvent) -> void:
-	# 테스트 모드면 움직임 연출은 건너뛴다.
-	if instant:
+## 적 행동 연출: 공격이면 공격(뒤따르는 피해를 타격 순간에), 방어·휴식이면 깡충, 이동이면 없음.
+func _enemy_acted(event: BattleEvent, logs: Array[BattleEvent], hits: Array[BattleEvent]) -> void:
+	# 테스트 모드거나 이동이면 연출 없음.
+	if instant or event.action == EnemyBrain.Action.MOVE:
 		return
-	# 이동은 뒤따르는 이동 이벤트가 보여 주므로 여기서는 연출하지 않는다.
-	if event.action == EnemyBrain.Action.MOVE:
-		return
-	# 행동한 적의 화면 객체.
+	# 행동한 적.
 	var view: UnitView = board.view_for(event.unit)
-	# 대상이 있는 공격이면 대상 쪽으로 돌진한다.
+	# 대상이 있는 공격.
 	if event.action == EnemyBrain.Action.ATTACK and event.target != null:
-		await view.lunge_toward(board.view_for(event.target).home_position)
-	# 그 외(방어, 휴식)는 제자리에서 한 번 뛴다.
+		await _attack(view, board.view_for(event.target).home_position, (event.unit.data as EnemyData).attack_type, logs, hits)
+	# 방어·휴식.
 	else:
 		await view.hop()
+
+
+# 공격 한 번: 푸시인·휘두르기 소리 → 돌진 시작 → 타격 시점까지 대기 → (원거리) 발사음·화살 → 타격 묶음 → 돌진 끝 대기.
+func _attack(view: UnitView, target: Vector3, type: CardData.AttackType, logs: Array[BattleEvent], hits: Array[BattleEvent]) -> void:
+	# 목표 쪽으로 조금 다가간다.
+	if _has_camera():
+		camera_fx.push_toward(target)
+	# 근접은 예비동작부터 휘두르기 소리.
+	if _has_audio() and not attack_sound_at_strike(type):
+		audio.play(audio.sounds.for_attack(type))
+	# 원거리는 뒤로 물러나는 반동, 근접은 앞으로 돌진. 기다리지 않고 시작한다.
+	var ranged: bool = type == CardData.AttackType.RANGED
+	var lunging: Array[bool] = [true]
+	_lunge_and_flag(view, target, RANGED_RECOIL if ranged else UnitView.LUNGE_DISTANCE, lunging)
+	# 무기가 닿는(쏘는) 순간까지.
+	await _wait(UnitMotion.ATTACK_STRIKE * view.attack_duration())
+	# 원거리는 이때 발사음과 화살.
+	if _has_audio() and attack_sound_at_strike(type):
+		audio.play(audio.sounds.for_attack(type))
+	if ranged:
+		var chest := Vector3.UP * UnitView.CHEST_HEIGHT
+		var arrow: Projectile = Projectile.spawn(board, projectile_texture, view.home_position + chest, target + chest)
+		await arrow.fly()
+	# 타격 묶음.
+	if not hits.is_empty():
+		for log_event in logs:
+			hud.append_log(log_event.text)
+		_impact_type = type
+		_impact_origin = view.home_position
+		_has_impact_origin = true
+		await _play_damage_batch(hits)
+		_impact_type = CardData.AttackType.MELEE
+		_has_impact_origin = false
+	# 돌진이 끝날 때까지.
+	while lunging[0]:
+		await _lunge_finished
+
+
+# 돌진을 끝까지 하고 flag[0] 을 false 로 바꾼 뒤 알린다 (호출한 쪽은 기다리지 않는다).
+func _lunge_and_flag(view: UnitView, target: Vector3, distance: float, flag: Array[bool]) -> void:
+	await view.lunge_toward(target, distance)
+	flag[0] = false
+	_lunge_finished.emit()
 
 
 ## 이동 연출: 아군이면 SP 표시를 갱신하고, 유닛을 새 칸으로 옮긴다.
@@ -214,22 +363,32 @@ func _unit_moved(event: BattleEvent) -> void:
 	await board.move_view(event.unit, event.from_cell, event.to_cell, not instant)
 
 
-## 피해 연출: 체력 바를 먼저 갱신하고, 숫자를 띄우며 번쩍이고 흔들린다.
+## 피해 연출: 체력 표시 갱신, 튀는 숫자, 타격음, 히트스톱·흔들림, 큰 타격 펄스, 흰 번쩍임·불꽃·넉백.
 func _damaged(event: BattleEvent) -> void:
-	# 맞은 유닛의 화면 객체.
+	# 맞은 유닛.
 	var view: UnitView = board.view_for(event.unit)
-	# 체력·방어도 표시를 맞은 직후 값으로 바꾼다.
+	# 체력·방어도 표시.
 	view.set_stats(event.hp, event.unit.data.max_hp, event.block)
-	# 로그에 피해를 남긴다.
+	# 로그.
 	hud.append_log("%s 에게 %d 피해" % [event.unit.data.display_name, event.amount])
 	# 테스트 모드면 여기까지만.
 	if instant:
 		return
-	# 머리 위에 붉은 피해 숫자를 띄운다.
-	view.pop_text("-%d" % event.amount, DAMAGE_COLOR)
-	# 번쩍이고 흔들리는 연출이 끝날 때까지 기다린다.
-	await view.flash_and_shake()
-	# 전체 피해 연출 시간이 DAMAGE_TIME 이 되도록 남은 시간을 기다린다 (피격 띠가 더 길면 기다리지 않는다).
+	# 피해 숫자 (처치는 더 크게).
+	view.pop_text("-%d" % event.amount, DAMAGE_COLOR, UnitView.KILL_POP_PUNCH if event.hp <= 0 else UnitView.DAMAGE_POP_PUNCH)
+	# 타격음.
+	if _has_audio():
+		audio.play(audio.sounds.for_impact(_impact_type, event.amount, false))
+	# 히트스톱과 흔들림.
+	if _has_camera():
+		camera_fx.hit_stop(HIT_STOP_TIME)
+		camera_fx.shake(BattleCamera.shake_for_damage(event.amount, false))
+	# 큰 타격 펄스.
+	if _has_pulse() and event.amount >= BIG_HIT_DAMAGE:
+		screen_fx.pulse(_BIG_HIT_PULSE)
+	# 흰 번쩍임·불꽃·피격·넉백.
+	await view.flash_and_shake(_knockback(view, event.amount))
+	# 전체 피해 연출 시간이 DAMAGE_TIME 이 되도록 남은 시간 (피격 띠가 더 길면 기다리지 않는다).
 	await _wait(maxf(0.0, DAMAGE_TIME - view.hit_duration()))
 
 
@@ -263,17 +422,28 @@ func _block_gained(event: BattleEvent) -> void:
 	await _wait(STAT_POP_TIME)
 
 
-## 쓰러짐 연출: 타일을 빈 칸으로 표시하고 유닛을 서서히 사라지게 한다.
+## 쓰러짐 연출: 빈 칸 표시, 긴 히트스톱·최대 흔들림·슬로모션·펄스·처치음, 넘어지며 사라짐.
 func _died(event: BattleEvent) -> void:
-	# 유닛이 쓰러진 칸의 타일을 빈 칸 모습으로 바꾼다.
+	# 빈 칸.
 	board.mark_empty(event.unit.team, event.cell)
-	# 쓰러진 유닛의 화면 객체.
+	# 쓰러진 유닛.
 	var view: UnitView = board.view_for(event.unit)
 	# 테스트 모드면 바로 숨긴다.
 	if instant:
 		view.set_alive(false)
 		return
-	# 서서히 사라지는 연출이 끝날 때까지 기다린다.
+	# 카메라.
+	if _has_camera():
+		camera_fx.hit_stop(KILL_HIT_STOP_TIME)
+		camera_fx.shake(BattleCamera.shake_for_damage(0, true))
+		camera_fx.kill_slow_mo()
+	# 펄스.
+	if _has_pulse():
+		screen_fx.pulse(1.0)
+	# 처치음.
+	if _has_audio():
+		audio.play(audio.sounds.for_impact(_impact_type, 0, true))
+	# 넘어지며 사라진다.
 	await view.fade_out()
 
 
