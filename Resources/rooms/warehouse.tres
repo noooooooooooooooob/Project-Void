@@ -1,18 +1,18 @@
-[gd_resource type="Resource" script_class="BattleRoomData" format=3]
+[gd_resource type="Resource" script_class="BattleRoomData" format=3 uid="uid://nraljuff6a5g"]
 
-[ext_resource type="Script" path="res://Scripts/combat/data/battle_room_data.gd" id="1_room"]
-[ext_resource type="Script" path="res://Scripts/combat/data/prop_placement.gd" id="2_prop"]
-[ext_resource type="Texture2D" path="res://Art/rooms/warehouse_floor.png" id="3_floor"]
-[ext_resource type="Texture2D" path="res://Art/rooms/warehouse_wall.png" id="4_wall"]
-[ext_resource type="Texture2D" path="res://Art/rooms/tile_ally.png" id="5_tile_ally"]
-[ext_resource type="Texture2D" path="res://Art/rooms/tile_enemy.png" id="6_tile_enemy"]
-[ext_resource type="Texture2D" path="res://Art/props/crates.png" id="7_crates"]
-[ext_resource type="Texture2D" path="res://Art/props/railing.png" id="8_railing"]
-[ext_resource type="Texture2D" path="res://Art/props/drum.png" id="9_drum"]
-[ext_resource type="Texture2D" path="res://Art/props/fan.png" id="10_fan"]
-[ext_resource type="Texture2D" path="res://Art/props/cardboard.png" id="11_cardboard"]
-[ext_resource type="Texture2D" path="res://Art/props/worklight.png" id="12_worklight"]
-[ext_resource type="Texture2D" path="res://Art/props/toolbox.png" id="13_toolbox"]
+[ext_resource type="Script" uid="uid://dvlno5ck5kkog" path="res://Scripts/combat/data/battle_room_data.gd" id="1_room"]
+[ext_resource type="Script" uid="uid://r3nae5lnaweb" path="res://Scripts/combat/data/prop_placement.gd" id="2_prop"]
+[ext_resource type="Texture2D" uid="uid://cqljn4kgwtap6" path="res://Art/rooms/warehouse_floor.png" id="3_floor"]
+[ext_resource type="Texture2D" uid="uid://cgf8ynhsdacg2" path="res://Art/rooms/warehouse_wall.png" id="4_wall"]
+[ext_resource type="Texture2D" uid="uid://b80rcem2f13wx" path="res://Art/rooms/tile_ally.png" id="5_tile_ally"]
+[ext_resource type="Texture2D" uid="uid://qomxd8frigv4" path="res://Art/rooms/tile_enemy.png" id="6_tile_enemy"]
+[ext_resource type="Texture2D" uid="uid://ck5x8fld2ygg8" path="res://Art/props/crates.png" id="7_crates"]
+[ext_resource type="Texture2D" uid="uid://c0m4ngskmsg8" path="res://Art/props/railing.png" id="8_railing"]
+[ext_resource type="Texture2D" uid="uid://kjgj2dtko5sf" path="res://Art/props/drum.png" id="9_drum"]
+[ext_resource type="Texture2D" uid="uid://dub0e641yf6dv" path="res://Art/props/fan.png" id="10_fan"]
+[ext_resource type="Texture2D" uid="uid://bej2blmhsqn7s" path="res://Art/props/cardboard.png" id="11_cardboard"]
+[ext_resource type="Texture2D" uid="uid://cfepystyr2yy1" path="res://Art/props/worklight.png" id="12_worklight"]
+[ext_resource type="Texture2D" uid="uid://d12w5llqewns3" path="res://Art/props/toolbox.png" id="13_toolbox"]
 
 [sub_resource type="Resource" id="Prop_1"]
 script = ExtResource("2_prop")
@@ -30,7 +30,6 @@ height = 1.1
 script = ExtResource("2_prop")
 texture = ExtResource("8_railing")
 position = Vector3(-0.6, 0, -3.2)
-height = 1.0
 
 [sub_resource type="Resource" id="Prop_4"]
 script = ExtResource("2_prop")
@@ -54,7 +53,6 @@ height = 1.8
 script = ExtResource("2_prop")
 texture = ExtResource("11_cardboard")
 position = Vector3(-3, 0, -3.4)
-height = 1.0
 
 [sub_resource type="Resource" id="Prop_8"]
 script = ExtResource("2_prop")
