@@ -28,6 +28,10 @@ func run() -> Array[Dictionary]:
 	_test_billboard_rotation()
 	# 오라 입자.
 	_test_aura()
+	# 맞는 순간 이펙트.
+	_test_impact()
+	# 피해 숫자 크기.
+	_test_pop_scale()
 	# 결과를 돌려준다.
 	return results()
 
@@ -288,3 +292,43 @@ func _test_aura() -> void:
 	check("aura uses the texture", ((view.aura.mesh as QuadMesh).material as StandardMaterial3D).albedo_texture == data.aura_texture)
 	# 지운다.
 	view.free()
+
+
+# 맞는 순간: 몸이 흰색이 되고 불꽃이 튀며, 실제 0.06초가 지나면 흰색이 꺼지는지.
+func _test_impact() -> void:
+	# 아군.
+	var view: UnitView = _view(true)
+	# 불꽃이 있다.
+	check("sparks exist", view.sparks != null and view.sparks.one_shot)
+	# 불꽃은 가슴 높이.
+	check("sparks at chest height", is_equal_approx(view.sparks.position.y, UnitView.CHEST_HEIGHT))
+	# 게임에서처럼 트리에 붙인다 (불꽃은 월드 좌표라 트리 안에서 터뜨린다).
+	(Engine.get_main_loop() as SceneTree).root.add_child(view)
+	# 맞는다.
+	view.start_impact()
+	# 흰색.
+	check("impact flashes white", is_equal_approx(view.body_material.get_shader_parameter("flash"), 1.0))
+	# 불꽃 방출.
+	check("impact emits sparks", view.sparks.emitting)
+	# 아직 0.06초 전.
+	view.tick_flash(Time.get_ticks_msec())
+	# 그대로 흰색.
+	check("white holds briefly", is_equal_approx(view.body_material.get_shader_parameter("flash"), 1.0))
+	# 0.06초 뒤.
+	view.tick_flash(Time.get_ticks_msec() + 61)
+	# 꺼짐.
+	check("white clears after 0.06 s", is_equal_approx(view.body_material.get_shader_parameter("flash"), 0.0))
+	# 지운다.
+	view.free()
+
+
+# 피해 숫자 크기: punch 배에서 시작해 0.15초(POP_TIME 0.6 의 1/4)에 1 이 되고 그 뒤는 1.
+func _test_pop_scale() -> void:
+	# 시작.
+	check("pop starts punched", is_equal_approx(UnitView.pop_scale(0.0, 1.6), 1.6))
+	# 절반 (0.075초 = t 0.125).
+	check("pop shrinks", is_equal_approx(UnitView.pop_scale(0.125, 2.0), 1.5))
+	# 0.15초.
+	check("pop settles at 0.15 s", is_equal_approx(UnitView.pop_scale(0.25, 2.0), 1.0))
+	# 끝.
+	check("pop stays at 1", is_equal_approx(UnitView.pop_scale(1.0, 2.0), 1.0))

@@ -52,6 +52,21 @@ const AURA_LIFETIME: float = 1.6
 const AURA_RATE: float = 2.5
 ## 영혼불 한 알의 최대 크기 (몸 그림 64px 중 16px 정도).
 const AURA_SIZE: float = 0.4
+## 맞는 순간 몸이 완전히 흰색인 실제 시간.
+const HIT_WHITE_TIME: float = 0.06
+## 피해 숫자가 처음 튀는 배율.
+const DAMAGE_POP_PUNCH: float = 1.6
+## 처치 숫자가 처음 튀는 배율.
+const KILL_POP_PUNCH: float = 2.0
+## 피해 숫자가 크게 튀었다가 원래 크기로 돌아오는 시간.
+const POP_PUNCH_TIME: float = 0.15
+## 한 번에 튀는 불꽃 수.
+const SPARK_COUNT: int = 12
+## 불꽃·화살이 오가는 가슴 높이.
+const CHEST_HEIGHT: float = SPRITE_HEIGHT * 0.55
+# 불꽃 색 (뜨거운 흰색 → 주황).
+const _SPARK_HOT := Color(1.0, 0.95, 0.8)
+const _SPARK_WARM := Color(1.0, 0.55, 0.15)
 # 피격 흔들림의 좌우 위치 키 (4구간).
 const _SHAKE_KEYS: Array[float] = [0.0, 0.08, -0.08, 0.05, 0.0]
 
@@ -77,6 +92,10 @@ var attack_sheet: Texture2D
 var hit_sheet: Texture2D
 ## 몸 주변에 피어오르는 오라 입자 (오라 그림이 없으면 null).
 var aura: CPUParticles3D
+## 맞는 순간 튀는 불꽃 (한 번씩 터뜨린다).
+var sparks: CPUParticles3D
+# 흰 번쩍임이 꺼질 실제 시각 (밀리초, 0 이면 꺼져 있음).
+var _white_until_msec: int = 0
 ## 머리 위 이름 글자.
 var name_label: Label3D
 ## 체력 바 아래 "현재/최대 방N" 글자.
@@ -158,6 +177,9 @@ func setup(p_unit: Unit, texture: Texture2D) -> void:
 	# 대기 모습으로 시작한다.
 	_return_to_idle()
 
+	# --- 불꽃 ---
+	sparks = _make_sparks()
+
 	# --- 오라 ---
 	# 데이터에 오라 그림이 있을 때만.
 	if unit.data.aura_texture != null:
@@ -236,6 +258,10 @@ func _process(delta: float) -> void:
 	_clock += delta
 	# 대기 동작.
 	tick_idle(_clock)
+	# 흰 번쩍임은 실제 시간으로 끈다 (히트스톱 중에도 0.06초면 꺼진다).
+	tick_flash(Time.get_ticks_msec())
+	# 불꽃은 히트스톱 중에도 제 속도로 날아간다.
+	sparks.speed_scale = 1.0 / maxf(Engine.time_scale, 0.01)
 
 
 ## 카메라 시선(camera_forward)의 수평 성분을 보도록 Y축만 돌리고, 위쪽을 카메라 반대로 tilt_deg 만큼 눕힌 회전.
@@ -371,6 +397,8 @@ func reset_pose() -> void:
 	body_material.set_shader_parameter("tint", Color.WHITE)
 	body_material.set_shader_parameter("flash", 0.0)
 	body_material.set_shader_parameter("fade", 1.0)
+	# 흰 번쩍임 예약도 지운다.
+	_white_until_msec = 0
 
 
 ## 살아 있음/쓰러짐에 맞춰 보이기와 클릭 판정을 켜고 끈다.
@@ -434,15 +462,19 @@ func _hop_step(t: float) -> void:
 	apply_pose(UnitMotion.hop(t))
 
 
-## 피격 연출: 피격 띠(또는 움찔 자세) + 붉은 번쩍임 2회 + 좌우 흔들림. 끝날 때까지 await 할 수 있다.
-func flash_and_shake() -> void:
+## 피격 연출: 흰 번쩍임·불꽃으로 시작해 피격 띠(또는 움찔 자세) + 붉은 번쩍임 2회 + 좌우 흔들림.
+## knockback 은 맞아서 밀려날 최대 변위(바닥 평면). 끝나면 정확히 제자리로 돌아온다. await 할 수 있다.
+func flash_and_shake(knockback: Vector3 = Vector3.ZERO) -> void:
 	# 연출 시작.
 	_acting = true
+	# 맞는 첫 순간.
+	start_impact()
 	# 0→1 진행률.
 	var tween: Tween = create_tween()
-	tween.tween_method(_hit_step, 0.0, 1.0, hit_duration())
+	tween.tween_method(_hit_step.bind(home_position, knockback), 0.0, 1.0, hit_duration())
 	await tween.finished
 	# 제자리·원래 색.
+	position = home_position
 	body.position = Vector3.ZERO
 	body_material.set_shader_parameter("tint", Color.WHITE)
 	# 연출 끝, 대기 그림으로.
@@ -450,8 +482,8 @@ func flash_and_shake() -> void:
 	_return_to_idle()
 
 
-# 피격 한 순간: 모습, 4구간 중 0·2번째 붉은색, 좌우 흔들림.
-func _hit_step(t: float) -> void:
+# 피격 한 순간: 모습, 4구간 중 0·2번째 붉은색, 좌우 흔들림, 넉백.
+func _hit_step(t: float, home: Vector3, knockback: Vector3) -> void:
 	# 그려진 피격.
 	if hit_sheet != null:
 		show_sheet_progress(hit_sheet, t)
@@ -465,11 +497,36 @@ func _hit_step(t: float) -> void:
 	# 구간 안 진행률로 흔들림 키 사이를 잇는다.
 	var local: float = t * 4.0 - quarter
 	body.position = Vector3(lerpf(_SHAKE_KEYS[quarter], _SHAKE_KEYS[quarter + 1], local), 0.0, 0.0)
+	# 밀렸다가 돌아온다 (넉백이 없으면 제자리).
+	position = home + knockback * UnitMotion.knockback_reach(t)
 
 
 # 기다리지 않는다. 숫자가 떠오르는 동안 다음 연출이 겹쳐도 된다.
+## 맞는 첫 순간: 몸을 완전한 흰색으로 칠하고 불꽃을 튀긴다. 흰색은 실제 시간 0.06초 뒤 꺼진다.
+func start_impact() -> void:
+	# 흰색.
+	body_material.set_shader_parameter("flash", 1.0)
+	# 끌 시각.
+	_white_until_msec = Time.get_ticks_msec() + int(HIT_WHITE_TIME * 1000.0)
+	# 불꽃 한 번.
+	sparks.restart()
+
+
+## 실제 시각 now_msec 가 흰색을 끌 때를 지났으면 끈다.
+func tick_flash(now_msec: int) -> void:
+	# 켜져 있고 시간이 됐으면.
+	if _white_until_msec > 0 and now_msec >= _white_until_msec:
+		_white_until_msec = 0
+		body_material.set_shader_parameter("flash", 0.0)
+
+
+## 피해 숫자 크기: punch 배에서 시작해 POP_PUNCH_TIME 동안 1 로 줄어든다. t 는 POP_TIME 기준 진행률.
+static func pop_scale(t: float, punch: float) -> float:
+	return lerpf(punch, 1.0, clampf(t * POP_TIME / POP_PUNCH_TIME, 0.0, 1.0))
+
+
 ## 머리 위에 글자(피해 숫자, 카드 이름 등)를 띄워 위로 올리며 사라지게 한다.
-func pop_text(text: String, color: Color) -> void:
+func pop_text(text: String, color: Color, punch: float = 1.0) -> void:
 	# 큰 글자를 만든다.
 	var label: Label3D = _make_label(text, 64)
 	# 글자 색을 정한다.
@@ -486,6 +543,8 @@ func pop_text(text: String, color: Color) -> void:
 	tween.tween_property(label, "modulate:a", 0.0, POP_TIME)
 	# 외곽선도 함께 투명해진다 (따로 바꾸지 않으면 외곽선만 남는다).
 	tween.tween_property(label, "outline_modulate:a", 0.0, POP_TIME)
+	# 처음엔 크게 튀었다가 원래 크기로.
+	tween.tween_method(func(t: float) -> void: label.scale = Vector3.ONE * pop_scale(t, punch), 0.0, 1.0, POP_TIME)
 	# 다 끝나면 글자 노드를 지운다.
 	tween.finished.connect(label.queue_free)
 
@@ -609,6 +668,53 @@ func _make_bar(color: Color, priority: int) -> MeshInstance3D:
 	bar.material_override = material
 	# 만든 막대를 돌려준다.
 	return bar
+
+
+# 가슴 높이에서 사방으로 튀는 네모 불꽃 (유니티 UnitView.MakeSparks). 한 번 터뜨리고 끝난다.
+func _make_sparks() -> CPUParticles3D:
+	# 입자 노드.
+	var particles := CPUParticles3D.new()
+	particles.name = "Sparks"
+	particles.position = Vector3(0.0, CHEST_HEIGHT, 0.0)
+	# 한 번에 다 나온다.
+	particles.amount = SPARK_COUNT
+	particles.one_shot = true
+	particles.explosiveness = 1.0
+	particles.emitting = false
+	particles.lifetime = 0.25
+	# 이미 튄 불꽃은 몸이 밀려도 제자리.
+	particles.local_coords = false
+	# 작은 구에서 사방으로.
+	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = 0.1
+	particles.direction = Vector3.UP
+	particles.spread = 180.0
+	particles.initial_velocity_min = 2.0
+	particles.initial_velocity_max = 4.0
+	# 중력 절반.
+	particles.gravity = Vector3(0.0, -4.9, 0.0)
+	# 크기 0.06~0.1.
+	particles.scale_amount_min = 0.75
+	particles.scale_amount_max = 1.25
+	# 흰색~주황 사이에서 하나.
+	var colors := Gradient.new()
+	colors.set_color(0, _SPARK_HOT)
+	colors.set_color(1, _SPARK_WARM)
+	particles.color_initial_ramp = colors
+	# 카메라를 보는 네모, 빛을 더한다.
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.08, 0.08)
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	material.vertex_color_use_as_albedo = true
+	quad.material = material
+	particles.mesh = quad
+	particles.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(particles)
+	return particles
 
 
 # 몸 둘레에서 천천히 떠올라 옅어지며 사라지는 불꽃 (유니티 UnitView.MakeAura).
