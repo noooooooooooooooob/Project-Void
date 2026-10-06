@@ -436,6 +436,8 @@ func _test_room_tile_textures() -> void:
 	var ally_material: StandardMaterial3D = board.tile_material(Unit.Team.ALLY, Vector2i(0, 1))
 	check("ally tile uses the room texture", ally_material.albedo_texture == ally_tile)
 	check_eq("textured tile base tint", ally_material.albedo_color, Board3D.TEXTURED_TILE_TINT)
+	# BoxMesh 는 면마다 UV 를 3×2 아틀라스로 나눠 쓴다. 3×2 로 늘려야 윗면에 그림 한 장이 온전히 들어간다.
+	check("tile texture fills the whole top face", ally_material.uv1_scale.is_equal_approx(Vector3(3.0, 2.0, 1.0)))
 	# 적 칸.
 	check("enemy tile uses the room texture", board.tile_material(Unit.Team.ENEMY, Vector2i(0, 1)).albedo_texture == enemy_tile)
 	# 빈 칸은 어둡게.
