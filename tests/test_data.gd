@@ -17,6 +17,8 @@ func run() -> Array[Dictionary]:
 	_test_ally_extends_unit_data()
 	# 시작 카드 파일.
 	_test_starter_cards_exist()
+	# 유닛 .tres 의 그림·띠·오라 연결 상태.
+	_test_unit_art_links()
 	# 결과를 돌려준다.
 	return results()
 
@@ -97,3 +99,36 @@ func _test_starter_cards_exist() -> void:
 		return
 	# 범위 관통로.
 	check_eq("skewer shape is LINE", skewer.shape, CardData.Shape.LINE)
+
+
+# 유닛 6종이 유니티와 같은 그림·애니메이션 띠·오라를 가리키는지 (설계 §4.1 표).
+func _test_unit_art_links() -> void:
+	# id → [idle, attack, hit, aura] 가 있어야 하는지.
+	var expected: Dictionary = {
+		"vanguard": [true, true, true, false],
+		"archer": [true, true, true, false],
+		"scout": [true, true, true, false],
+		"stalker": [true, true, true, false],
+		"brute": [true, false, true, false],
+		"sentry": [false, false, false, true],
+	}
+	# 유닛마다.
+	for id in expected:
+		# 데이터 파일을 불러온다.
+		var data: UnitData = load("res://Resources/units/%s.tres" % id)
+		# 기대값.
+		var flags: Array = expected[id]
+		# 정지 그림은 모두 있다.
+		check("%s has a sprite" % id, data.sprite != null)
+		# 대기 띠.
+		check_eq("%s idle sheet" % id, data.idle_sheet != null, flags[0])
+		# 공격 띠.
+		check_eq("%s attack sheet" % id, data.attack_sheet != null, flags[1])
+		# 피격 띠.
+		check_eq("%s hit sheet" % id, data.hit_sheet != null, flags[2])
+		# 오라.
+		check_eq("%s aura" % id, data.aura_texture != null, flags[3])
+	# 띠는 64px 프레임 16장이다.
+	var vanguard: UnitData = load("res://Resources/units/vanguard.tres")
+	# 폭 1024, 높이 64.
+	check_eq("sheet is 16 frames of 64px", Vector2i(vanguard.idle_sheet.get_width(), vanguard.idle_sheet.get_height()), Vector2i(1024, 64))

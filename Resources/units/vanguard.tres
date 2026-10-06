@@ -6,6 +6,10 @@
 [ext_resource type="Resource" uid="uid://cyw41v4yf1j05" path="res://Resources/cards/shoot.tres" id="4_uyxi8"]
 [ext_resource type="Script" uid="uid://digrljfdhjmf2" path="res://Scripts/combat/data/ally_data.gd" id="5_mv3tw"]
 [ext_resource type="Resource" path="res://Resources/cards/skewer.tres" id="6_skewer"]
+[ext_resource type="Texture2D" path="res://Art/units/vanguard.png" id="10_sprite"]
+[ext_resource type="Texture2D" path="res://Art/units/anim/vanguard_idle.png" id="11_idle"]
+[ext_resource type="Texture2D" path="res://Art/units/anim/vanguard_attack.png" id="12_attack"]
+[ext_resource type="Texture2D" path="res://Art/units/anim/vanguard_hit.png" id="13_hit"]
 
 [resource]
 script = ExtResource("5_mv3tw")
@@ -14,3 +18,7 @@ id = &"vanguard"
 display_name = "선봉"
 max_hp = 30
 speed = 12
+sprite = ExtResource("10_sprite")
+idle_sheet = ExtResource("11_idle")
+attack_sheet = ExtResource("12_attack")
+hit_sheet = ExtResource("13_hit")

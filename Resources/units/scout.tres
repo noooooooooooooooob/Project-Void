@@ -6,6 +6,10 @@
 [ext_resource type="Resource" uid="uid://c6xtex48jqom8" path="res://Resources/cards/volley.tres" id="4_rj5yi"]
 [ext_resource type="Resource" uid="uid://cu38wj8qfosm7" path="res://Resources/cards/cleave.tres" id="5_8bf1v"]
 [ext_resource type="Script" uid="uid://digrljfdhjmf2" path="res://Scripts/combat/data/ally_data.gd" id="6_w6v1e"]
+[ext_resource type="Texture2D" path="res://Art/units/scout.png" id="10_sprite"]
+[ext_resource type="Texture2D" path="res://Art/units/anim/scout_idle.png" id="11_idle"]
+[ext_resource type="Texture2D" path="res://Art/units/anim/scout_attack.png" id="12_attack"]
+[ext_resource type="Texture2D" path="res://Art/units/anim/scout_hit.png" id="13_hit"]
 
 [resource]
 script = ExtResource("6_w6v1e")
@@ -14,3 +18,7 @@ id = &"scout"
 display_name = "정찰병"
 max_hp = 22
 speed = 16
+sprite = ExtResource("10_sprite")
+idle_sheet = ExtResource("11_idle")
+attack_sheet = ExtResource("12_attack")
+hit_sheet = ExtResource("13_hit")

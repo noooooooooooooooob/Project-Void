@@ -1,6 +1,9 @@
 [gd_resource type="Resource" script_class="EnemyData" format=3 uid="uid://0rtubcoetgk3"]
 
 [ext_resource type="Script" uid="uid://coph8hb3quefm" path="res://Scripts/combat/data/enemy_data.gd" id="1_3qwrm"]
+[ext_resource type="Texture2D" path="res://Art/units/brute.png" id="10_sprite"]
+[ext_resource type="Texture2D" path="res://Art/units/anim/brute_idle.png" id="11_idle"]
+[ext_resource type="Texture2D" path="res://Art/units/anim/brute_hit.png" id="13_hit"]
 
 [resource]
 script = ExtResource("1_3qwrm")
@@ -11,3 +14,6 @@ id = &"brute"
 display_name = "괴한"
 max_hp = 28
 speed = 8
+sprite = ExtResource("10_sprite")
+idle_sheet = ExtResource("11_idle")
+hit_sheet = ExtResource("13_hit")

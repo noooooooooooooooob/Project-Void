@@ -6,6 +6,10 @@
 [ext_resource type="Resource" uid="uid://dchtg3ucib8eu" path="res://Resources/cards/piercing_shot.tres" id="4_88uvr"]
 [ext_resource type="Script" uid="uid://digrljfdhjmf2" path="res://Scripts/combat/data/ally_data.gd" id="5_kacer"]
 [ext_resource type="Resource" path="res://Resources/cards/blast.tres" id="6_blast"]
+[ext_resource type="Texture2D" path="res://Art/units/archer.png" id="10_sprite"]
+[ext_resource type="Texture2D" path="res://Art/units/anim/archer_idle.png" id="11_idle"]
+[ext_resource type="Texture2D" path="res://Art/units/anim/archer_attack.png" id="12_attack"]
+[ext_resource type="Texture2D" path="res://Art/units/anim/archer_hit.png" id="13_hit"]
 
 [resource]
 script = ExtResource("5_kacer")
@@ -13,3 +17,7 @@ deck = Array[ExtResource("1_4ub2x")]([ExtResource("2_flb3i"), ExtResource("2_flb
 id = &"archer"
 display_name = "사수"
 max_hp = 20
+sprite = ExtResource("10_sprite")
+idle_sheet = ExtResource("11_idle")
+attack_sheet = ExtResource("12_attack")
+hit_sheet = ExtResource("13_hit")

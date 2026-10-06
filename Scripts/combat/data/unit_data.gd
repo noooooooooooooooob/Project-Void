@@ -16,3 +16,11 @@ extends Resource
 @export var speed: int = 10
 ## 2.5D 화면에서 유닛을 그릴 그림. 비어 있으면 Board3D 가 임시 실루엣 그림(placeholder_unit.png)을 쓴다.
 @export var sprite: Texture2D
+## 64px 프레임을 가로로 이어 붙인 대기 애니메이션 띠 (프레임 수 = 너비 ÷ 높이). 비어 있으면 sprite 한 장 + 코드 숨쉬기.
+@export var idle_sheet: Texture2D
+## 공격 애니메이션 띠. 비어 있으면 코드 자세(UnitMotion.attack)로 공격한다.
+@export var attack_sheet: Texture2D
+## 피격 애니메이션 띠. 비어 있으면 코드 자세(UnitMotion.hit)로 움찔한다.
+@export var hit_sheet: Texture2D
+## 몸 주변에 계속 피어오르는 이펙트 그림 (예: 영혼불). 비어 있으면 없음.
+@export var aura_texture: Texture2D
