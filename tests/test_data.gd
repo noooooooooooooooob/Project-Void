@@ -19,6 +19,8 @@ func run() -> Array[Dictionary]:
 	_test_starter_cards_exist()
 	# 유닛 .tres 의 그림·띠·오라 연결 상태.
 	_test_unit_art_links()
+	# 전투 방 데이터와 연결.
+	_test_rooms()
 	# 결과를 돌려준다.
 	return results()
 
@@ -132,3 +134,23 @@ func _test_unit_art_links() -> void:
 	var vanguard: UnitData = load("res://Resources/units/vanguard.tres")
 	# 폭 1024, 높이 64.
 	check_eq("sheet is 16 frames of 64px", Vector2i(vanguard.idle_sheet.get_width(), vanguard.idle_sheet.get_height()), Vector2i(1024, 64))
+
+
+# 창고 방이 텍스처 4장과 소품 9개를 갖고, skirmish 가 그 방을 가리키며, 옛 배경 필드는 없는지.
+func _test_rooms() -> void:
+	# 창고 방.
+	var room: BattleRoomData = load("res://Resources/rooms/warehouse.tres")
+	# 불러와짐.
+	check("warehouse room loads", room != null)
+	# 텍스처 4장.
+	check("room textures set", room.ground_texture != null and room.wall_texture != null and room.ally_tile_texture != null and room.enemy_tile_texture != null)
+	# 소품 9개.
+	check_eq("warehouse props", room.props.size(), 9)
+	# 첫 소품 (crates, 먼 쪽 왼편).
+	check("first prop is the far-left crates", room.props[0].texture != null and room.props[0].position.is_equal_approx(Vector3(-5.8, 0.0, -2.7)) and is_equal_approx(room.props[0].height, 1.6))
+	# skirmish.
+	var skirmish: EncounterData = load("res://Resources/encounters/skirmish.tres")
+	# 같은 방.
+	check_eq("skirmish uses the warehouse room", skirmish.room.resource_path, "res://Resources/rooms/warehouse.tres")
+	# 옛 배경 필드 제거.
+	check("encounter has no background field", not ("background" in skirmish))

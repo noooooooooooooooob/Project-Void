@@ -73,9 +73,6 @@ func _ready() -> void:
 	# 결과만 기억해 둔다. 맵은 battle_finished 를 받자마자 이 씬을 지우므로, 신호는 결정타 연출 재생이 끝난 뒤 _run 이 낸다.
 	_state.battle_ended.connect(func(ally_won: bool) -> void: _ally_won = ally_won)
 
-	# 인카운터에 배경 이미지가 있으면 기본 단색 대신 그 이미지를 하늘로 쓴다.
-	_apply_background(encounter.background)
-
 	# 타일과 유닛 화면 객체를 만든다.
 	_board.build(_state, PLACEHOLDER_SPRITE)
 	# 타일 색·유닛 표시를 현재 상태로 맞춘다.
@@ -126,20 +123,6 @@ func _ready() -> void:
 
 	# 전투를 시작한다 (첫 아군 차례까지 진행하고 그 연출을 재생).
 	_run(_state.start_battle)
-
-
-## 배경 이미지가 있으면 하늘을 그 이미지로 바꾼다. 없으면 씬 기본 단색 배경을 그대로 둔다.
-func _apply_background(texture: Texture2D) -> void:
-	if texture == null:
-		return
-	var env: Environment = _environment.environment.duplicate()
-	var sky_material := PanoramaSkyMaterial.new()
-	sky_material.panorama = texture
-	var sky := Sky.new()
-	sky.sky_material = sky_material
-	env.background_mode = Environment.BG_SKY
-	env.sky = sky
-	_environment.environment = env
 
 
 # 규칙은 action 안에서 동기로 끝나고, 화면은 기록된 이벤트를 재생한 뒤 실제 상태로 한 번 더 맞춘다.

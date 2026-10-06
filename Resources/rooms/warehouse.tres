@@ -1,0 +1,77 @@
+[gd_resource type="Resource" script_class="BattleRoomData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/battle_room_data.gd" id="1_room"]
+[ext_resource type="Script" path="res://Scripts/combat/data/prop_placement.gd" id="2_prop"]
+[ext_resource type="Texture2D" path="res://Art/rooms/warehouse_floor.png" id="3_floor"]
+[ext_resource type="Texture2D" path="res://Art/rooms/warehouse_wall.png" id="4_wall"]
+[ext_resource type="Texture2D" path="res://Art/rooms/tile_ally.png" id="5_tile_ally"]
+[ext_resource type="Texture2D" path="res://Art/rooms/tile_enemy.png" id="6_tile_enemy"]
+[ext_resource type="Texture2D" path="res://Art/props/crates.png" id="7_crates"]
+[ext_resource type="Texture2D" path="res://Art/props/railing.png" id="8_railing"]
+[ext_resource type="Texture2D" path="res://Art/props/drum.png" id="9_drum"]
+[ext_resource type="Texture2D" path="res://Art/props/fan.png" id="10_fan"]
+[ext_resource type="Texture2D" path="res://Art/props/cardboard.png" id="11_cardboard"]
+[ext_resource type="Texture2D" path="res://Art/props/worklight.png" id="12_worklight"]
+[ext_resource type="Texture2D" path="res://Art/props/toolbox.png" id="13_toolbox"]
+
+[sub_resource type="Resource" id="Prop_1"]
+script = ExtResource("2_prop")
+texture = ExtResource("7_crates")
+position = Vector3(-5.8, 0, -2.7)
+height = 1.6
+
+[sub_resource type="Resource" id="Prop_2"]
+script = ExtResource("2_prop")
+texture = ExtResource("7_crates")
+position = Vector3(-5.3, 0, 1.5)
+height = 1.1
+
+[sub_resource type="Resource" id="Prop_3"]
+script = ExtResource("2_prop")
+texture = ExtResource("8_railing")
+position = Vector3(-0.6, 0, -3.2)
+height = 1.0
+
+[sub_resource type="Resource" id="Prop_4"]
+script = ExtResource("2_prop")
+texture = ExtResource("9_drum")
+position = Vector3(4.3, 0, -2.9)
+height = 1.1
+
+[sub_resource type="Resource" id="Prop_5"]
+script = ExtResource("2_prop")
+texture = ExtResource("9_drum")
+position = Vector3(5, 0, -2.2)
+height = 1.1
+
+[sub_resource type="Resource" id="Prop_6"]
+script = ExtResource("2_prop")
+texture = ExtResource("10_fan")
+position = Vector3(3.9, 0, 1.9)
+height = 1.8
+
+[sub_resource type="Resource" id="Prop_7"]
+script = ExtResource("2_prop")
+texture = ExtResource("11_cardboard")
+position = Vector3(-3, 0, -3.4)
+height = 1.0
+
+[sub_resource type="Resource" id="Prop_8"]
+script = ExtResource("2_prop")
+texture = ExtResource("12_worklight")
+position = Vector3(0.3, 0, 2.6)
+height = 1.6
+
+[sub_resource type="Resource" id="Prop_9"]
+script = ExtResource("2_prop")
+texture = ExtResource("13_toolbox")
+position = Vector3(-6, 0, -0.6)
+height = 0.5
+
+[resource]
+script = ExtResource("1_room")
+ground_texture = ExtResource("3_floor")
+wall_texture = ExtResource("4_wall")
+ally_tile_texture = ExtResource("5_tile_ally")
+enemy_tile_texture = ExtResource("6_tile_enemy")
+props = Array[ExtResource("2_prop")]([SubResource("Prop_1"), SubResource("Prop_2"), SubResource("Prop_3"), SubResource("Prop_4"), SubResource("Prop_5"), SubResource("Prop_6"), SubResource("Prop_7"), SubResource("Prop_8"), SubResource("Prop_9")])

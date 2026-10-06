@@ -8,6 +8,7 @@
 [ext_resource type="Resource" uid="uid://b1gt6juh5371q" path="res://Resources/units/stalker.tres" id="6_1i0vc"]
 [ext_resource type="Resource" uid="uid://ckhc2lw27mw5n" path="res://Resources/units/sentry.tres" id="7_tyvmu"]
 [ext_resource type="Script" uid="uid://ckvfx8103ec2v" path="res://Scripts/combat/data/encounter_data.gd" id="8_fhev4"]
+[ext_resource type="Resource" path="res://Resources/rooms/warehouse.tres" id="9_room"]
 
 [sub_resource type="Resource" id="Resource_l3lrf"]
 script = ExtResource("1_qgfyp")
@@ -43,3 +44,4 @@ script = ExtResource("8_fhev4")
 enemy_grid = Vector2i(2, 2)
 ally_units = Array[ExtResource("1_qgfyp")]([SubResource("Resource_l3lrf"), SubResource("Resource_fgpd1"), SubResource("Resource_cy5kt")])
 enemy_units = Array[ExtResource("1_qgfyp")]([SubResource("Resource_2no3e"), SubResource("Resource_2jqrp"), SubResource("Resource_3qbyn")])
+room = ExtResource("9_room")

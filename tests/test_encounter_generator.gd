@@ -12,6 +12,7 @@ func run() -> Array[Dictionary]:
 	_test_enemies_come_from_enemy_pool_only()
 	_test_enemy_cells_do_not_overlap()
 	_test_encounter_generation_is_deterministic()
+	_test_generated_encounters_use_the_room()
 	return results()
 
 
@@ -96,3 +97,10 @@ func _test_encounter_generation_is_deterministic() -> void:
 	for i in encounter_a.enemy_units.size():
 		check_eq("same seed places enemy %d at the same cell" % i, encounter_a.enemy_units[i].cell, encounter_b.enemy_units[i].cell)
 		check_eq("same seed picks the same enemy %d" % i, encounter_a.enemy_units[i].unit_data.id, encounter_b.enemy_units[i].unit_data.id)
+
+
+func _test_generated_encounters_use_the_room() -> void:
+	var roster: Array[UnitPlacement] = GeneratorScript.build_ally_roster(_rng(3))
+	var regular: EncounterData = GeneratorScript.build_encounter(_rng(3), roster, false)
+	var boss: EncounterData = GeneratorScript.build_encounter(_rng(3), roster, true)
+	check("generated encounters use the warehouse room", regular.room != null and regular.room.resource_path == GeneratorScript.DEFAULT_ROOM_PATH and boss.room == regular.room)

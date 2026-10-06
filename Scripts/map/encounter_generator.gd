@@ -14,6 +14,8 @@ const ALLY_PLACEMENTS: Array[Dictionary] = [
 const REGULAR_ENEMY_MIN: int = 1
 const REGULAR_ENEMY_MAX: int = 3
 const BOSS_ENEMY_COUNT: int = 4
+## 생성한 모든 전투가 쓰는 방. 방이 늘어나면 여기서 고르게 바꾼다.
+const DEFAULT_ROOM_PATH: String = "res://Resources/rooms/warehouse.tres"
 
 
 static func build_ally_roster(rng: RandomNumberGenerator) -> Array[UnitPlacement]:
@@ -37,6 +39,7 @@ static func build_encounter(rng: RandomNumberGenerator, ally_units: Array[UnitPl
 	encounter.ally_units = ally_units
 	var count: int = BOSS_ENEMY_COUNT if is_boss else rng.randi_range(REGULAR_ENEMY_MIN, REGULAR_ENEMY_MAX)
 	encounter.enemy_units = _random_enemy_placements(rng, _load_enemy_pool(), count)
+	encounter.room = load(DEFAULT_ROOM_PATH)
 	return encounter
 
 
