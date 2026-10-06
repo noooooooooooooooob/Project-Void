@@ -23,8 +23,11 @@ func _rng(seed_value: int) -> RandomNumberGenerator:
 
 ## 시작에서 보스까지 첫 번째 연결만 따라가며 이긴다. 마지막 호출이 보스를 이겨 런을 새로 시작시킨다.
 func _win_to_boss(run_state: MapRunState) -> void:
-	while run_state.current_node_id != run_state.graph.boss_id:
-		var next_id: int = run_state.graph.get_node(run_state.current_node_id).connections[0]
+	# 보스를 이기면 그래프가 새로 만들어져 current 가 새 시작으로 돌아가므로, 이번 런의 보스 id 를 먼저 잡아 둔다.
+	var boss_id: int = run_state.graph.boss_id
+	var next_id: int = -1
+	while next_id != boss_id:
+		next_id = run_state.graph.get_node(run_state.current_node_id).connections[0]
 		run_state.resolve_win(next_id)
 
 
