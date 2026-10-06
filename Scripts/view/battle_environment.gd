@@ -30,7 +30,7 @@ const WALL_SHADE_ALPHA: float = 0.85
 ## 창문 빛 색.
 const LIGHT_COLOR := Color(1.0, 0.9, 0.75)
 ## 창문 빛 세기 (화면을 보며 맞춘다).
-const LIGHT_ENERGY: float = 3.0
+const LIGHT_ENERGY: float = 30.0
 ## 먼지 색.
 const DUST_COLOR := Color(1.0, 0.92, 0.8, 0.3)
 ## 실내 앰비언트 색.
@@ -39,9 +39,9 @@ const AMBIENT_COLOR := Color(0.16, 0.17, 0.2)
 const FOG_COLOR := Color(0.06, 0.065, 0.08)
 const FOG_DENSITY: float = 0.025
 ## 창문 빛이 보이는 볼류메트릭 포그 밀도 (뒤쪽 유닛을 가리지 않을 만큼 옅게, 화면을 보며 맞춘다).
-const VOLUMETRIC_DENSITY: float = 0.02
-## 실내라 약한 태양.
-const SUN_ENERGY: float = 0.45
+const VOLUMETRIC_DENSITY: float = 0.035
+## 실내라 약한 태양 (유니티 0.45 는 URP 단위라 Godot 에서는 화면을 보며 1.0 으로 맞췄다).
+const SUN_ENERGY: float = 1.0
 
 ## 바닥.
 var ground: MeshInstance3D
