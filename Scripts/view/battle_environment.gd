@@ -33,6 +33,15 @@ const LIGHT_COLOR := Color(1.0, 0.9, 0.75)
 const LIGHT_ENERGY: float = 3.0
 ## 먼지 색.
 const DUST_COLOR := Color(1.0, 0.92, 0.8, 0.3)
+## 실내 앰비언트 색.
+const AMBIENT_COLOR := Color(0.16, 0.17, 0.2)
+## 멀어질수록 깔리는 어두운 안개 색과 밀도.
+const FOG_COLOR := Color(0.06, 0.065, 0.08)
+const FOG_DENSITY: float = 0.025
+## 창문 빛이 보이는 볼류메트릭 포그 밀도 (뒤쪽 유닛을 가리지 않을 만큼 옅게, 화면을 보며 맞춘다).
+const VOLUMETRIC_DENSITY: float = 0.02
+## 실내라 약한 태양.
+const SUN_ENERGY: float = 0.45
 
 ## 바닥.
 var ground: MeshInstance3D
@@ -97,6 +106,40 @@ static func build(layout: BoardLayout, room: BattleRoomData) -> BattleEnvironmen
 		if placement.texture != null:
 			env.props.append(env._prop(placement, floor_y))
 	return env
+
+
+## 실내 분위기로 환경·태양을 바꾼다 (유니티 AtmosphereSetup + Battle.unity 안개·조명).
+static func apply_atmosphere(env: Environment, sun: DirectionalLight3D) -> void:
+	# 바깥은 안개 색과 같은 어둠.
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = FOG_COLOR
+	# 실내 앰비언트.
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = AMBIENT_COLOR
+	env.ambient_light_energy = 1.0
+	# 멀어질수록 어두워지는 안개.
+	env.fog_enabled = true
+	env.fog_light_color = FOG_COLOR
+	env.fog_density = FOG_DENSITY
+	# 빛기둥을 만드는 옅은 볼류메트릭 포그 (창문 스포트라이트만 밝힌다).
+	env.volumetric_fog_enabled = true
+	env.volumetric_fog_density = VOLUMETRIC_DENSITY
+	env.volumetric_fog_albedo = Color(1.0, 0.95, 0.9)
+	# 구석 그늘.
+	env.ssao_enabled = true
+	# 창문·밝은 곳이 은은하게 번지게.
+	env.glow_enabled = true
+	env.glow_hdr_threshold = 0.9
+	env.glow_intensity = 0.5
+	env.glow_bloom = 0.1
+	# 채도를 낮추고 대비를 조금 올린다.
+	env.adjustment_enabled = true
+	env.adjustment_saturation = 0.82
+	env.adjustment_contrast = 1.08
+	# 약한 태양, 그림자는 켠다. 태양이 안개 전체를 밝히면 빛기둥이 묻히므로 안개에는 기여하지 않는다.
+	sun.light_energy = SUN_ENERGY
+	sun.shadow_enabled = true
+	sun.light_volumetric_fog_energy = 0.0
 
 
 ## 매 프레임: 소품을 카메라 쪽으로 돌린다 (유닛과 같은 세로축 빌보드 + 20° 기울임).

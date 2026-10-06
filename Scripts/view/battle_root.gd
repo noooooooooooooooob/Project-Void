@@ -56,7 +56,7 @@ var _camera_fx: BattleCamera
 @onready var _hud: BattleHud = %Hud
 ## 이벤트 재생기.
 @onready var _playback: BattlePlayback = %Playback
-## 배경(하늘)을 담당하는 월드 환경.
+## 씬 환경 (배경·안개·후처리).
 @onready var _environment: WorldEnvironment = %Environment
 
 
@@ -72,6 +72,16 @@ func _ready() -> void:
 	_recorder = BattleEventRecorder.new(_state)
 	# 결과만 기억해 둔다. 맵은 battle_finished 를 받자마자 이 씬을 지우므로, 신호는 결정타 연출 재생이 끝난 뒤 _run 이 낸다.
 	_state.battle_ended.connect(func(ally_won: bool) -> void: _ally_won = ally_won)
+
+	# 인카운터에 방이 있으면 방을 짓고 실내 분위기로 바꾼다 (없으면 씬 기본 단색 배경·조명 그대로).
+	if encounter.room != null:
+		# 방 노드 (보드 배치가 필요해 같은 격자로 먼저 계산한다).
+		var room_env: BattleEnvironment = BattleEnvironment.build(BoardLayout.new(encounter.ally_grid, encounter.enemy_grid), encounter.room)
+		add_child(room_env)
+		# 씬 환경을 이 전투 전용 사본으로 바꿔 분위기를 입힌다.
+		var env: Environment = _environment.environment.duplicate()
+		BattleEnvironment.apply_atmosphere(env, get_node("Sun") as DirectionalLight3D)
+		_environment.environment = env
 
 	# 타일과 유닛 화면 객체를 만든다.
 	_board.build(_state, PLACEHOLDER_SPRITE, encounter.room)

@@ -13,6 +13,8 @@ func run() -> Array[Dictionary]:
 	_test_walls_outside(Vector2i(3, 3), Vector2i(3, 3))
 	# 충돌체 없음.
 	_test_no_colliders()
+	# 실내 분위기.
+	_test_atmosphere()
 	# 결과를 돌려준다.
 	return results()
 
@@ -71,3 +73,20 @@ func _test_no_colliders() -> void:
 	var env: BattleEnvironment = BattleEnvironment.build(BoardLayout.new(Vector2i(3, 3), Vector2i(2, 2)), _room())
 	check("room has no colliders", env.find_children("*", "CollisionObject3D", true, false).is_empty())
 	env.free()
+
+
+# 실내 분위기: 앰비언트·안개·볼류메트릭 포그·SSAO·글로우·색 보정, 태양은 약하게·그림자.
+func _test_atmosphere() -> void:
+	var env := Environment.new()
+	var sun := DirectionalLight3D.new()
+	BattleEnvironment.apply_atmosphere(env, sun)
+	check_eq("ambient colour", env.ambient_light_color, BattleEnvironment.AMBIENT_COLOR)
+	check("depth fog", env.fog_enabled and is_equal_approx(env.fog_density, BattleEnvironment.FOG_DENSITY))
+	check("volumetric fog for light shafts", env.volumetric_fog_enabled)
+	check("ssao on", env.ssao_enabled)
+	check("glow on", env.glow_enabled and is_equal_approx(env.glow_hdr_threshold, 0.9) and is_equal_approx(env.glow_intensity, 0.5))
+	check("muted colours", env.adjustment_enabled and is_equal_approx(env.adjustment_saturation, 0.82) and is_equal_approx(env.adjustment_contrast, 1.08))
+	check("weak sun with shadows", is_equal_approx(sun.light_energy, BattleEnvironment.SUN_ENERGY) and sun.shadow_enabled)
+	# 태양은 안개를 밝히지 않는다 (빛기둥은 창문 빛만).
+	check("sun does not light the fog", is_equal_approx(sun.light_volumetric_fog_energy, 0.0))
+	sun.free()
