@@ -74,7 +74,7 @@ func _ready() -> void:
 	_state.battle_ended.connect(func(ally_won: bool) -> void: _ally_won = ally_won)
 
 	# 타일과 유닛 화면 객체를 만든다.
-	_board.build(_state, PLACEHOLDER_SPRITE)
+	_board.build(_state, PLACEHOLDER_SPRITE, encounter.room)
 	# 타일 색·유닛 표시를 현재 상태로 맞춘다.
 	_board.sync_from_state(_state)
 	# 재생기에 보드를 넘긴다.

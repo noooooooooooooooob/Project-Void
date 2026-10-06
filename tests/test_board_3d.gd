@@ -32,6 +32,8 @@ func run() -> Array[Dictionary]:
 	_test_move_hints()
 	# 동기화가 유닛 화면을 규칙의 칸으로 맞춘다.
 	_test_sync_places_views_on_current_cells()
+	# 방의 칸 텍스처.
+	_test_room_tile_textures()
 	# 결과를 돌려준다.
 	return results()
 
@@ -415,3 +417,36 @@ func _test_sync_places_views_on_current_cells() -> void:
 	check_eq("sync highlights the new cell", board.tile_state(Unit.Team.ALLY, Vector2i(2, 2)), Board3D.TileState.CURRENT)
 	# 지운다.
 	board.free()
+
+
+# 방에 칸 텍스처가 있으면 칸 재질에 들어가고 바탕색은 흰 틴트, 빈 칸은 어둡게. 방이 없으면 예전 단색.
+func _test_room_tile_textures() -> void:
+	# 칸 그림 두 장.
+	var ally_tile: Texture2D = _texture(30)
+	var enemy_tile: Texture2D = _texture(31)
+	var room := BattleRoomData.new()
+	room.ally_tile_texture = ally_tile
+	room.enemy_tile_texture = enemy_tile
+	# 방 있는 보드.
+	var state: BattleState = _state()
+	var board := Board3D.new()
+	board.build(state, _texture(20), room)
+	board.sync_from_state(state)
+	# 아군 칸 (유닛이 선 칸은 BASE).
+	var ally_material: StandardMaterial3D = board.tile_material(Unit.Team.ALLY, Vector2i(0, 1))
+	check("ally tile uses the room texture", ally_material.albedo_texture == ally_tile)
+	check_eq("textured tile base tint", ally_material.albedo_color, Board3D.TEXTURED_TILE_TINT)
+	# 적 칸.
+	check("enemy tile uses the room texture", board.tile_material(Unit.Team.ENEMY, Vector2i(0, 1)).albedo_texture == enemy_tile)
+	# 빈 칸은 어둡게.
+	check_eq("textured empty tile is darkened", board.tile_material(Unit.Team.ALLY, Vector2i(2, 2)).albedo_color, Board3D.TEXTURED_TILE_TINT.darkened(0.45))
+	board.free()
+
+	# 방 없는 보드.
+	var plain_state: BattleState = _state()
+	var plain := Board3D.new()
+	plain.build(plain_state, _texture(20))
+	plain.sync_from_state(plain_state)
+	var plain_material: StandardMaterial3D = plain.tile_material(Unit.Team.ALLY, Vector2i(0, 1))
+	check("no room keeps plain tiles", plain_material.albedo_texture == null and plain_material.albedo_color == Board3D.ALLY_TILE_COLOR)
+	plain.free()

@@ -29,6 +29,8 @@ const RAY_LENGTH: float = 100.0
 const ALLY_TILE_COLOR := Color(0.36, 0.44, 0.55)
 ## 적군 타일 기본 색.
 const ENEMY_TILE_COLOR := Color(0.55, 0.38, 0.38)
+## 칸 텍스처가 있을 때의 바탕색 (그림 색을 살리고 살짝만 누른다).
+const TEXTURED_TILE_TINT := Color(0.85, 0.85, 0.88)
 ## 지금 차례 타일이 내는 빛 색.
 const CURRENT_EMISSION := Color(1.0, 0.82, 0.3)
 ## 칠 수 있는 대상 타일이 내는 빛 색.
@@ -66,10 +68,17 @@ var _has_hover: bool = false
 var _hover_team: Unit.Team = Unit.Team.ALLY
 ## 커서가 가리키는 칸 좌표 (has_hover 가 true 일 때만 뜻이 있다).
 var _hover_cell: Vector2i = Vector2i.ZERO
+## 아군·적군 칸 윗면 그림 (방이 없거나 비어 있으면 null → 단색 칸).
+var _tile_textures: Dictionary = {}
 
 
-## 전투 상태를 보고 타일과 유닛 화면 객체를 모두 만든다 (전투 시작 시 한 번).
-func build(state: BattleState, placeholder: Texture2D) -> void:
+## 전투 상태를 보고 타일과 유닛 화면 객체를 모두 만든다 (전투 시작 시 한 번). room 이 있으면 칸에 그 그림을 입힌다.
+func build(state: BattleState, placeholder: Texture2D, room: BattleRoomData = null) -> void:
+	# 편별 칸 그림 (방이 없으면 없음).
+	_tile_textures = {
+		Unit.Team.ALLY: room.ally_tile_texture if room != null else null,
+		Unit.Team.ENEMY: room.enemy_tile_texture if room != null else null,
+	}
 	# 규칙의 격자 크기로 위치 계산기를 만든다.
 	layout = BoardLayout.new(state.resolver.ally_grid, state.resolver.enemy_grid)
 	# 아군 쪽 타일을 만든다.
@@ -262,6 +271,11 @@ func tile_state(team: Unit.Team, cell: Vector2i) -> TileState:
 	return _tile_states[Vector3i(team, cell.x, cell.y)]
 
 
+## 칸 하나의 재질 (테스트·연출용).
+func tile_material(team: Unit.Team, cell: Vector2i) -> StandardMaterial3D:
+	return (_tiles[Vector3i(team, cell.x, cell.y)] as MeshInstance3D).material_override
+
+
 ## 지금 커서가 칸을 가리키고 있는지와 그 편·칸을 돌려준다. "has" 가 false 면 team/cell 값은 뜻이 없다.
 func hover_state() -> Dictionary:
 	# 가리키는 칸이 없으면 has 만 false.
@@ -285,8 +299,8 @@ func set_tile_state(team: Unit.Team, cell: Vector2i, new_state: TileState) -> vo
 	_tile_states[key] = new_state
 	# 타일마다 따로 만든 재질을 꺼낸다 (공유 재질이 아니라 한 칸만 바뀐다).
 	var material: StandardMaterial3D = (_tiles[key] as MeshInstance3D).material_override
-	# 편에 따른 기본 색.
-	var base: Color = ALLY_TILE_COLOR if team == Unit.Team.ALLY else ENEMY_TILE_COLOR
+	# 편에 따른 기본 색. 칸 그림이 있으면 그림 색을 살리는 흰 틴트.
+	var base: Color = TEXTURED_TILE_TINT if _tile_textures.get(team) != null else (ALLY_TILE_COLOR if team == Unit.Team.ALLY else ENEMY_TILE_COLOR)
 	# 강조·유효·이동 가능·범위 미리보기 상태일 때만 스스로 빛나게 한다.
 	material.emission_enabled = new_state == TileState.CURRENT or new_state == TileState.VALID or new_state == TileState.MOVABLE or new_state == TileState.SHAPE_HIT or new_state == TileState.SHAPE_OUT
 	# 상태별로 색을 정한다.
@@ -473,7 +487,10 @@ func _build_side(team: Unit.Team, grid: Vector2i) -> void:
 			# 메시를 넣는다.
 			tile.mesh = mesh
 			# 칸마다 따로 색을 바꿀 수 있게 새 재질을 만든다.
-			tile.material_override = StandardMaterial3D.new()
+			var material := StandardMaterial3D.new()
+			# 방의 칸 그림이 있으면 입힌다.
+			material.albedo_texture = _tile_textures.get(team)
+			tile.material_override = material
 			# 윗면이 높이 0 에 오도록 두께 절반만큼 내린다.
 			tile.position = top - Vector3(0.0, TILE_THICKNESS / 2.0, 0.0)
 			# 보드에 붙인다.
