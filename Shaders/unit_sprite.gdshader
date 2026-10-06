@@ -1,7 +1,7 @@
 // 유닛·소품 몸 셰이더. 가로 띠 텍스처에서 한 프레임을 고르고, 붉은/흰 번쩍임과 디더 페이드를 한다.
 // 알파 잘라내기라 그림자를 드리우고 깊이 정렬 문제가 없다.
 shader_type spatial;
-// 적은 판을 좌우로 뒤집어(음수 스케일) 쓰므로 양면을 그린다.
+// 빌보드가 카메라 쪽을 보지만 연출 중 기울어도 사라지지 않게 양면을 그린다.
 render_mode cull_disabled;
 
 // 그림 (정지 그림 또는 64px 프레임을 가로로 이은 띠). 픽셀이 뭉개지지 않게 최근접 샘플링.
@@ -14,6 +14,8 @@ uniform int frame_count = 1;
 uniform vec3 tint : source_color = vec3(1.0);
 // 1 이면 실루엣 전체가 흰색 (타격 순간).
 uniform float flash : hint_range(0.0, 1.0) = 0.0;
+// true 면 그림을 좌우로 뒤집는다 (적은 왼쪽을 본다). 음수 스케일로 뒤집으면 양면 그리기가 법선을 뒤집어 빛을 등진다.
+uniform bool flip_h = false;
 // 1 이면 다 보이고 0 이면 다 사라진다. 화면 좌표 디더로 픽셀을 버린다.
 uniform float fade : hint_range(0.0, 1.0) = 1.0;
 
@@ -27,7 +29,8 @@ const float BAYER[16] = float[](
 void fragment() {
 	// 띠에서 이 프레임 칸으로 가로 좌표를 옮긴다.
 	float count = float(max(frame_count, 1));
-	vec2 uv = vec2((float(frame) + UV.x) / count, UV.y);
+	float u = flip_h ? 1.0 - UV.x : UV.x;
+	vec2 uv = vec2((float(frame) + u) / count, UV.y);
 	vec4 color = texture(texture_albedo, uv);
 	// 사라지는 중이면 화면 픽셀 위치별 문턱값보다 fade 가 작을 때 버린다.
 	if (fade < 1.0) {

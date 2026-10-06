@@ -119,7 +119,7 @@ var _hp: int = 0
 var _max_hp: int = 1
 ## 표시 중인 방어도.
 var _block: int = 0
-## 아군 1, 적 −1 (적은 그림을 좌우로 뒤집어 왼쪽을 본다).
+## 아군 1, 적 −1 (적은 왼쪽을 본다. 기울기 방향을 거울상으로 만든다).
 var _facing: float = 1.0
 ## 연출 중이면 true. 그동안은 대기 동작을 멈춘다 (연출이 자세를 잡는다).
 var _acting: bool = false
@@ -167,11 +167,11 @@ func setup(p_unit: Unit, texture: Texture2D) -> void:
 	sprite.mesh = quad
 	# 판 중심을 절반 높이에 두어 발이 피벗에 닿게 한다.
 	sprite.position = Vector3(0.0, SPRITE_HEIGHT / 2.0, 0.0)
-	# 적은 좌우 반전.
-	sprite.scale = Vector3(_facing, 1.0, 1.0)
 	# 유닛마다 따로 쓰는 셰이더 재질.
 	body_material = ShaderMaterial.new()
 	body_material.shader = UNIT_SHADER
+	# 적은 왼쪽을 보도록 그림만 좌우로 뒤집는다 (스케일은 양수로 둬야 빛을 제대로 받는다).
+	body_material.set_shader_parameter("flip_h", not unit.is_ally())
 	sprite.material_override = body_material
 	pose.add_child(sprite)
 	# 대기 모습으로 시작한다.

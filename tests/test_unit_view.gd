@@ -91,7 +91,7 @@ func _test_setup_builds_parts() -> void:
 	# 클릭 몸체.
 	check_eq("pick body on the board pick layer", view.pick_body.collision_layer, UnitView.PICK_LAYER_BIT)
 	# 아군은 오른쪽을 본다.
-	check("ally faces right", is_equal_approx(view.sprite.scale.x, 1.0))
+	check("ally faces right", view.body_material.get_shader_parameter("flip_h") == false)
 	# 아군 고리 색.
 	check_eq("ally ring colour", (view.ring.material_override as StandardMaterial3D).albedo_color, UnitView.ALLY_RING_COLOR)
 	# 몸 계층: Body → Pose → Sprite.
@@ -102,7 +102,9 @@ func _test_setup_builds_parts() -> void:
 	# 적군.
 	var enemy: UnitView = _view(false)
 	# 적은 왼쪽을 본다.
-	check("enemy is mirrored", is_equal_approx(enemy.sprite.scale.x, -1.0))
+	check("enemy is mirrored in the shader", enemy.body_material.get_shader_parameter("flip_h") == true)
+	# 음수 스케일로 뒤집으면 양면 셰이더가 법선을 뒤집어 적만 빛을 등진다 (어둡게 보임).
+	check("enemy keeps a positive scale so it is lit like allies", is_equal_approx(enemy.sprite.scale.x, 1.0))
 	# 적 고리 색.
 	check_eq("enemy ring colour", (enemy.ring.material_override as StandardMaterial3D).albedo_color, UnitView.ENEMY_RING_COLOR)
 	# 지운다.
