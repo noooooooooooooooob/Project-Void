@@ -46,6 +46,12 @@ const POP_TIME: float = 0.6
 const FADE_TIME: float = 0.4
 ## 한 칸 이동할 때 미끄러지는 시간.
 const MOVE_TIME: float = 0.25
+## 영혼불 한 알이 피어올라 사라지는 시간.
+const AURA_LIFETIME: float = 1.6
+## 초당 피어오르는 영혼불 수.
+const AURA_RATE: float = 2.5
+## 영혼불 한 알의 최대 크기 (몸 그림 64px 중 16px 정도).
+const AURA_SIZE: float = 0.4
 # 피격 흔들림의 좌우 위치 키 (4구간).
 const _SHAKE_KEYS: Array[float] = [0.0, 0.08, -0.08, 0.05, 0.0]
 
@@ -69,6 +75,8 @@ var idle_sheet: Texture2D
 var attack_sheet: Texture2D
 ## 피격 띠 (없으면 null).
 var hit_sheet: Texture2D
+## 몸 주변에 피어오르는 오라 입자 (오라 그림이 없으면 null).
+var aura: CPUParticles3D
 ## 머리 위 이름 글자.
 var name_label: Label3D
 ## 체력 바 아래 "현재/최대 방N" 글자.
@@ -149,6 +157,11 @@ func setup(p_unit: Unit, texture: Texture2D) -> void:
 	pose.add_child(sprite)
 	# 대기 모습으로 시작한다.
 	_return_to_idle()
+
+	# --- 오라 ---
+	# 데이터에 오라 그림이 있을 때만.
+	if unit.data.aura_texture != null:
+		aura = _make_aura(unit.data.aura_texture)
 
 	# --- 발밑 ---
 	# 접지 그림자.
@@ -486,6 +499,9 @@ func fade_out() -> void:
 	hp_fill.visible = false
 	shadow.visible = false
 	ring.visible = false
+	# 오라는 새로 나오지 않게 한다 (이미 뜬 불꽃은 마저 사라진다).
+	if aura != null:
+		aura.emitting = false
 	# 연출 시작 (끝나도 숨겨지므로 되돌리지 않는다).
 	_acting = true
 	# 0→1 진행률.
@@ -593,6 +609,61 @@ func _make_bar(color: Color, priority: int) -> MeshInstance3D:
 	bar.material_override = material
 	# 만든 막대를 돌려준다.
 	return bar
+
+
+# 몸 둘레에서 천천히 떠올라 옅어지며 사라지는 불꽃 (유니티 UnitView.MakeAura).
+func _make_aura(texture: Texture2D) -> CPUParticles3D:
+	# 입자 노드.
+	var particles := CPUParticles3D.new()
+	particles.name = "Aura"
+	# 몸 가운데 높이.
+	particles.position = Vector3(0.0, SPRITE_HEIGHT * 0.45, 0.0)
+	# 동시에 떠 있는 최대 수 = 수명 × 초당 수 (올림).
+	particles.amount = ceili(AURA_LIFETIME * AURA_RATE)
+	particles.lifetime = AURA_LIFETIME
+	# 처음부터 가득 차 있게.
+	particles.preprocess = AURA_LIFETIME
+	# 이미 뜬 불꽃은 몸이 움직여도 제자리.
+	particles.local_coords = false
+	# 몸을 감싸는 납작한 상자에서 나온다.
+	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	particles.emission_box_extents = Vector3(0.55, SPRITE_HEIGHT * 0.35, 0.05)
+	# 위로 천천히.
+	particles.direction = Vector3.UP
+	particles.spread = 15.0
+	particles.gravity = Vector3.ZERO
+	particles.initial_velocity_min = 0.15
+	particles.initial_velocity_max = 0.35
+	# 크기 0.7~1 배, 수명 동안 절반으로 준다.
+	particles.scale_amount_min = 0.7
+	particles.scale_amount_max = 1.0
+	var shrink := Curve.new()
+	shrink.add_point(Vector2(0.0, 1.0))
+	shrink.add_point(Vector2(1.0, 0.5))
+	particles.scale_amount_curve = shrink
+	# 알파: 0 → 1(0.2) → 1(0.6) → 0.
+	var fade := Gradient.new()
+	fade.offsets = PackedFloat32Array([0.0, 0.2, 0.6, 1.0])
+	fade.colors = PackedColorArray([Color(1, 1, 1, 0), Color.WHITE, Color.WHITE, Color(1, 1, 1, 0)])
+	particles.color_ramp = fade
+	# 카메라를 보는 픽셀 그림 판 (알파 섞기, 더하기 아님).
+	var quad := QuadMesh.new()
+	quad.size = Vector2(AURA_SIZE, AURA_SIZE)
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	material.vertex_color_use_as_albedo = true
+	material.albedo_texture = texture
+	quad.material = material
+	particles.mesh = quad
+	# 그림자는 드리우지 않는다.
+	particles.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# 계속 나온다.
+	particles.emitting = true
+	add_child(particles)
+	return particles
 
 
 # 발밑 바닥에 까는 평면 하나 (그림자·고리). 조명과 그림자에 영향받지 않는다.

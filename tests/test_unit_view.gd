@@ -26,6 +26,8 @@ func run() -> Array[Dictionary]:
 	_test_pose_and_reset()
 	# 빌보드 회전 계산.
 	_test_billboard_rotation()
+	# 오라 입자.
+	_test_aura()
 	# 결과를 돌려준다.
 	return results()
 
@@ -256,3 +258,33 @@ func _test_billboard_rotation() -> void:
 	check("side camera turns the body", is_equal_approx(side.y, deg_to_rad(-90.0)))
 	# 수평 성분이 없으면(바로 아래를 봄) 돌지 않는다.
 	check("billboard without horizontal forward keeps yaw 0", is_equal_approx(UnitView.billboard_rotation(Vector3.DOWN, 20.0).y, 0.0))
+
+
+# 오라 그림이 있는 유닛에만 위로 피어오르는 입자가 생기는지.
+func _test_aura() -> void:
+	# 오라 없는 유닛.
+	var plain: UnitView = _view(true)
+	# 없다.
+	check("no aura without texture", plain.aura == null)
+	# 지운다.
+	plain.free()
+
+	# 오라 있는 유닛.
+	var data: UnitData = AllyDataScript.new()
+	data.display_name = "보초"
+	data.max_hp = 20
+	data.aura_texture = ImageTexture.create_from_image(Image.create(16, 16, false, Image.FORMAT_RGBA8))
+	var view := UnitView.new()
+	view.setup(Unit.new(0, data, Unit.Team.ALLY, Vector2i(0, 0)), _texture())
+	# 있다.
+	check("aura exists with texture", view.aura != null)
+	# 계속 나온다.
+	check("aura keeps emitting", view.aura.emitting and not view.aura.one_shot)
+	# 이미 뜬 불꽃은 몸이 움직여도 제자리 (월드 좌표).
+	check("aura particles live in world space", not view.aura.local_coords)
+	# 수명.
+	check("aura lifetime", is_equal_approx(view.aura.lifetime, UnitView.AURA_LIFETIME))
+	# 그림이 입자 재질에 들어갔다.
+	check("aura uses the texture", ((view.aura.mesh as QuadMesh).material as StandardMaterial3D).albedo_texture == data.aura_texture)
+	# 지운다.
+	view.free()
