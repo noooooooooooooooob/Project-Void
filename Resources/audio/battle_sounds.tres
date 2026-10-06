@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BattleSounds" format=3]
+
+[ext_resource type="Script" path="res://Scripts/view/battle_sounds.gd" id="1_script"]
+[ext_resource type="AudioStream" path="res://Audio/melee_swing.wav" id="2_swing"]
+[ext_resource type="AudioStream" path="res://Audio/melee_hit.wav" id="3_mhit"]
+[ext_resource type="AudioStream" path="res://Audio/ranged_shot.wav" id="4_shot"]
+[ext_resource type="AudioStream" path="res://Audio/ranged_hit.wav" id="5_rhit"]
+[ext_resource type="AudioStream" path="res://Audio/blocked.wav" id="6_blocked"]
+[ext_resource type="AudioStream" path="res://Audio/kill.wav" id="7_kill"]
+
+[resource]
+script = ExtResource("1_script")
+melee_swing = ExtResource("2_swing")
+melee_hit = ExtResource("3_mhit")
+ranged_shot = ExtResource("4_shot")
+ranged_hit = ExtResource("5_rhit")
+blocked = ExtResource("6_blocked")
+kill = ExtResource("7_kill")
