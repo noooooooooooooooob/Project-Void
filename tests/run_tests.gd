@@ -38,6 +38,7 @@ const TEST_SCRIPTS: Array[String] = [
 	"res://tests/test_projectile.gd",
 	"res://tests/test_screen_pulse.gd",
 	"res://tests/test_battle_root.gd",
+	"res://tests/test_battle_environment.gd",
 ]
 
 # 테스트를 이미 시작했는지 (첫 프레임에 한 번만 돌리기 위해).
