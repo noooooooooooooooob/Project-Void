@@ -42,6 +42,8 @@ var _awaiting_drop: bool = false
 # 카드와 함께 켜 두지 않는다: 카드를 고르면 꺼지고, 이동 버튼을 켜면 고르던 카드가 풀린다.
 ## 이동 버튼으로 켠 이동 모드. true 일 때만 아군 칸 클릭이 이동이 된다.
 var _move_mode: bool = false
+## 끝난 전투에서 아군이 이겼는지 (전투가 끝나야 뜻이 있다).
+var _ally_won: bool = false
 ## 카메라 타격 연출 (기본 구도 위에 푸시인·흔들림, 히트스톱·슬로모션).
 var _camera_fx: BattleCamera
 
@@ -68,7 +70,8 @@ func _ready() -> void:
 	_state = BattleState.new(encounter, rng)
 	# 규칙 신호를 기록하기 시작한다 (start_battle 보다 먼저 연결해야 첫 신호를 놓치지 않는다).
 	_recorder = BattleEventRecorder.new(_state)
-	_state.battle_ended.connect(func(ally_won: bool) -> void: battle_finished.emit(ally_won))
+	# 결과만 기억해 둔다. 맵은 battle_finished 를 받자마자 이 씬을 지우므로, 신호는 결정타 연출 재생이 끝난 뒤 _run 이 낸다.
+	_state.battle_ended.connect(func(ally_won: bool) -> void: _ally_won = ally_won)
 
 	# 인카운터에 배경 이미지가 있으면 기본 단색 대신 그 이미지를 하늘로 쓴다.
 	_apply_background(encounter.background)
@@ -159,6 +162,9 @@ func _run(action: Callable) -> void:
 		_move_mode = false
 	# 잠금이 풀린 상태에 맞는 힌트(이동 가능 칸 등)를 보여 준다.
 	_refresh_hints()
+	# 전투가 끝났으면 마지막 연출까지 다 보여 준 지금 맵에 알린다.
+	if _state.finished:
+		battle_finished.emit(_ally_won)
 
 
 ## 입력 잠금 상태를 바꾸고 보드·HUD 에 알린다.
