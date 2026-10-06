@@ -145,9 +145,9 @@ func _test_build_creates_tiles_and_views() -> void:
 	# 아군 화면이 (0,1) 칸 위치에.
 	check("view placed on its cell", board.view_for(ally).position.is_equal_approx(board.layout.cell_position(Unit.Team.ALLY, Vector2i(0, 1))))
 	# 아군은 자기 그림.
-	check("unit sprite wins over placeholder", board.view_for(ally).sprite.texture == own_sprite)
+	check("unit sprite wins over placeholder", board.view_for(ally).still_texture == own_sprite)
 	# 적은 임시 그림.
-	check("placeholder when no sprite", board.view_for(foe).sprite.texture == placeholder)
+	check("placeholder when no sprite", board.view_for(foe).still_texture == placeholder)
 	# 지운다.
 	board.free()
 

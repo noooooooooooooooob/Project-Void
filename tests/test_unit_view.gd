@@ -10,7 +10,7 @@ const EnemyDataScript := preload("res://Scripts/combat/data/enemy_data.gd")
 
 # 실행기가 부르는 진입점.
 func run() -> Array[Dictionary]:
-	# setup 이 스프라이트·이름·클릭 몸체·색을 만드는지.
+	# setup 이 몸·셰이더·고리·클릭 몸체를 만드는지.
 	_test_setup_builds_parts()
 	# 체력 글자와 막대 폭·위치.
 	_test_stats_text_and_bar()
@@ -18,6 +18,14 @@ func run() -> Array[Dictionary]:
 	_test_partial_updates()
 	# 원래 자리와 생존 표시.
 	_test_home_and_alive()
+	# 애니메이션 띠 프레임 선택.
+	_test_sheet_frames()
+	# 띠 유무에 따른 대기 동작과 연출 시간.
+	_test_idle_and_durations()
+	# 자세 적용과 되돌리기.
+	_test_pose_and_reset()
+	# 빌보드 회전 계산.
+	_test_billboard_rotation()
 	# 결과를 돌려준다.
 	return results()
 
@@ -28,8 +36,8 @@ func _texture() -> Texture2D:
 	return ImageTexture.create_from_image(Image.create(10, 20, false, Image.FORMAT_RGBA8))
 
 
-# 체력 30 짜리 테스트 유닛 화면을 만든다. ally 가 true 면 아군, 아니면 적군.
-func _view(ally: bool) -> UnitView:
+# 체력 30 짜리 테스트 유닛 화면을 만든다. ally 가 true 면 아군. sheets 는 [idle, attack, hit] (null 허용).
+func _view(ally: bool, sheets: Array = [null, null, null]) -> UnitView:
 	# 편에 맞는 데이터.
 	var data: UnitData = AllyDataScript.new() if ally else EnemyDataScript.new()
 	# id.
@@ -38,6 +46,12 @@ func _view(ally: bool) -> UnitView:
 	data.display_name = "테스터"
 	# 최대 체력.
 	data.max_hp = 30
+	# 대기 띠.
+	data.idle_sheet = sheets[0]
+	# 공격 띠.
+	data.attack_sheet = sheets[1]
+	# 피격 띠.
+	data.hit_sheet = sheets[2]
 	# 편.
 	var team: Unit.Team = Unit.Team.ALLY if ally else Unit.Team.ENEMY
 	# 화면 객체.
@@ -48,37 +62,43 @@ func _view(ally: bool) -> UnitView:
 	return view
 
 
-# setup 이 받은 텍스처·이름을 쓰고, 높이에 맞춰 크기를 정하고, 클릭 레이어와 편 색을 설정하는지.
+# 64px 프레임 16장짜리 빈 띠 (1024×64).
+func _sheet() -> Texture2D:
+	# 빈 이미지로 텍스처를 만든다.
+	return ImageTexture.create_from_image(Image.create(1024, 64, false, Image.FORMAT_RGBA8))
+
+
+# setup 이 받은 그림·이름을 쓰고, 비율대로 1.6 높이 판을 만들고, 클릭 레이어·좌우 반전·고리 색을 정하는지.
 func _test_setup_builds_parts() -> void:
-	# 비교할 텍스처를 따로 잡아 둔다.
-	var texture: Texture2D = _texture()
-	# 아군 데이터.
-	var data: AllyData = AllyDataScript.new()
-	# 이름.
-	data.display_name = "테스터"
-	# 최대 체력.
-	data.max_hp = 30
-	# 화면 객체.
-	var view := UnitView.new()
-	# 채운다.
-	view.setup(Unit.new(0, data, Unit.Team.ALLY, Vector2i(0, 1)), texture)
-	# 스프라이트가 받은 텍스처를 쓴다.
-	check("sprite uses the given texture", view.sprite.texture == texture)
+	# 10×20 그림의 아군.
+	var view: UnitView = _view(true)
+	# 정지 그림을 기억한다.
+	check("still texture kept", view.still_texture != null and view.still_texture.get_height() == 20)
+	# 띠가 없으면 셰이더가 정지 그림을 쓴다.
+	check("shader shows the still texture", view.body_material.get_shader_parameter("texture_albedo") == view.still_texture)
 	# 이름 글자.
 	check_eq("name label", view.name_label.text, "테스터")
-	# 픽셀 크기 = 유닛 높이 / 그림 높이 20.
-	check("sprite is scaled to the unit height", is_equal_approx(view.sprite.pixel_size, UnitView.SPRITE_HEIGHT / 20.0))
-	# 클릭 몸체가 클릭 레이어에 있다.
+	# 판 크기 = (1.6 × 10/20, 1.6).
+	check("sprite quad keeps the texture aspect", (view.sprite.mesh as QuadMesh).size.is_equal_approx(Vector2(0.8, UnitView.SPRITE_HEIGHT)))
+	# 발이 원점: 판 중심이 절반 높이.
+	check("sprite stands on its feet", is_equal_approx(view.sprite.position.y, UnitView.SPRITE_HEIGHT / 2.0))
+	# 클릭 몸체.
 	check_eq("pick body on the board pick layer", view.pick_body.collision_layer, UnitView.PICK_LAYER_BIT)
-	# 아군 색.
-	check_eq("ally tint", view.sprite.modulate, UnitView.ALLY_TINT)
+	# 아군은 오른쪽을 본다.
+	check("ally faces right", is_equal_approx(view.sprite.scale.x, 1.0))
+	# 아군 고리 색.
+	check_eq("ally ring colour", (view.ring.material_override as StandardMaterial3D).albedo_color, UnitView.ALLY_RING_COLOR)
+	# 몸 계층: Body → Pose → Sprite.
+	check("sprite sits under pose under body", view.sprite.get_parent() == view.pose and view.pose.get_parent() == view.body)
 	# 지운다.
 	view.free()
 
-	# 적군 화면도 만들어 본다.
+	# 적군.
 	var enemy: UnitView = _view(false)
-	# 적군 색.
-	check_eq("enemy tint", enemy.sprite.modulate, UnitView.ENEMY_TINT)
+	# 적은 왼쪽을 본다.
+	check("enemy is mirrored", is_equal_approx(enemy.sprite.scale.x, -1.0))
+	# 적 고리 색.
+	check_eq("enemy ring colour", (enemy.ring.material_override as StandardMaterial3D).albedo_color, UnitView.ENEMY_RING_COLOR)
 	# 지운다.
 	enemy.free()
 
@@ -142,3 +162,97 @@ func _test_home_and_alive() -> void:
 	check("dead view not pickable", view.pick_shape.disabled)
 	# 지운다.
 	view.free()
+
+
+# 띠는 너비 ÷ 높이 장이고, 진행률·번호가 마지막 프레임을 넘지 않는지.
+func _test_sheet_frames() -> void:
+	# 16장 띠.
+	var sheet: Texture2D = _sheet()
+	# 프레임 수.
+	check_eq("frame count from sheet size", UnitView.frame_count(sheet), 16)
+	# 대기 띠가 있는 아군.
+	var view: UnitView = _view(true, [sheet, null, null])
+	# 처음엔 대기 띠의 시작 프레임 (unit_id 0 → 0).
+	check("idle sheet shown on setup", view.body_material.get_shader_parameter("texture_albedo") == sheet)
+	# 셰이더 프레임 수.
+	check_eq("shader frame count", view.body_material.get_shader_parameter("frame_count"), 16)
+	# 진행률 끝은 마지막 프레임.
+	view.show_sheet_progress(sheet, 1.0)
+	# 15번.
+	check_eq("progress end is the last frame", view.body_material.get_shader_parameter("frame"), 15)
+	# 번호가 넘치면 감는다.
+	view.show_frame(sheet, 18)
+	# 18 % 16 = 2.
+	check_eq("frame index wraps", view.body_material.get_shader_parameter("frame"), 2)
+	# 지운다.
+	view.free()
+
+
+# 대기: 띠가 있으면 8fps 프레임, 없으면 숨쉬기 자세. 연출 시간은 띠 유무로 정해진다.
+func _test_idle_and_durations() -> void:
+	# 띠 없는 아군.
+	var plain: UnitView = _view(true)
+	# 0.4초 (숨쉬기 최대).
+	plain.tick_idle(0.4)
+	# 세로로 늘었다 (phase = unit_id 0 × 1.7 = 0).
+	check("idle breathes without a sheet", is_equal_approx(plain.pose.scale.y, 1.03))
+	# 코드 공격 시간.
+	check("attack uses action time without sheet", is_equal_approx(plain.attack_duration(), UnitView.ACTION_TIME))
+	# 코드 피격 시간.
+	check("hit uses flash time without sheet", is_equal_approx(plain.hit_duration(), UnitView.FLASH_TIME))
+	# 지운다.
+	plain.free()
+
+	# 대기·피격 띠만 있는 유닛 (brute 와 같은 구성).
+	var mixed: UnitView = _view(true, [_sheet(), null, _sheet()])
+	# 1초 → 8번째 프레임.
+	mixed.tick_idle(1.0)
+	# 8.
+	check_eq("idle sheet plays at 8 fps", mixed.body_material.get_shader_parameter("frame"), 8)
+	# 띠 재생 중에는 자세를 건드리지 않는다.
+	check("sheet idle keeps pose scale", mixed.pose.scale.is_equal_approx(Vector3.ONE))
+	# 공격은 코드 시간, 피격은 띠 시간.
+	check("mixed sheets pick durations per action", is_equal_approx(mixed.attack_duration(), UnitView.ACTION_TIME) and is_equal_approx(mixed.hit_duration(), UnitView.HIT_FRAME_TIME))
+	# 지운다.
+	mixed.free()
+
+
+# 기울기는 적에게서 거울상이고, reset_pose 가 자세·셰이더 값을 모두 되돌리는지.
+func _test_pose_and_reset() -> void:
+	# 아군과 적.
+	var ally: UnitView = _view(true)
+	var enemy: UnitView = _view(false)
+	# 같은 자세 (뒤로 10°).
+	ally.apply_pose(UnitMotion.Pose.new(0.1, 10.0))
+	enemy.apply_pose(UnitMotion.Pose.new(0.1, 10.0))
+	# 아군 +10°, 적 −10°.
+	check("lean mirrors for enemies", is_equal_approx(ally.pose.rotation.z, deg_to_rad(10.0)) and is_equal_approx(enemy.pose.rotation.z, deg_to_rad(-10.0)))
+	# 늘이면 옆으로 얇아진다.
+	check("stretch keeps volume", ally.pose.scale.is_equal_approx(Vector3(0.95, 1.1, 1.0)))
+	# 연출이 끊긴 상태를 흉내 낸다.
+	ally.body_material.set_shader_parameter("fade", 0.3)
+	ally.body_material.set_shader_parameter("tint", UnitView.FLASH_TINT)
+	ally.body.position = Vector3(0.08, 0.2, 0.0)
+	# 되돌린다.
+	ally.reset_pose()
+	# 셰이더 값.
+	check("reset_pose restores shader state", is_equal_approx(ally.body_material.get_shader_parameter("fade"), 1.0) and ally.body_material.get_shader_parameter("tint") == Color.WHITE)
+	# 자세와 몸 위치.
+	check("reset_pose restores pose", ally.pose.scale.is_equal_approx(Vector3.ONE) and ally.body.position.is_equal_approx(Vector3.ZERO))
+	# 지운다.
+	ally.free()
+	enemy.free()
+
+
+# 카메라 방향의 수평 성분을 보고 Y축만 돌며, 위쪽은 카메라 반대로 기울이는지.
+func _test_billboard_rotation() -> void:
+	# 기본 카메라(+z 에서 −z 를 내려다봄).
+	var front: Vector3 = UnitView.billboard_rotation(Vector3(0.0, -0.7, -0.7), 20.0)
+	# 돌지 않고 20° 뒤로.
+	check("front camera keeps yaw 0", front.is_equal_approx(Vector3(deg_to_rad(-20.0), 0.0, 0.0)))
+	# +x 를 보는 카메라 → 판이 −x 쪽(카메라)을 보도록 −90°.
+	var side: Vector3 = UnitView.billboard_rotation(Vector3(1.0, 0.0, 0.0), 20.0)
+	# −90°.
+	check("side camera turns the body", is_equal_approx(side.y, deg_to_rad(-90.0)))
+	# 수평 성분이 없으면(바로 아래를 봄) 돌지 않는다.
+	check("billboard without horizontal forward keeps yaw 0", is_equal_approx(UnitView.billboard_rotation(Vector3.DOWN, 20.0).y, 0.0))

@@ -229,8 +229,8 @@ func _damaged(event: BattleEvent) -> void:
 	view.pop_text("-%d" % event.amount, DAMAGE_COLOR)
 	# 번쩍이고 흔들리는 연출이 끝날 때까지 기다린다.
 	await view.flash_and_shake()
-	# 전체 피해 연출 시간이 DAMAGE_TIME 이 되도록 남은 시간을 기다린다.
-	await _wait(DAMAGE_TIME - UnitView.FLASH_TIME)
+	# 전체 피해 연출 시간이 DAMAGE_TIME 이 되도록 남은 시간을 기다린다 (피격 띠가 더 길면 기다리지 않는다).
+	await _wait(maxf(0.0, DAMAGE_TIME - view.hit_duration()))
 
 
 ## 회복 연출: 체력 바 갱신과 초록 숫자.
