@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/party/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"long_rifle"
+display_name = "장총"
+slot = 0
+description = "사거리가 긴 구형 소총. 무겁지만 한 방이 묵직하다."
+max_hp_bonus = 0
+speed_bonus = -1
+max_sp_bonus = 0
+attack_bonus = 2

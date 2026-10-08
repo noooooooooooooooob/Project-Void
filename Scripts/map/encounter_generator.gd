@@ -33,12 +33,22 @@ static func build_ally_roster(rng: RandomNumberGenerator) -> Array[UnitPlacement
 
 
 static func build_encounter(rng: RandomNumberGenerator, ally_units: Array[UnitPlacement], is_boss: bool) -> EncounterData:
+	return assemble_encounter(ally_units, build_enemy_placements(rng, is_boss))
+
+
+## 적 구성만 무작위로 뽑는다. 일반 노드는 REGULAR_ENEMY_MIN~MAX 마리, 보스는 BOSS_ENEMY_COUNT 마리.
+static func build_enemy_placements(rng: RandomNumberGenerator, is_boss: bool) -> Array[UnitPlacement]:
+	var count: int = BOSS_ENEMY_COUNT if is_boss else rng.randi_range(REGULAR_ENEMY_MIN, REGULAR_ENEMY_MAX)
+	return _random_enemy_placements(rng, _load_enemy_pool(), count)
+
+
+## 아군 배치와 적 배치를 합쳐 전투 구성을 만든다.
+static func assemble_encounter(ally_units: Array[UnitPlacement], enemy_units: Array[UnitPlacement]) -> EncounterData:
 	var encounter := EncounterData.new()
 	encounter.ally_grid = ALLY_GRID
 	encounter.enemy_grid = ENEMY_GRID
 	encounter.ally_units = ally_units
-	var count: int = BOSS_ENEMY_COUNT if is_boss else rng.randi_range(REGULAR_ENEMY_MIN, REGULAR_ENEMY_MAX)
-	encounter.enemy_units = _random_enemy_placements(rng, _load_enemy_pool(), count)
+	encounter.enemy_units = enemy_units
 	encounter.room = load(DEFAULT_ROOM_PATH)
 	return encounter
 

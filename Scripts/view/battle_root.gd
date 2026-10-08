@@ -8,6 +8,8 @@ extends Node3D
 
 ## 전투가 끝났을 때 맵 쪽에 알리는 신호. 아군이 이겼으면 true.
 signal battle_finished(ally_won: bool)
+## 플레이어가 Esc 메뉴에서 도망가기를 골랐을 때 맵 쪽에 알리는 신호. 승패와 무관하다 (battle_finished 는 나가지 않는다).
+signal battle_fled
 
 ## 유닛 그림이 없을 때 쓰는 임시 실루엣 그림.
 const PLACEHOLDER_SPRITE: Texture2D = preload("res://Resources/sprites/placeholder_unit.png")
@@ -24,6 +26,9 @@ const CAMERA_TARGET_OFFSET := Vector3(0.0, 0.0, 0.6)
 const BATTLE_SOUNDS: BattleSounds = preload("res://Resources/audio/battle_sounds.tres")
 ## 원거리 화살 그림.
 const ARROW_TEXTURE: Texture2D = preload("res://Art/effects/arrow.png")
+
+## Esc 메뉴가 올라가는 캔버스 층 (HUD 층보다 위).
+const FLEE_MENU_LAYER: int = 20
 
 ## 이 씬에서 치를 전투 구성 (인스펙터에서 skirmish.tres 등을 넣는다).
 @export var encounter: EncounterData
@@ -46,6 +51,8 @@ var _move_mode: bool = false
 var _ally_won: bool = false
 ## 카메라 타격 연출 (기본 구도 위에 푸시인·흔들림, 히트스톱·슬로모션).
 var _camera_fx: BattleCamera
+## Esc 로 여는 메뉴 (계속하기 / 도망가기).
+var _flee_menu: FleeMenu
 
 # @onready: _ready 직전에 값을 채운다. %이름 은 씬 안에서 "고유 이름"으로 표시한 노드를 찾는다.
 ## 전투를 비추는 카메라.
@@ -126,6 +133,14 @@ func _ready() -> void:
 	_hud.end_turn_pressed.connect(_on_end_turn_pressed)
 	# 이동 버튼 → 이동 모드를 켜고 끈다.
 	_hud.move_mode_toggled.connect(_on_move_mode_toggled)
+	# Esc 메뉴를 HUD 위 층에 만든다 (열려 있는 동안 아래 화면의 마우스 입력을 막는다).
+	var menu_layer := CanvasLayer.new()
+	menu_layer.layer = FLEE_MENU_LAYER
+	add_child(menu_layer)
+	_flee_menu = FleeMenu.new()
+	menu_layer.add_child(_flee_menu)
+	_flee_menu.resume_requested.connect(_flee_menu.close)
+	_flee_menu.flee_requested.connect(_on_flee_requested)
 	# 창 크기가 바뀌면 카메라 거리를 다시 계산한다.
 	get_viewport().size_changed.connect(_frame_camera)
 	# 처음 한 번 카메라를 맞춘다.
@@ -158,6 +173,27 @@ func _run(action: Callable) -> void:
 	# 전투가 끝났으면 마지막 연출까지 다 보여 준 지금 맵에 알린다.
 	if _state.finished:
 		battle_finished.emit(_ally_won)
+
+
+## Esc 를 누르면 메뉴를 열고 닫는다. 전투가 이미 끝났으면 무시한다.
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("ui_cancel"):
+		return
+	if _state == null or _state.finished:
+		return
+	if _flee_menu.is_open():
+		_flee_menu.close()
+	else:
+		_flee_menu.open()
+	get_viewport().set_input_as_handled()
+
+
+## 도망가기를 골랐다. 메뉴를 닫고 맵에 알린다 (전투가 이미 끝났다면 결과 신호가 우선이라 무시한다).
+func _on_flee_requested() -> void:
+	_flee_menu.close()
+	if _state.finished:
+		return
+	battle_fled.emit()
 
 
 ## 입력 잠금 상태를 바꾸고 보드·HUD 에 알린다.

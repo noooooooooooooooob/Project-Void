@@ -13,6 +13,7 @@ func run() -> Array[Dictionary]:
 	_test_enemy_cells_do_not_overlap()
 	_test_encounter_generation_is_deterministic()
 	_test_generated_encounters_use_the_room()
+	_test_assemble_encounter_keeps_both_sides()
 	return results()
 
 
@@ -104,3 +105,12 @@ func _test_generated_encounters_use_the_room() -> void:
 	var regular: EncounterData = GeneratorScript.build_encounter(_rng(3), roster, false)
 	var boss: EncounterData = GeneratorScript.build_encounter(_rng(3), roster, true)
 	check("generated encounters use the warehouse room", regular.room != null and regular.room.resource_path == GeneratorScript.DEFAULT_ROOM_PATH and boss.room == regular.room)
+
+
+func _test_assemble_encounter_keeps_both_sides() -> void:
+	var roster: Array[UnitPlacement] = GeneratorScript.build_ally_roster(_rng(3))
+	var enemies: Array[UnitPlacement] = GeneratorScript.build_enemy_placements(_rng(3), false)
+	var encounter: EncounterData = GeneratorScript.assemble_encounter(roster, enemies)
+	check("assembled encounter keeps the given allies", encounter.ally_units == roster)
+	check("assembled encounter keeps the given enemies", encounter.enemy_units == enemies)
+	check_eq("assembled encounter uses the standard grids", [encounter.ally_grid, encounter.enemy_grid], [GeneratorScript.ALLY_GRID, GeneratorScript.ENEMY_GRID])

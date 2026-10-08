@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/party/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"void_shard"
+display_name = "공허 파편"
+slot = 2
+description = "검은 기름 속에서 건진 파편. 쥐고 있으면 기운이 솟지만 몸이 상한다."
+max_hp_bonus = -2
+speed_bonus = 0
+max_sp_bonus = 1
+attack_bonus = 0

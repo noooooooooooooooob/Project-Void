@@ -2,13 +2,17 @@ class_name MapView
 extends Control
 
 signal node_selected(node_id: int)
+## 파티·인벤토리 버튼을 눌렀을 때.
+signal party_requested
 
 const NODE_SIZE: Vector2 = Vector2(48.0, 48.0)
 const LOCKED_COLOR := Color(0.3, 0.3, 0.32)
 const CLEARED_COLOR := Color(0.35, 0.55, 0.35)
 const SELECTABLE_COLOR := Color(0.85, 0.75, 0.3)
 const CURRENT_COLOR := Color(0.3, 0.6, 0.9)
+const FARM_COLOR := Color(0.3, 0.75, 0.7)
 const LINE_COLOR := Color(0.5, 0.5, 0.55)
+const STORY_LINE_COLOR := Color(0.85, 0.75, 0.3)
 ## 클릭과 드래그를 가르는 최소 이동 거리(px).
 const DRAG_THRESHOLD: float = 6.0
 ## 지도를 끌어도 이만큼은 화면에 남도록 막는 여백(px).
@@ -17,6 +21,7 @@ const PAN_MARGIN: float = 120.0
 var _graph: MapGraph
 var _buttons: Dictionary = {}
 var _result_label: Label
+var _party_button: Button
 
 ## 지도 경계 상자를 화면 중앙에 두기 위한 기준점. 뷰포트 크기가 바뀌면 다시 계산한다.
 var _base_origin: Vector2 = Vector2.ZERO
@@ -34,11 +39,13 @@ func _init(graph: MapGraph) -> void:
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_buttons()
 	_result_label = _make_result_label()
 	add_child(_result_label)
+	_party_button = _make_party_button()
+	add_child(_party_button)
 	get_viewport().size_changed.connect(_on_viewport_resized)
 
 
@@ -58,7 +65,7 @@ func sync_from_state(run_state: MapRunState) -> void:
 		var current: bool = node.id == run_state.current_node_id
 		var selectable: bool = run_state.is_selectable(node.id)
 		button.disabled = not selectable
-		button.modulate = _color_for(current, cleared, selectable)
+		button.modulate = _color_for(node, current, cleared, selectable)
 	queue_redraw()
 
 
@@ -87,11 +94,11 @@ func result_text() -> String:
 	return _result_label.text
 
 
-func _color_for(current: bool, cleared: bool, selectable: bool) -> Color:
+func _color_for(node: MapNode, current: bool, cleared: bool, selectable: bool) -> Color:
 	if current:
 		return CURRENT_COLOR
 	if selectable:
-		return SELECTABLE_COLOR
+		return FARM_COLOR if node.kind == MapNode.Kind.FARM else SELECTABLE_COLOR
 	if cleared:
 		return CLEARED_COLOR
 	return LOCKED_COLOR
@@ -116,12 +123,41 @@ func _build_buttons() -> void:
 func _make_button(node: MapNode) -> Button:
 	var button := Button.new()
 	button.custom_minimum_size = NODE_SIZE
-	button.text = "보스" if node.is_boss else str(node.id)
+	button.text = _label_for(node)
 	button.disabled = true
 	button.modulate = LOCKED_COLOR
 	button.pressed.connect(_on_button_pressed.bind(node.id))
 	add_child(button)
 	return button
+
+
+func _label_for(node: MapNode) -> String:
+	match node.kind:
+		MapNode.Kind.BOSS:
+			return "보스"
+		MapNode.Kind.FARM:
+			return "파밍"
+		MapNode.Kind.START:
+			return "시작"
+		_:
+			return str(node.row + 1)
+
+
+func _make_party_button() -> Button:
+	var button := Button.new()
+	button.text = "파티 · 인벤토리"
+	button.anchor_left = 1.0
+	button.anchor_right = 1.0
+	button.offset_left = -220.0
+	button.offset_right = -20.0
+	button.offset_top = 20.0
+	button.offset_bottom = 64.0
+	button.pressed.connect(func() -> void: party_requested.emit())
+	return button
+
+
+func party_button() -> Button:
+	return _party_button
 
 
 func _make_result_label() -> Label:
@@ -142,7 +178,12 @@ func _draw() -> void:
 	for node in _graph.nodes:
 		var from: Vector2 = _screen_position(node)
 		for next_id in node.connections:
-			draw_line(from, _screen_position(_graph.get_node(next_id)), LINE_COLOR, 2.0)
+			var next: MapNode = _graph.get_node(next_id)
+			var to: Vector2 = _screen_position(next)
+			if next.kind == MapNode.Kind.FARM:
+				draw_dashed_line(from, to, LINE_COLOR, 2.0, 8.0)
+			else:
+				draw_line(from, to, STORY_LINE_COLOR, 3.0)
 
 
 func _compute_bounds() -> void:

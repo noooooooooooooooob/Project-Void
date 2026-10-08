@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/party/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"leather_vest"
+display_name = "가죽 조끼"
+slot = 1
+description = "그을음이 밴 두꺼운 가죽 조끼."
+max_hp_bonus = 3
+speed_bonus = 0
+max_sp_bonus = 0
+attack_bonus = 0

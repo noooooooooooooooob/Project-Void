@@ -7,12 +7,12 @@ const SEEDS: Array[int] = [1, 42, 7]
 
 func run() -> Array[Dictionary]:
 	for seed_value in SEEDS:
-		_test_start_branches_into_at_least_three(seed_value)
-		_test_every_non_boss_node_has_a_way_forward(seed_value)
-		_test_boss_has_no_outgoing_connections(seed_value)
+		_test_story_path_is_a_straight_line_to_the_boss(seed_value)
+		_test_every_story_node_has_one_or_two_farms(seed_value)
+		_test_farms_are_leaves_hanging_off_their_story_node(seed_value)
 		_test_every_node_is_reachable_from_start(seed_value)
-		_test_rows_and_columns_stay_in_bounds(seed_value)
 		_test_boss_is_last_and_flagged(seed_value)
+		_test_farm_columns_sit_beside_the_story_path(seed_value)
 	return results()
 
 
@@ -22,25 +22,47 @@ func _graph(seed_value: int) -> MapGraph:
 	return MapGraphScript.new(rng)
 
 
-func _test_start_branches_into_at_least_three(seed_value: int) -> void:
+## 시작에서 출발해 각 노드의 "다음 이야기 노드"(connections[0])만 따라간 경로.
+func _story_path(graph: MapGraph) -> Array[int]:
+	var path: Array[int] = [graph.start_id]
+	while not graph.get_node(path[-1]).is_boss:
+		path.append(graph.get_node(path[-1]).connections[0])
+	return path
+
+
+func _test_story_path_is_a_straight_line_to_the_boss(seed_value: int) -> void:
 	var graph: MapGraph = _graph(seed_value)
-	var start_connections: Array[int] = graph.get_node(graph.start_id).connections
-	check("seed %d: start branches into 3+ nodes" % seed_value, start_connections.size() >= 3)
-	for target_id in start_connections:
-		check("seed %d: start branch %d sits on the first row" % [seed_value, target_id], graph.get_node(target_id).row == 0)
+	var path: Array[int] = _story_path(graph)
+	check_eq("seed %d: start + story nodes + boss on the path" % seed_value, path.size(), MapGraph.STORY_COUNT + 2)
+	check_eq("seed %d: path ends at the boss" % seed_value, path[-1], graph.boss_id)
+	for i in range(1, path.size() - 1):
+		check("seed %d: path node %d is a story node" % [seed_value, path[i]], graph.get_node(path[i]).kind == MapNode.Kind.STORY)
+		check_eq("seed %d: story node %d sits on row %d" % [seed_value, path[i], i - 1], graph.get_node(path[i]).row, i - 1)
+		check_eq("seed %d: story node %d is on the centre column" % [seed_value, path[i]], graph.get_node(path[i]).col, 0)
 
 
-func _test_every_non_boss_node_has_a_way_forward(seed_value: int) -> void:
+func _test_every_story_node_has_one_or_two_farms(seed_value: int) -> void:
 	var graph: MapGraph = _graph(seed_value)
 	for node in graph.nodes:
-		if node.is_boss:
+		if node.kind != MapNode.Kind.STORY:
 			continue
-		check("seed %d: node %d has an outgoing connection" % [seed_value, node.id], not node.connections.is_empty())
+		var farm_count: int = 0
+		for next_id in node.connections:
+			if graph.get_node(next_id).kind == MapNode.Kind.FARM:
+				farm_count += 1
+		check("seed %d: story node %d has 1~2 farm nodes" % [seed_value, node.id], farm_count >= MapGraph.FARM_MIN and farm_count <= MapGraph.FARM_MAX)
 
 
-func _test_boss_has_no_outgoing_connections(seed_value: int) -> void:
+func _test_farms_are_leaves_hanging_off_their_story_node(seed_value: int) -> void:
 	var graph: MapGraph = _graph(seed_value)
-	check("seed %d: boss has no outgoing connections" % seed_value, graph.get_node(graph.boss_id).connections.is_empty())
+	for node in graph.nodes:
+		if node.kind != MapNode.Kind.FARM:
+			continue
+		check("seed %d: farm %d has no outgoing connections" % [seed_value, node.id], node.connections.is_empty())
+		var parent: MapNode = graph.get_node(node.parent_id)
+		check("seed %d: farm %d hangs off a story node" % [seed_value, node.id], parent.kind == MapNode.Kind.STORY)
+		check("seed %d: farm %d is listed in its parent's connections" % [seed_value, node.id], parent.connections.has(node.id))
+		check_eq("seed %d: farm %d shares its parent's row" % [seed_value, node.id], node.row, parent.row)
 
 
 func _test_every_node_is_reachable_from_start(seed_value: int) -> void:
@@ -56,17 +78,16 @@ func _test_every_node_is_reachable_from_start(seed_value: int) -> void:
 	check_eq("seed %d: every node reachable from start" % seed_value, visited.size(), graph.node_count())
 
 
-func _test_rows_and_columns_stay_in_bounds(seed_value: int) -> void:
-	var graph: MapGraph = _graph(seed_value)
-	for node in graph.nodes:
-		if node.id == graph.start_id or node.is_boss:
-			continue
-		check("seed %d: node %d row in range" % [seed_value, node.id], node.row >= 0 and node.row < MapGraph.ROWS)
-		check("seed %d: node %d col in range" % [seed_value, node.id], node.col >= 0 and node.col < MapGraph.COLS)
-
-
 func _test_boss_is_last_and_flagged(seed_value: int) -> void:
 	var graph: MapGraph = _graph(seed_value)
 	check_eq("seed %d: boss id is the last node" % seed_value, graph.boss_id, graph.node_count() - 1)
 	check("seed %d: boss node is flagged as boss" % seed_value, graph.get_node(graph.boss_id).is_boss)
+	check("seed %d: boss has no outgoing connections" % seed_value, graph.get_node(graph.boss_id).connections.is_empty())
 	check("seed %d: start is not the boss" % seed_value, not graph.get_node(graph.start_id).is_boss)
+
+
+func _test_farm_columns_sit_beside_the_story_path(seed_value: int) -> void:
+	var graph: MapGraph = _graph(seed_value)
+	for node in graph.nodes:
+		if node.kind == MapNode.Kind.FARM:
+			check("seed %d: farm %d is one column off the path" % [seed_value, node.id], absi(node.col) == 1)

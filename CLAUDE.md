@@ -7,9 +7,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 "Project Void" is a Godot 4.7 project (Forward Plus renderer, Jolt Physics for 3D, `d3d12` rendering driver on Windows). It is a card-battler prototype with two connected systems under `Scripts/`:
 
 - **`Scripts/combat/`** — turn-based battle rules (`battle_state.gd`, `unit.gd`, `enemy_brain.gd`, `target_resolver.gd`) plus data resources (`data/`: ally/enemy/card/encounter/unit data, `unit_placement.gd`). Rules code is pure logic; it emits signals that `Scripts/view/` and `Scripts/ui/` play back.
-- **`Scripts/map/`** — the run map between battles: a grid-based graph generator that scatters and merges random paths (`map_graph.gd`), layout math (`map_layout.gd`), node data (`map_node.gd`), run state (`map_run_state.gd`), and encounter generation (`encounter_generator.gd`).
-- **`Scripts/view/`** — 2.5D battle board (`board_3d.gd`, `board_layout.gd`, `unit_view.gd`), event recording/playback (`view/battle_event*.gd`, `battle_playback.gd`), the battle scene root (`battle_root.gd`), the map screen (`map_view.gd`), and `game_root.gd`, which wires the map and battle scenes together as the main scene.
-- **`Scripts/ui/`** — battle HUD, hand/pile/card views, and the drag-to-target aim arrow.
+- **`Scripts/map/`** — the map between battles: a main story line (start → story nodes → boss) with repeatable farm nodes hanging off each story node (`map_graph.gd`, node kinds in `map_node.gd`), layout math (`map_layout.gd`), run state with the unlock rules (`map_run_state.gd`), and encounter generation (`encounter_generator.gd`). Story/boss enemies are fixed per map; farm enemies are re-rolled on every entry.
+- **`Scripts/party/`** — the persistent party: equipment items (`item_data.gd`, data in `Resources/items/`), the loot pool (`item_pool.gd`), and `party_state.gd` (roster, inventory, equip/unequip, final stats). `PartyState.build_battle_roster()` is the only bridge to combat: it bakes equipment bonuses into copies of `AllyData`/`CardData`, so `Scripts/combat/` stays untouched.
+- **`Scripts/view/`** — 2.5D battle board (`board_3d.gd`, `board_layout.gd`, `unit_view.gd`), event recording/playback (`view/battle_event*.gd`, `battle_playback.gd`), the battle scene root (`battle_root.gd`), the map screen (`map_view.gd`), and `game_root.gd`, which wires the map, party screen and battle scenes together as the main scene.
+- **`Scripts/ui/`** — battle HUD, hand/pile/card views, the drag-to-target aim arrow, and the character info / inventory screen (`party_view.gd`).
 
 Design/plan docs for each feature live in `docs/superpowers/specs/` and `docs/superpowers/plans/` (dated filenames). Check there for the intent behind a system before changing it.
 

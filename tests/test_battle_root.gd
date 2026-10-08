@@ -20,6 +20,10 @@ const EncounterScript := preload("res://Scripts/combat/data/encounter_data.gd")
 func run() -> Array[Dictionary]:
 	# 종료 신호는 재생 뒤.
 	_test_finish_signal_waits_for_playback()
+	# Esc 메뉴와 도망가기.
+	_test_escape_toggles_the_flee_menu()
+	_test_fleeing_emits_battle_fled_only()
+	_test_escape_is_ignored_after_the_battle_ends()
 	# 결과를 돌려준다.
 	return results()
 
@@ -94,4 +98,60 @@ func _test_finish_signal_waits_for_playback() -> void:
 	# 나가는 순간 이미 결정타 재생(배너까지)이 끝나 있었다.
 	check("battle_finished waits for the final playback", seen[1])
 	# 정리.
+	battle.free()
+
+
+# Esc 입력 이벤트.
+func _escape_event() -> InputEventAction:
+	var event := InputEventAction.new()
+	event.action = &"ui_cancel"
+	event.pressed = true
+	return event
+
+
+# 연출 없이 시작한 전투를 트리에 붙여 돌려준다.
+func _started_battle() -> BattleRoot:
+	var battle: BattleRoot = BattleScene.instantiate()
+	battle.encounter = _encounter()
+	(battle.get_node("Playback") as BattlePlayback).instant = true
+	(Engine.get_main_loop() as SceneTree).root.add_child(battle)
+	return battle
+
+
+# Esc 를 누르면 메뉴가 열리고, 다시 누르거나 계속하기를 누르면 닫힌다.
+func _test_escape_toggles_the_flee_menu() -> void:
+	var battle: BattleRoot = _started_battle()
+	check("the flee menu starts closed", not battle._flee_menu.is_open())
+	battle._unhandled_input(_escape_event())
+	check("Esc opens the flee menu", battle._flee_menu.is_open())
+	battle._unhandled_input(_escape_event())
+	check("Esc again closes it", not battle._flee_menu.is_open())
+	battle._unhandled_input(_escape_event())
+	battle._flee_menu.resume_button().pressed.emit()
+	check("the resume button closes it", not battle._flee_menu.is_open())
+	battle.free()
+
+
+# 도망가기는 battle_fled 만 내고 battle_finished(승패) 는 내지 않는다. 메뉴는 닫힌다.
+func _test_fleeing_emits_battle_fled_only() -> void:
+	var battle: BattleRoot = _started_battle()
+	var counts: Array[int] = [0, 0]
+	battle.battle_fled.connect(func() -> void: counts[0] += 1)
+	battle.battle_finished.connect(func(_ally_won: bool) -> void: counts[1] += 1)
+	battle._unhandled_input(_escape_event())
+	battle._flee_menu.flee_button().pressed.emit()
+	check_eq("battle_fled is emitted once", counts[0], 1)
+	check_eq("battle_finished is not emitted", counts[1], 0)
+	check("the menu closes after fleeing", not battle._flee_menu.is_open())
+	battle.free()
+
+
+# 전투가 끝난 뒤에는 Esc 가 메뉴를 열지 않는다.
+func _test_escape_is_ignored_after_the_battle_ends() -> void:
+	var battle: BattleRoot = _started_battle()
+	var foe: Unit = battle._state.living_units(Unit.Team.ENEMY)[0]
+	battle._run(func() -> void: battle._state.play_card(0, foe.team, foe.cell))
+	check("the battle is over", battle._state.finished)
+	battle._unhandled_input(_escape_event())
+	check("Esc does not open the menu after the battle", not battle._flee_menu.is_open())
 	battle.free()
