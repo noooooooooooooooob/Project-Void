@@ -29,24 +29,34 @@ enum Slot { WEAPON, ARMOR, ACCESSORY }
 
 ## 부위 이름 (화면 표시용).
 static func slot_name(p_slot: Slot) -> String:
+	# 부위마다 화면에 보일 이름을 고른다.
 	match p_slot:
+		# 무기.
 		Slot.WEAPON:
 			return "무기"
+		# 방어구.
 		Slot.ARMOR:
 			return "방어구"
+		# 나머지는 장신구.
 		_:
 			return "장신구"
 
 
 ## "체력 +4 · 속도 -1" 처럼 0 이 아닌 보너스만 모아 한 줄로 돌려준다. 보너스가 없으면 빈 문자열.
 func summary() -> String:
+	# 보너스별 문구를 모을 목록.
 	var parts: PackedStringArray = []
+	# 체력 보너스가 있으면 부호를 붙여 넣는다 (%+d 는 양수에도 + 를 붙인다).
 	if max_hp_bonus != 0:
 		parts.append("체력 %+d" % max_hp_bonus)
+	# 속도 보너스.
 	if speed_bonus != 0:
 		parts.append("속도 %+d" % speed_bonus)
+	# SP 보너스.
 	if max_sp_bonus != 0:
 		parts.append("SP %+d" % max_sp_bonus)
+	# 공격 보너스.
 	if attack_bonus != 0:
 		parts.append("공격 %+d" % attack_bonus)
+	# 가운뎃점으로 이어 한 줄로 만든다 (목록이 비었으면 빈 문자열).
 	return " · ".join(parts)
