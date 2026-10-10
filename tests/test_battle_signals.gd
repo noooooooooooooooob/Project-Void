@@ -58,7 +58,7 @@ func _placement(data: UnitData, cell: Vector2i) -> UnitPlacement:
 	return placement
 
 
-# "zap" 카드(원거리 단일, 사거리 9, 피해 3) 한 장짜리 덱을 가진 아군을 cell 에 배치한다.
+# "zap" 카드(원거리 단일, 피해 3) 한 장짜리 덱을 가진 아군을 cell 에 배치한다.
 func _ally(cell: Vector2i) -> UnitPlacement:
 	# 카드.
 	var card: CardData = CardDataScript.new()
@@ -160,7 +160,7 @@ func _record(state: BattleState) -> Array:
 
 # 카드를 쓰면 card_played 가 unit_damaged 보다 먼저 나오는지 (화면이 돌진 → 피격 순서로 보여 주기 위해).
 func _test_card_played_precedes_damage() -> void:
-	# 사거리 9, 회복 4 적.
+	# 원거리, 회복 4 적.
 	var state: BattleState = _state(Vector2i(0, 1), _enemy(CardData.AttackType.RANGED, 4))
 	# 시작 (아군 차례).
 	state.start_battle()
@@ -177,7 +177,7 @@ func _test_card_played_precedes_damage() -> void:
 
 # 적 공격: enemy_acted(ATTACK, a) → 피해 6 순서인지.
 func _test_enemy_attack_signals() -> void:
-	# 사거리 9 적.
+	# 원거리 적.
 	var state: BattleState = _state(Vector2i(0, 1), _enemy(CardData.AttackType.RANGED, 4))
 	# 기록 연결.
 	var seen: Array = _record(state)
@@ -192,7 +192,7 @@ func _test_enemy_attack_signals() -> void:
 
 # 적 방어: enemy_acted(DEFEND, null) → 방어도 7 순서이고 실제 방어도도 7 인지.
 func _test_enemy_defend_signals() -> void:
-	# 사거리 1 인데 아군이 col 2 라 reach 가 3 이어서 방어를 고른다.
+	# 근접 적과 다른 행(0)에 아군이 있어 칠 대상이 없으니 방어를 고른다.
 	var state: BattleState = _state(Vector2i(2, 0), _enemy(CardData.AttackType.MELEE, 4))
 	# 기록 연결.
 	var seen: Array = _record(state)
@@ -240,6 +240,6 @@ func _test_enemy_rest_reports_capped_amount() -> void:
 	# 적 차례 처리.
 	BrainScript.take_turn(state, foe)
 	# 회복 신호 양은 15.
-	check_eq("heal amount is what was restored, not rest_heal", seen, ["acted:%d:null" % EnemyBrain.Action.REST, "healed:15"])
+	check_eq("heal amount is what was restored, not the card value", seen, ["acted:%d:null" % EnemyBrain.Action.REST, "healed:15"])
 	# 체력은 최대 20.
 	check_eq("hp capped at max", foe.hp, 20)

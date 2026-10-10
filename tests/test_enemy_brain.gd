@@ -139,7 +139,7 @@ func _test_attacks_lowest_hp_target() -> void:
 	var healthy: AllyData = _ally(&"healthy", 30)
 	# 다친 아군.
 	var wounded: AllyData = _ally(&"wounded", 8)
-	# 두 아군과 사거리 5·피해 6 적으로 전투를 만든다.
+	# 두 아군과 원거리 피해 6 적으로 전투를 만든다.
 	var state: BattleState = _state([
 		_placement(healthy, Vector2i(0, 0)),
 		_placement(wounded, Vector2i(0, 1)),
@@ -172,7 +172,7 @@ func _test_rests_when_badly_hurt() -> void:
 	# 차례를 진행한다.
 	BrainScript.take_turn(state, foe)
 	# 5 + 4 = 9.
-	check_eq("healed by rest_heal", foe.hp, 9)
+	check_eq("healed by the rest card", foe.hp, 9)
 
 
 # 근접 적과 같은 행에 아군이 없으면 방어를 고르고 방어도 7 을 얻는지.

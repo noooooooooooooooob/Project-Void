@@ -1,4 +1,4 @@
-## 2.5D 전투 보드: 양쪽 격자 타일, 유닛 화면 객체(UnitView), 타일 위 사거리 힌트 글자를 만들고 관리한다.
+## 2.5D 전투 보드: 양쪽 격자 타일, 유닛 화면 객체(UnitView), 타일 위 대상 힌트 글자를 만들고 관리한다.
 ## 마우스 클릭을 3D 광선으로 바꿔 어떤 칸이 눌렸는지 알려 준다 (cell_clicked / pick_missed).
 ## 마우스 위치도 매 물리 스텝 같은 방식으로 판정해 커서가 가리키는 칸이 바뀔 때 알려 준다 (cell_hovered / hover_cleared).
 ## 규칙 상태는 바꾸지 않는다 — BattleRoot 가 신호를 받아 규칙을 호출한다.
@@ -18,7 +18,7 @@ signal hover_cleared
 ## 타일 모습 상태.
 ## BASE 유닛이 있는 기본, EMPTY 빈 칸(어둡게), CURRENT 지금 차례(노란 빛), VALID 칠 수 있음(초록 빛), INVALID 칠 수 없음(더 어둡게),
 ## MOVABLE 이동할 수 있는 빈 칸(파란 빛),
-## SHAPE_HIT 커서가 가리키는 칸 기준 범위 모양 안이며 칠 수 있음(하얀 빛), SHAPE_OUT 범위 모양 안이지만 사거리 밖이거나 막힘(주황 빛).
+## SHAPE_HIT 커서가 가리키는 칸 기준 범위 모양 안이며 칠 수 있음(하얀 빛), SHAPE_OUT 범위 모양 안이지만 무효(주황 빛).
 enum TileState { BASE, EMPTY, CURRENT, VALID, INVALID, MOVABLE, SHAPE_HIT, SHAPE_OUT }
 
 ## 타일 두께.
@@ -39,7 +39,7 @@ const VALID_EMISSION := Color(0.45, 0.85, 0.45)
 const MOVE_EMISSION := Color(0.45, 0.65, 1.0)
 ## 커서 기준 범위 모양 안이며 칠 수 있는 타일이 내는 빛 색.
 const SHAPE_HIT_EMISSION := Color(0.95, 0.95, 0.95)
-## 커서 기준 범위 모양 안이지만 사거리 밖·막힌 타일이 내는 빛 색.
+## 커서 기준 범위 모양 안이지만 무효인 타일이 내는 빛 색.
 const SHAPE_OUT_EMISSION := Color(1.0, 0.5, 0.15)
 
 ## 칸 좌표 ↔ 3D 위치 계산기 (build 에서 만든다).
@@ -106,7 +106,7 @@ func build(state: BattleState, placeholder: Texture2D, room: BattleRoomData = nu
 
 ## 연출과 상관없이 규칙 상태 그대로 보드를 맞춘다 (재생이 끝난 뒤 어긋남 보정용).
 func sync_from_state(state: BattleState) -> void:
-	# 남아 있는 사거리·이동 힌트를 지운다.
+	# 남아 있는 대상·이동 힌트를 지운다.
 	clear_target_hints()
 	# 우선 모든 타일을 빈 칸으로 만든다.
 	for key in _tiles:
@@ -174,7 +174,7 @@ func show_target_hints(team: Unit.Team, hints: Dictionary) -> void:
 		label.visible = true
 
 
-## 사거리 힌트(글자와 초록/어두운 타일)와 이동 힌트(파란 타일), 범위 미리보기(하양/주황 타일)를 모두 지운다.
+## 대상 힌트(글자와 초록/어두운 타일)와 이동 힌트(파란 타일), 범위 미리보기(하양/주황 타일)를 모두 지운다.
 func clear_target_hints() -> void:
 	# 모든 칸의 힌트를 확인한다.
 	for key in _hints:
@@ -185,7 +185,7 @@ func clear_target_hints() -> void:
 		# 그 칸의 편·좌표.
 		var team: Unit.Team = key.x as Unit.Team
 		var cell := Vector2i(key.y, key.z)
-		# 사거리 힌트·범위 미리보기 때문에 바뀐 상태였으면 되돌린다. 이제는 유닛 없는 칸도 힌트가 붙으므로
+		# 대상 힌트·범위 미리보기 때문에 바뀐 상태였으면 되돌린다. 이제는 유닛 없는 칸도 힌트가 붙으므로
 		# 무조건 BASE 로 되돌리면 안 되고, 지금 살아 있는 유닛이 서 있는 칸일 때만 BASE, 아니면 EMPTY 로 되돌린다.
 		if current == TileState.VALID or current == TileState.INVALID or current == TileState.SHAPE_HIT or current == TileState.SHAPE_OUT:
 			set_tile_state(team, cell, TileState.BASE if _occupied_by_living_view(team, cell) else TileState.EMPTY)
@@ -195,7 +195,7 @@ func clear_target_hints() -> void:
 
 
 ## 그 편의 그 칸에 지금 살아 있는 유닛이 서 있는지 (규칙 유닛을 직접 들고 있지 않으므로 화면 객체 사전의 키로 판정한다).
-## 사거리 힌트를 지울 때 기본/빈 칸 중 무엇으로 되돌릴지 정하는 데 쓴다.
+## 대상 힌트를 지울 때 기본/빈 칸 중 무엇으로 되돌릴지 정하는 데 쓴다.
 func _occupied_by_living_view(team: Unit.Team, cell: Vector2i) -> bool:
 	# _views 의 키가 규칙 유닛이므로 그대로 편·칸·생존을 물을 수 있다.
 	for unit in _views:
@@ -206,13 +206,13 @@ func _occupied_by_living_view(team: Unit.Team, cell: Vector2i) -> bool:
 
 
 ## 커서가 가리키는 칸을 기준으로 한 범위 모양 미리보기를 그 칸들에만(유닛이 있든 없든) 덧그린다 (나머지 칸은 손대지 않는다).
-## hints: Vector2i(칸) → {"valid": bool, "text": String} (BattleRoot 가 만들어 준다). 기존 사거리 힌트를 먼저 그려 둔 뒤에 불러야 한다.
+## hints: Vector2i(칸) → {"valid": bool, "text": String} (BattleRoot 가 만들어 준다). 기존 대상 힌트를 먼저 그려 둔 뒤에 불러야 한다.
 func show_shape_preview(team: Unit.Team, hits: Dictionary) -> void:
 	# 범위 모양에 든 칸마다.
 	for cell in hits:
 		# 그 칸의 힌트 정보.
 		var info: Dictionary = hits[cell]
-		# 칠 수 있으면 하얀 빛, 사거리 밖·막힘이면 주황 빛.
+		# 칠 수 있으면 하얀 빛, 무효이면 주황 빛.
 		set_tile_state(team, cell, TileState.SHAPE_HIT if info["valid"] else TileState.SHAPE_OUT)
 		# 그 칸의 힌트 글자.
 		var label: Label3D = hint_label(team, cell)
@@ -346,7 +346,7 @@ func set_tile_state(team: Unit.Team, cell: Vector2i, new_state: TileState) -> vo
 			material.emission = SHAPE_HIT_EMISSION
 			# 빛 세기.
 			material.emission_energy_multiplier = 1.0
-		# 범위 미리보기 안이지만 사거리 밖·막힘: 편 색 + 주황 빛.
+		# 범위 미리보기 안이지만 무효: 편 색 + 주황 빛.
 		TileState.SHAPE_OUT:
 			# 바탕은 편 색.
 			material.albedo_color = base

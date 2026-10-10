@@ -13,13 +13,6 @@ extends Resource
 enum AttackType { MELEE, RANGED, ALLY, SELF }
 ## 카드 분류. 카드 색을 정한다.
 enum Category { ATTACK, SKILL, SPECIAL }
-## 피해 범위 모양 (TargetResolver.expand_shape 가 실제 맞는 유닛을 고른다).
-## SINGLE(단일): 고른 대상 한 명만.
-## PIERCE(관통): 대상과 같은 행(cell.y)에 있는 그 편 유닛 전부 — 앞뒤로 꿰뚫는다.
-## SWEEP(횡렬): 대상과 같은 열(cell.x)에 있는 그 편 유닛 전부 — 옆으로 쓸어낸다.
-## AREA(광역 2×2): 고른 대상 칸을 왼쪽 위 모서리로 삼는 2×2 블록 안의 그 편 유닛 전부.
-## LINE(관통로): 대상과 같은 행(cell.y)에서 앞줄(0 열)부터 대상 열까지 — 대상까지 가는 길목의 유닛을 모두 휩쓴다.
-enum Shape { SINGLE, PIERCE, SWEEP, AREA, LINE }
 
 ## 코드에서 카드를 구분하는 고유 이름 (예: &"slash").
 @export var id: StringName = &""
@@ -27,14 +20,8 @@ enum Shape { SINGLE, PIERCE, SWEEP, AREA, LINE }
 @export var display_name: String = ""
 ## 카드를 쓰는 데 드는 SP.
 @export var sp_cost: int = 1
-## 근접/원거리 공격 방식.
+## 공격 종류 (근접·원거리·아군·자신).
 @export var attack_type: AttackType = AttackType.MELEE
-## 피해 범위 모양.
-@export var shape: Shape = Shape.SINGLE
-## 칠 수 있는 최대 거리. TargetResolver.reach 로 잰 거리가 이 값 이하여야 한다.
-@export var attack_range: int = 1
-## 맞은 유닛마다 주는 피해량 (방어도가 먼저 깎인다).
-@export var damage: int = 0
 ## 카드 분류 (공격·스킬·특수).
 @export var category: Category = Category.ATTACK
 ## 범위: 기준 칸에서의 오프셋 목록 (x = 열, + 가 뒤쪽 / y = 행, + 가 아래). 비어 있으면 기준 칸 하나(단일).

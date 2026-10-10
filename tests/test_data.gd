@@ -35,8 +35,6 @@ func _test_card_defaults() -> void:
 	var card: CardData = CardDataScript.new()
 	# 기본 비용 1.
 	check_eq("card default sp_cost", card.sp_cost, 1)
-	# 기본 범위 단일.
-	check_eq("card default shape is SINGLE", card.shape, CardData.Shape.SINGLE)
 	# 기본 분류는 공격.
 	check_eq("card default category", card.category, CardData.Category.ATTACK)
 	# 기본 효과 없음.

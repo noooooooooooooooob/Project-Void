@@ -1,21 +1,16 @@
 [gd_resource type="Resource" script_class="EnemyData" format=3 uid="uid://b1gt6juh5371q"]
 
 [ext_resource type="Resource" path="res://Resources/cards/enemy/stalker_attack.tres" id="1_2vkqy"]
-[ext_resource type="Script" path="res://Scripts/combat/data/enemy_data.gd" id="1_vebjd"]
+[ext_resource type="Script" uid="uid://coph8hb3quefm" path="res://Scripts/combat/data/enemy_data.gd" id="1_vebjd"]
 [ext_resource type="Resource" path="res://Resources/cards/enemy/stalker_defend.tres" id="3_q32fs"]
 [ext_resource type="Resource" path="res://Resources/cards/enemy/stalker_rest.tres" id="6_xhja0"]
-[ext_resource type="Texture2D" path="res://Art/units/stalker.png" id="10_sprite"]
-[ext_resource type="Texture2D" path="res://Art/units/anim/stalker_idle.png" id="11_idle"]
-[ext_resource type="Texture2D" path="res://Art/units/anim/stalker_attack.png" id="12_attack"]
-[ext_resource type="Texture2D" path="res://Art/units/anim/stalker_hit.png" id="13_hit"]
+[ext_resource type="Texture2D" uid="uid://csntt3b7b43ml" path="res://Art/units/stalker.png" id="10_sprite"]
+[ext_resource type="Texture2D" uid="uid://v8cvid3wks8s" path="res://Art/units/anim/stalker_idle.png" id="11_idle"]
+[ext_resource type="Texture2D" uid="uid://dfgikesoofyen" path="res://Art/units/anim/stalker_attack.png" id="12_attack"]
+[ext_resource type="Texture2D" uid="uid://cy1lqyc1psnxk" path="res://Art/units/anim/stalker_hit.png" id="13_hit"]
 
 [resource]
 script = ExtResource("1_vebjd")
-attack_damage = 4
-attack_type = 1
-attack_shape = 1
-attack_range = 3
-block_amount = 4
 attack_card = ExtResource("1_2vkqy")
 defend_card = ExtResource("3_q32fs")
 rest_card = ExtResource("6_xhja0")

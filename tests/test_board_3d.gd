@@ -1,4 +1,4 @@
-# Board3D(3D 보드) 테스트: 타일·유닛 화면 만들기, 상태 동기화, 차례 강조, 사거리 힌트, 빈 칸 표시.
+# Board3D(3D 보드) 테스트: 타일·유닛 화면 만들기, 상태 동기화, 차례 강조, 대상 힌트, 빈 칸 표시.
 # 보드를 트리에 붙이지 않으므로 클릭 광선은 검사하지 않는다.
 extends TestCase
 
@@ -20,7 +20,7 @@ func run() -> Array[Dictionary]:
 	_test_sync_sets_tile_states()
 	# 차례 강조 옮기기.
 	_test_show_current_moves_highlight()
-	# 사거리 힌트 보이기·지우기.
+	# 대상 힌트 보이기·지우기.
 	_test_target_hints()
 	# 커서 기준 범위 미리보기 보이기·지우기.
 	_test_shape_preview()
@@ -261,7 +261,7 @@ func _test_target_hints() -> void:
 	board.free()
 
 
-# 범위 미리보기가 지정한 칸만(유닛이 없는 칸 포함) 하양(칠 수 있음)/주황(사거리 밖·막힘)으로 바꾸고, 지우면 기본으로 돌아가는지.
+# 범위 미리보기가 지정한 칸만(유닛이 없는 칸 포함) 하양(칠 수 있음)/주황(무효)으로 바꾸고, 지우면 기본으로 돌아가는지.
 # 물리 판정이 한 번도 돈 적 없는 보드는 커서가 어떤 칸도 가리키지 않는지도 함께 본다.
 func _test_shape_preview() -> void:
 	# 전투.
@@ -276,17 +276,17 @@ func _test_shape_preview() -> void:
 	board.sync_from_state(state)
 	# 칠 수 있는 적 e1 이 선 칸.
 	var near: Vector2i = Vector2i(0, 0)
-	# 사거리 밖 적 e2 가 선 칸.
+	# 무효 적 e2 가 선 칸.
 	var far: Vector2i = Vector2i(1, 0)
 	# 범위 모양 안이지만 아무도 없는 칸.
 	var empty: Vector2i = Vector2i(0, 1)
 
-	# 실제 흐름과 같은 순서로 기본 사거리 힌트를 먼저 깐다.
+	# 실제 흐름과 같은 순서로 기본 대상 힌트를 먼저 깐다.
 	board.show_target_hints(Unit.Team.ENEMY, {
 		near: {"valid": true, "text": "✓ 거리 1"},
 		far: {"valid": false, "text": "거리 3"},
 	})
-	# 범위 미리보기를 덧그린다: e1 은 칠 수 있음, e2 는 사거리 밖, 빈 칸도 칠 수 있음으로 포함된다.
+	# 범위 미리보기를 덧그린다: e1 은 칠 수 있음, e2 는 무효, 빈 칸도 칠 수 있음으로 포함된다.
 	board.show_shape_preview(Unit.Team.ENEMY, {
 		near: {"valid": true, "text": "✓ 거리 1"},
 		far: {"valid": false, "text": "거리 3"},

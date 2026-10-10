@@ -1,4 +1,4 @@
-# BattleState.move_unit(아군 이동) 테스트: 성공 시 SP·칸·신호·로그, 각종 거절, SP 가 남는 동안 연속 이동, 이동 후 사거리.
+# BattleState.move_unit(아군 이동) 테스트: 성공 시 SP·칸·신호·로그, 각종 거절, SP 가 남는 동안 연속 이동, 이동 후 근접 기준 행.
 extends TestCase
 
 # 전투 상태 스크립트.
@@ -23,8 +23,8 @@ func run() -> Array[Dictionary]:
 	_test_rejects_outside_an_ally_turn()
 	# SP 가 남는 동안 연속 이동.
 	_test_moves_while_sp_lasts()
-	# 이동하면 사거리가 새 칸 기준.
-	_test_reach_follows_the_new_cell()
+	# 이동하면 근접 기준이 새 행을 따른다.
+	_test_melee_anchor_follows_the_new_row()
 	# 결과를 돌려준다.
 	return results()
 
@@ -190,17 +190,21 @@ func _test_moves_while_sp_lasts() -> void:
 	check_eq("stopped on the third cell", a.cell, Vector2i(2, 2))
 
 
-# 앞줄에서 적까지 거리 1, 한 칸 뒤로 가면 거리 2 인지.
-func _test_reach_follows_the_new_cell() -> void:
-	# a 가 (0,1) 인 전투.
+# 근접 기준 유닛은 이동한 뒤의 행을 따른다: 같은 행이면 그대로, 다른 행으로 가면 없다.
+func _test_melee_anchor_follows_the_new_row() -> void:
+	# a 가 (0,1) 인 전투 (적 e 는 (0,1)).
 	var state: BattleState = _started_state(Vector2i(0, 1))
 	# a 유닛.
 	var a: Unit = _unit(state, &"a")
 	# 적 유닛.
 	var e: Unit = _unit(state, &"e")
-	# 앞줄끼리 1.
-	check_eq("front rank reach", state.resolver.reach(a, e), 1)
-	# 한 칸 뒤로.
+	# 같은 행이라 e 가 기준.
+	check_eq("same row anchors the enemy", state.resolver.melee_anchor(a, state.units), e)
+	# 한 칸 뒤로 (같은 행).
 	state.move_unit(Vector2i(1, 1))
-	# 2.
-	check_eq("one step back adds one", state.resolver.reach(a, e), 2)
+	# 여전히 e.
+	check_eq("moving back keeps the row", state.resolver.melee_anchor(a, state.units), e)
+	# 한 칸 위로 (행 0, 적 없음).
+	state.move_unit(Vector2i(1, 0))
+	# 기준 없음.
+	check("another row has no melee anchor", state.resolver.melee_anchor(a, state.units) == null)

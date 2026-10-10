@@ -546,7 +546,7 @@ func _on_card_gui_input(event: InputEvent, view: CardView) -> void:
 		_selected = _cards.find(view)
 		# 들어 올린다.
 		_layout(true)
-		# 선택을 알린다 (루트가 사거리 힌트를 보여 준다).
+		# 선택을 알린다 (루트가 대상 힌트를 보여 준다).
 		card_selected.emit(_selected)
 	# 끌기 중이면 카드 위쪽 가운데에서 커서까지 화살표를 그리고, 커서 위치를 알린다 (보드가 그 칸을 미리보기로 비출 수 있게).
 	if _dragging:

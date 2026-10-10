@@ -34,7 +34,7 @@ func cell_position(team: Unit.Team, cell: Vector2i) -> Vector3:
 	var rows: int = ally_grid.y if team == Unit.Team.ALLY else enemy_grid.y
 	# x: 가운데 틈의 절반 + 칸 절반(첫 칸 중심까지) + 열 번호만큼의 칸 거리. 앞줄(x=0)이 가운데에 가장 가깝다.
 	var x: float = side * (SIDE_GAP / 2.0 + CELL_PITCH / 2.0 + cell.x * CELL_PITCH)
-	# 규칙과 같은 중앙 정렬 함수를 써야 화면상 행 어긋남이 사거리 판정과 일치한다.
+	# 행 수가 다른 두 격자를 가운데로 맞춘다.
 	var z: float = TargetResolver.center_offset(cell.y, rows) * CELL_PITCH
 	# 계산한 위치를 돌려준다.
 	return Vector3(x, 0.0, z)

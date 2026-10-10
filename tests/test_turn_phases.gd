@@ -44,7 +44,7 @@ func _placement(data: UnitData, cell: Vector2i) -> UnitPlacement:
 	return placement
 
 
-# 아군 a(속도 10, SP 3, 카드 6장)를 ally_cell 에, 적 e(속도 1, 기본 근접 사거리 1·피해 5)를 적 앞줄 가운데에 세운 전투.
+# 아군 a(속도 10, SP 3, 카드 6장)를 ally_cell 에, 적 e(속도 1, 근접 피해 5·방어도 5·회복 4 카드)를 적 앞줄 가운데에 세운 전투.
 func _state(ally_cell: Vector2i) -> BattleState:
 	# 아군 데이터.
 	var ally: AllyData = AllyDataScript.new()

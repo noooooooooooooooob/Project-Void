@@ -156,7 +156,7 @@ func _test_setup_places_units() -> void:
 	check("unit ids are unique", state.units[0].unit_id != state.units[1].unit_id)
 
 
-# 근접 사거리 1 피해 6 카드를 전열 적에게: 체력 10→4, SP 5→4, 손패 0, 묘지 1.
+# 근접 피해 60%(= 6) 카드를 전열 적에게: 체력 10→4, SP 5→4, 손패 0, 묘지 1.
 func _test_play_card_damages_and_spends_sp() -> void:
 	# 카드.
 	var strike: CardData = _card(&"strike", 1, CardData.AttackType.MELEE, [], 60)
@@ -216,7 +216,7 @@ func _test_play_card_rejected_without_sp() -> void:
 
 # 근접 카드의 기준은 같은 행 맨 앞 적뿐이라, 후열 적을 기준으로 넘기면 거절되는지.
 func _test_play_card_rejected_on_invalid_anchor() -> void:
-	# 사거리 4 근접 카드.
+	# 근접 카드.
 	var strike: CardData = _card(&"strike", 1, CardData.AttackType.MELEE, [], 60)
 	# 전투.
 	var state: BattleState = _state([strike])

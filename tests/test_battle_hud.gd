@@ -65,7 +65,7 @@ func _hud() -> BattleHud:
 	return hud
 
 
-# id·방식·비용을 정한 카드 (사거리 2, 피해 6).
+# id·방식·비용을 정한 카드 (피해 60% = 6).
 func _card(id: StringName, attack_type: CardData.AttackType, cost: int) -> CardData:
 	# 빈 카드.
 	var card: CardData = CardDataScript.new()

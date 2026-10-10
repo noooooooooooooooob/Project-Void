@@ -46,7 +46,7 @@ const DRAW_PER_TURN: int = 4
 
 ## 전장의 모든 유닛 (아군 먼저, 그다음 적군 순서로 들어 있다). 쓰러진 유닛도 남아 있다.
 var units: Array[Unit] = []
-## 사거리·막힘·범위 계산기.
+## 기준 유닛·범위·이동 칸 계산기.
 var resolver: TargetResolver
 ## 덱 섞기에 쓰는 난수 생성기. 시드를 고정하면 전투를 똑같이 재현할 수 있다.
 var rng: RandomNumberGenerator

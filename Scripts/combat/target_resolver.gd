@@ -1,5 +1,5 @@
-## 전투 격자 위에서 "누가 누구를 칠 수 있는가"와 "누가 맞는가"를 계산하는 규칙 도우미.
-## 상태를 바꾸지 않는 순수 계산만 한다. BattleState, EnemyBrain, 화면의 사거리 힌트가 함께 쓴다.
+## 전투 격자 위에서 "카드의 기준이 될 수 있는 유닛"과 "범위 안에서 누가 맞는가", "어디로 이동할 수 있는가"를 계산하는 규칙 도우미.
+## 상태를 바꾸지 않는 순수 계산만 한다. BattleState, EnemyBrain, 화면의 대상 힌트가 함께 쓴다.
 ##
 ## 좌표 규칙: 아군과 적군은 각자 자기 격자를 가진다.
 ## cell.x = 열 (0 이 상대 편과 가장 가까운 앞줄), cell.y = 행 (위에서부터 0, 1, 2...).
@@ -24,12 +24,6 @@ func _init(p_ally_grid: Vector2i, p_enemy_grid: Vector2i) -> void:
 	enemy_grid = p_enemy_grid
 
 
-## 주어진 편의 격자가 몇 행인지 돌려준다.
-func rows_for(team: Unit.Team) -> int:
-	# 아군이면 아군 격자의 행 수, 아니면 적군 격자의 행 수.
-	return ally_grid.y if team == Unit.Team.ALLY else enemy_grid.y
-
-
 ## 주어진 편 격자의 크기를 돌려준다.
 func grid_for(team: Unit.Team) -> Vector2i:
 	# 아군이면 아군 격자, 아니면 적군 격자.
@@ -42,161 +36,6 @@ func grid_for(team: Unit.Team) -> Vector2i:
 static func center_offset(row: int, rows: int) -> float:
 	# (rows - 1) / 2 가 가운데 행 위치이므로 그만큼 빼 준다.
 	return float(row) - float(rows - 1) / 2.0
-
-
-## 공격자에서 대상까지의 거리(사거리 판정에 쓰는 값)를 잰다.
-## 거리 = (공격자 열 + 1 + 대상 열) + 내림(두 유닛의 가운데 기준 행 차이).
-func reach(attacker: Unit, target: Unit) -> int:
-	# 실제 계산은 칸 기준 버전에 맡긴다 (대상이 유닛일 필요는 없다).
-	return reach_cell(attacker, target.team, target.cell)
-
-
-## 공격자에서 target_team 편의 target_cell 칸까지의 거리. 그 칸에 유닛이 있을 필요는 없다 —
-## 빈 칸을 겨냥한 광역·관통로 카드의 사거리도 이 함수로 잰다.
-func reach_cell(attacker: Unit, target_team: Unit.Team, target_cell: Vector2i) -> int:
-	# 열 거리: 공격자가 자기 앞줄까지 걸어가는 칸 + 두 격자 사이 경계 1칸 + 대상 앞줄에서 그 칸까지 칸.
-	var col_distance: int = attacker.cell.x + 1 + target_cell.x
-	# 공격자의 행이 자기 격자 가운데에서 얼마나 떨어져 있는지.
-	var attacker_offset: float = center_offset(attacker.cell.y, rows_for(attacker.team))
-	# 그 칸의 행이 그 편 격자 가운데에서 얼마나 떨어져 있는지.
-	var target_offset: float = center_offset(target_cell.y, rows_for(target_team))
-	# 행 차이는 소수가 나올 수 있으므로(행 수가 다를 때) 내림해서 열 거리에 더한다.
-	return col_distance + floori(absf(attacker_offset - target_offset))
-
-
-## 대상이 근접 공격으로부터 가려져 있는지 검사한다.
-## 대상과 같은 편, 같은 행에서 대상보다 앞 열에 살아 있는 유닛이 있으면 가려진 것이다.
-func is_blocked(target: Unit, all_units: Array[Unit]) -> bool:
-	# 실제 계산은 칸 기준 버전에 맡긴다.
-	return is_cell_blocked(target.team, target.cell, all_units)
-
-
-## target_team 편의 target_cell 칸이 근접 공격으로부터 가려져 있는지 검사한다. 그 칸에 유닛이 있을 필요는 없다 —
-## 빈 칸이라도 그 앞(같은 행, 더 작은 열)에 살아 있는 유닛이 있으면 근접 공격은 거기서 막힌다.
-func is_cell_blocked(target_team: Unit.Team, target_cell: Vector2i, all_units: Array[Unit]) -> bool:
-	# 전장의 모든 유닛을 하나씩 본다.
-	for unit in all_units:
-		# 대상 편과 다르면 가리개가 될 수 없다.
-		if unit.team != target_team:
-			continue
-		# 쓰러진 유닛은 가리지 못한다.
-		if not unit.is_alive():
-			continue
-		# 같은 행이면서 그 칸보다 앞 열(x 가 더 작음)에 있으면 가린다.
-		if unit.cell.y == target_cell.y and unit.cell.x < target_cell.x:
-			return true
-	# 가리는 유닛을 못 찾았다.
-	return false
-
-
-## 공격자가 이 대상을 주어진 방식·사거리로 칠 수 있는지 판정한다.
-## 카드 사용, 적 AI 의 대상 고르기, 화면 힌트가 모두 이 함수 하나로 판정해 결과가 어긋나지 않는다.
-func is_valid_target(attacker: Unit, target: Unit, attack_type: CardData.AttackType, attack_range: int, all_units: Array[Unit]) -> bool:
-	# 이미 쓰러진 유닛은 대상이 될 수 없다 (칸 기준 판정은 생사를 모르므로 여기서 먼저 거른다).
-	if not target.is_alive():
-		return false
-	# 나머지는 칸 기준 판정과 같다.
-	return is_valid_cell(attacker, target.team, target.cell, attack_type, attack_range, all_units)
-
-
-## 공격자가 target_team 편의 target_cell 칸을 주어진 방식·사거리로 칠 수 있는지 판정한다.
-## 그 칸에 유닛이 있을 필요는 없다 — 광역·관통로 카드는 빈 칸을 겨냥해도 사거리 안의 다른 칸을 맞힐 수 있다.
-func is_valid_cell(attacker: Unit, target_team: Unit.Team, target_cell: Vector2i, attack_type: CardData.AttackType, attack_range: int, all_units: Array[Unit]) -> bool:
-	# 같은 편의 칸은 칠 수 없다.
-	if target_team == attacker.team:
-		return false
-	# 거리가 사거리보다 멀면 닿지 않는다.
-	if reach_cell(attacker, target_team, target_cell) > attack_range:
-		return false
-	# 근접 공격은 앞에 가리는 유닛이 있으면 막힌다 (원거리는 이 검사를 건너뛴다).
-	if attack_type == CardData.AttackType.MELEE and is_cell_blocked(target_team, target_cell, all_units):
-		return false
-	# 모든 조건을 통과했다.
-	return true
-
-
-## 고른 대상(primary)과 범위 모양을 바탕으로 실제로 피해를 받을 유닛 목록을 만든다.
-func expand_shape(primary: Unit, shape: CardData.Shape, all_units: Array[Unit]) -> Array[Unit]:
-	# 실제 계산은 칸 기준 버전에 맡긴다.
-	return expand_shape_cell(primary.team, primary.cell, shape, all_units)
-
-
-## anchor_team 편의 anchor_cell 칸을 겨냥했을 때 범위 모양으로 실제 맞는 유닛 목록을 만든다.
-## anchor_cell 에 유닛이 없어도(빈 칸을 겨냥해도) 범위 안의 다른 유닛은 맞을 수 있다.
-func expand_shape_cell(anchor_team: Unit.Team, anchor_cell: Vector2i, shape: CardData.Shape, all_units: Array[Unit]) -> Array[Unit]:
-	# 맞을 유닛들을 담을 배열.
-	var hit: Array[Unit] = []
-
-	# 단일 공격은 그 칸에 살아 있는 유닛이 있을 때만 그 유닛이 맞는다 (없으면 빈 배열).
-	if shape == CardData.Shape.SINGLE:
-		for unit in all_units:
-			if unit.team == anchor_team and unit.cell == anchor_cell and unit.is_alive():
-				hit.append(unit)
-		return hit
-
-	# 관통·횡렬·광역·관통로는 겨냥한 편과 같은 편 유닛 중 조건에 맞는 유닛을 모두 모은다.
-	for unit in all_units:
-		# 겨냥한 편과 다르면 제외한다 (다른 편을 맞히지 않음).
-		if unit.team != anchor_team:
-			continue
-		# 쓰러진 유닛은 제외한다.
-		if not unit.is_alive():
-			continue
-		# 관통: 겨냥한 칸과 같은 행에 있으면 맞는다.
-		if shape == CardData.Shape.PIERCE and unit.cell.y == anchor_cell.y:
-			hit.append(unit)
-		# 횡렬: 겨냥한 칸과 같은 열에 있으면 맞는다.
-		elif shape == CardData.Shape.SWEEP and unit.cell.x == anchor_cell.x:
-			hit.append(unit)
-		# 광역: 겨냥한 칸을 왼쪽 위로 삼는 2×2 블록 안에 있으면 맞는다.
-		elif shape == CardData.Shape.AREA and _in_area(unit.cell, anchor_cell):
-			hit.append(unit)
-		# 관통로: 겨냥한 칸과 같은 행에서 앞줄부터 겨냥한 열까지(포함) 있으면 맞는다.
-		elif shape == CardData.Shape.LINE and unit.cell.y == anchor_cell.y and unit.cell.x <= anchor_cell.x:
-			hit.append(unit)
-
-	# 모은 목록을 돌려준다.
-	return hit
-
-
-## shape 가 anchor 칸을 기준으로 덮는 모든 칸 좌표를 돌려준다 (유닛 유무와 상관없이, 격자 밖은 뺀다).
-## 커서 범위 미리보기가 "빈 칸도 겨냥할 수 있다"를 보여 주는 데 쓴다 — expand_shape_cell 은 맞는 유닛만 돌려주지만
-## 이 함수는 그 유닛이 서 있든 안 서 있든 범위 자체의 칸을 모두 돌려준다.
-func shape_cells(anchor: Vector2i, shape: CardData.Shape, grid: Vector2i) -> Array[Vector2i]:
-	# 모을 칸 목록.
-	var cells: Array[Vector2i] = []
-	# 모양마다 다른 칸들을 모은다.
-	match shape:
-		# 단일: 겨냥한 칸 하나.
-		CardData.Shape.SINGLE:
-			cells.append(anchor)
-		# 관통: 같은 행 전체.
-		CardData.Shape.PIERCE:
-			for x in grid.x:
-				cells.append(Vector2i(x, anchor.y))
-		# 횡렬: 같은 열 전체.
-		CardData.Shape.SWEEP:
-			for y in grid.y:
-				cells.append(Vector2i(anchor.x, y))
-		# 광역: 겨냥한 칸을 왼쪽 위로 삼는 2×2 블록 (격자 밖은 뺀다).
-		CardData.Shape.AREA:
-			for dx in 2:
-				for dy in 2:
-					var cell: Vector2i = anchor + Vector2i(dx, dy)
-					if cell.x < grid.x and cell.y < grid.y:
-						cells.append(cell)
-		# 관통로: 같은 행에서 앞줄부터 겨냥한 열까지(포함).
-		CardData.Shape.LINE:
-			for x in anchor.x + 1:
-				cells.append(Vector2i(x, anchor.y))
-	# 모은 칸을 돌려준다.
-	return cells
-
-
-## cell 이 anchor 를 왼쪽 위 모서리로 삼는 2×2 블록(오른쪽·아래쪽으로 한 칸씩) 안에 있는지.
-func _in_area(cell: Vector2i, anchor: Vector2i) -> bool:
-	# 가로·세로 모두 anchor 이상 anchor+1 이하면 블록 안이다.
-	return cell.x >= anchor.x and cell.x <= anchor.x + 1 and cell.y >= anchor.y and cell.y <= anchor.y + 1
 
 
 ## 근접 기준 유닛: 상대 편에서 actor 와 같은 행 번호에 살아 있는 유닛 중 가장 앞 열(x 가 가장 작은) 한 명. 없으면 null.
