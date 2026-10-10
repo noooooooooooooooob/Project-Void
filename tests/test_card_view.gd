@@ -1,109 +1,95 @@
-# CardView(카드 한 장 화면) 테스트: 앞면 글자, 테두리 색, 앞뒷면 전환, SP 부족 흐림.
+# CardView(카드 한 장 화면) 테스트: 앞면 글자·배지·범위 미니맵, 분류 색, 계산값 문구, 앞뒷면 전환, SP 부족 흐림.
 extends TestCase
 
-# 테스트용 카드를 코드로 만들기 위한 스크립트.
-const CardDataScript := preload("res://Scripts/combat/data/card_data.gd")
+# 픽스처.
+const Fixtures := preload("res://tests/fixtures.gd")
+# 아군 데이터 스크립트 (스탯을 담는 데 쓴다).
+const AllyDataScript := preload("res://Scripts/combat/data/ally_data.gd")
 
 
 # 실행기가 부르는 진입점.
 func run() -> Array[Dictionary]:
-	# 원거리·횡렬 카드 앞면.
-	_test_ranged_sweep_card_face()
-	# 근접·단일 카드 앞면.
-	_test_melee_single_card_face()
+	# 스탯 없이 만든 앞면.
+	_test_face_without_stats()
+	# 스탯을 준 앞면.
+	_test_face_with_stats()
+	# 스킬 분류 색.
+	_test_skill_color()
 	# 앞뒷면 전환.
 	_test_face_toggle()
-	# 광역·관통로 카드의 아래 글자.
-	_test_area_and_line_card_footers()
 	# SP 부족 흐림.
 	_test_affordable_dimming()
 	# 결과를 돌려준다.
 	return results()
 
 
-# 주어진 값으로 테스트용 카드 데이터를 만든다.
-func _card(display_name: String, cost: int, attack_type: CardData.AttackType, shape: CardData.Shape, attack_range: int, damage: int) -> CardData:
-	# 빈 카드.
-	var card: CardData = CardDataScript.new()
-	# 이름.
-	card.display_name = display_name
-	# 비용.
-	card.sp_cost = cost
-	# 공격 방식.
-	card.attack_type = attack_type
-	# 범위 모양.
-	card.shape = shape
-	# 사거리.
-	card.attack_range = attack_range
-	# 피해.
-	card.damage = damage
-	# 만든 카드를 돌려준다.
-	return card
-
-
-# 원거리 횡렬 카드: 비용·이름·피해·아래 두 줄 글자·푸른 테두리·카드 크기가 맞는지.
-func _test_ranged_sweep_card_face() -> void:
-	# 카드 화면을 만든다.
+# 스탯 없이 만들면 % 문구, 배지, 분류 색, 미니맵, 카드 크기.
+func _test_face_without_stats() -> void:
+	# 원거리 세로 3칸 피해 30% 카드.
+	var area: Array[Vector2i] = [Vector2i(0, -1), Vector2i(0, 0), Vector2i(0, 1)]
+	var card: CardData = Fixtures.damage_card(&"일제사격", CardData.AttackType.RANGED, 30, area, 2)
+	# 화면.
 	var view := CardView.new()
-	# 일제사격(비용 2, 원거리, 횡렬, 사거리 4, 피해 3) 으로 채운다.
-	view.setup(_card("일제사격", 2, CardData.AttackType.RANGED, CardData.Shape.SWEEP, 4, 3))
-	# 비용 글자.
+	view.setup(card)
+	# 비용.
 	check_eq("cost", view.cost_text(), "2")
-	# 이름 글자.
+	# 이름.
 	check_eq("name", view.name_text(), "일제사격")
-	# 피해 글자.
-	check_eq("damage", view.damage_text(), "3")
-	# 아래 두 줄 글자.
-	check_eq("footer", view.footer_text(), "사거리 4\n원거리 · 횡렬")
-	# 원거리 테두리 색.
-	check_eq("ranged border", view.border_color(), CardView.RANGED_COLOR)
+	# 문구.
+	check_eq("effect text", view.effect_text(), "피해 30%")
+	# 배지.
+	check_eq("badge", view.badge_text(), "원")
+	# 분류 색 (공격).
+	check_eq("border is category color", view.border_color(), CardView.CATEGORY_COLORS[CardData.Category.ATTACK])
+	# 미니맵.
+	check_eq("area marks", view.area_marks(), area)
 	# 크기.
 	check_eq("card size", view.size, CardView.SIZE)
 	# 트리 밖 노드는 직접 지운다.
 	view.free()
 
 
-# 근접 단일 카드: 아래 글자와 붉은 테두리.
-func _test_melee_single_card_face() -> void:
-	# 카드 화면을 만든다.
+# 스탯을 주면 계산값.
+func _test_face_with_stats() -> void:
+	# 근접 피해 60%.
+	var card: CardData = Fixtures.damage_card(&"베기", CardData.AttackType.MELEE, 60)
+	# 공격 12.
+	var stats: AllyData = AllyDataScript.new()
+	stats.attack = 12
+	# 화면.
 	var view := CardView.new()
-	# 베기(비용 1, 근접, 단일, 사거리 2, 피해 6) 으로 채운다.
-	view.setup(_card("베기", 1, CardData.AttackType.MELEE, CardData.Shape.SINGLE, 2, 6))
-	# 아래 두 줄 글자.
-	check_eq("melee footer", view.footer_text(), "사거리 2\n근접 · 단일")
-	# 근접 테두리 색.
-	check_eq("melee border", view.border_color(), CardView.MELEE_COLOR)
+	view.setup(card, stats)
+	# 7 (12 × 60% = 7.2).
+	check_eq("computed effect", view.effect_text(), "피해 7")
+	# 근접 배지.
+	check_eq("melee badge", view.badge_text(), "근")
+	# 단일 미니맵.
+	check_eq("single area mark", view.area_marks(), [Vector2i.ZERO])
 	# 지운다.
 	view.free()
 
 
-# 광역(AREA)·관통로(LINE) 카드도 SHAPE_NAMES 에 이름이 있어 아래 글자에 제대로 나오는지.
-func _test_area_and_line_card_footers() -> void:
-	# 광역 카드 화면.
-	var area_view := CardView.new()
-	# 폭발탄(비용 2, 원거리, 광역, 사거리 3, 피해 3) 으로 채운다.
-	area_view.setup(_card("폭발탄", 2, CardData.AttackType.RANGED, CardData.Shape.AREA, 3, 3))
-	# 아래 두 줄 글자.
-	check_eq("area footer", area_view.footer_text(), "사거리 3\n원거리 · 광역")
+# 스킬 분류는 파란 테두리.
+func _test_skill_color() -> void:
+	# 자신 방어도 카드.
+	var effects: Array[CardEffect] = [Fixtures.effect(CardEffect.Kind.BLOCK, 50, CardEffect.Target.SELF)]
+	var card: CardData = Fixtures.card(&"방어", CardData.AttackType.SELF, effects)
+	card.category = CardData.Category.SKILL
+	# 화면.
+	var view := CardView.new()
+	view.setup(card)
+	# 색.
+	check_eq("skill color", view.border_color(), CardView.CATEGORY_COLORS[CardData.Category.SKILL])
 	# 지운다.
-	area_view.free()
-
-	# 관통로 카드 화면.
-	var line_view := CardView.new()
-	# 꿰뚫기(비용 2, 근접, 관통로, 사거리 3, 피해 4) 로 채운다.
-	line_view.setup(_card("꿰뚫기", 2, CardData.AttackType.MELEE, CardData.Shape.LINE, 3, 4))
-	# 아래 두 줄 글자.
-	check_eq("line footer", line_view.footer_text(), "사거리 3\n근접 · 관통로")
-	# 지운다.
-	line_view.free()
+	view.free()
 
 
 # 처음엔 앞면이고 set_face_up(false) 로 뒷면이 되는지.
 func _test_face_toggle() -> void:
 	# 카드 화면을 만든다.
 	var view := CardView.new()
-	# 관통사격 카드로 채운다.
-	view.setup(_card("관통사격", 2, CardData.AttackType.RANGED, CardData.Shape.PIERCE, 3, 5))
+	# 원거리 카드로 채운다.
+	view.setup(Fixtures.damage_card(&"관통사격", CardData.AttackType.RANGED, 50))
 	# 앞면으로 시작.
 	check("starts face up", view.is_face_up())
 	# 뒷면으로 뒤집는다.
@@ -118,8 +104,8 @@ func _test_face_toggle() -> void:
 func _test_affordable_dimming() -> void:
 	# 카드 화면을 만든다.
 	var view := CardView.new()
-	# 베기 카드로 채운다.
-	view.setup(_card("베기", 1, CardData.AttackType.MELEE, CardData.Shape.SINGLE, 2, 6))
+	# 근접 카드로 채운다.
+	view.setup(Fixtures.damage_card(&"베기", CardData.AttackType.MELEE, 60))
 	# 쓸 수 없음으로.
 	view.set_affordable(false)
 	# 흐림 색이 곱해졌는지.

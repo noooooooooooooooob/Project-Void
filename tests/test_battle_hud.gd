@@ -196,8 +196,8 @@ func _test_sync_builds_hand_and_piles() -> void:
 	var views: Array[CardView] = hud.hand_view().card_views()
 	# 3 장.
 	check_eq("one card view per card in hand", views.size(), 3)
-	# strike 는 근접 테두리.
-	check_eq("melee card border", _view_named(views, "strike").border_color(), CardView.MELEE_COLOR)
+	# strike 는 공격 분류 테두리.
+	check_eq("attack card border", _view_named(views, "strike").border_color(), CardView.CATEGORY_COLORS[CardData.Category.ATTACK])
 	# big 은 흐림.
 	check_eq("unaffordable card dimmed", _view_named(views, "big").modulate, CardView.UNAFFORDABLE_MODULATE)
 	# SP 글자.
