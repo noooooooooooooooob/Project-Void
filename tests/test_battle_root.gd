@@ -31,6 +31,8 @@ func run() -> Array[Dictionary]:
 	_test_melee_card_drop_plays_automatically()
 	# 아군 카드는 아군 칸을 겨냥한다.
 	_test_ally_card_targets_ally_cell()
+	# 실제 전투 구성에서 같은 행에 적이 없으면 근접 카드가 흐리다.
+	_test_melee_cards_dim_in_skirmish_when_row_empty()
 	# 결과를 돌려준다.
 	return results()
 
@@ -267,5 +269,33 @@ func _test_ally_card_targets_ally_cell() -> void:
 	battle._on_cell_clicked(actor.team, actor.cell)
 	# 30 - 5 + 3 = 28.
 	check_eq("ally heal applied", actor.hp, 28)
+	# 정리.
+	battle.free()
+
+
+# 실제 skirmish 전투에서 차례 아군의 행에 적이 없으면 손패의 근접 카드가 흐리다 (게임에서 확인된 문제의 재현).
+func _test_melee_cards_dim_in_skirmish_when_row_empty() -> void:
+	# 씬.
+	var battle: BattleRoot = BattleScene.instantiate()
+	# 실제 전투 구성.
+	battle.encounter = load("res://Resources/encounters/skirmish.tres")
+	# 연출 없이.
+	(battle.get_node("Playback") as BattlePlayback).instant = true
+	# 시작.
+	(Engine.get_main_loop() as SceneTree).root.add_child(battle)
+	# 차례 아군.
+	var actor: Unit = battle._state.current_unit()
+	# 같은 행에 적이 없는 상황인지 (아니면 이 테스트는 의미가 없다).
+	var row_empty: bool = battle._state.resolver.melee_anchor(actor, battle._state.units) == null
+	# 손패 카드 화면들.
+	var views: Array[CardView] = battle._hud.hand_view().card_views()
+	# 근접 카드가 하나라도 또렷하면 실패.
+	var melee_bright: bool = false
+	for view in views:
+		if view.card.attack_type == CardData.AttackType.MELEE and view.modulate == Color.WHITE:
+			melee_bright = true
+	# 확인.
+	check("row empty for the first actor", row_empty)
+	check("melee cards dimmed when the row is empty", not melee_bright)
 	# 정리.
 	battle.free()
