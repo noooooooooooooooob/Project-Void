@@ -15,6 +15,8 @@ func run() -> Array[Dictionary]:
 	_test_card_defaults()
 	# 상속 관계.
 	_test_ally_extends_unit_data()
+	# 새 스탯 기본값.
+	_test_unit_stat_defaults()
 	# 시작 카드 파일.
 	_test_starter_cards_exist()
 	# 유닛 .tres 의 그림·띠·오라 연결 상태.
@@ -52,6 +54,22 @@ func _test_ally_extends_unit_data() -> void:
 	var ally_as_unit_data: UnitData = ally
 	# 아군 데이터는 적 데이터가 아니다.
 	check("AllyData is not EnemyData", not (ally_as_unit_data is EnemyData))
+
+
+# 새 스탯 5종의 기본값이 Notion 캐릭터 양식과 맞는지.
+func _test_unit_stat_defaults() -> void:
+	# 빈 아군 데이터 (UnitData 의 기본값을 물려받는다).
+	var data: AllyData = AllyDataScript.new()
+	# 공격 10.
+	check_eq("default attack", data.attack, 10)
+	# 방어 10.
+	check_eq("default defense", data.defense, 10)
+	# 치명확률 1%.
+	check_eq("default crit_chance", data.crit_chance, 1)
+	# 치명피해 175%.
+	check_eq("default crit_damage", data.crit_damage, 175)
+	# 어그로 100.
+	check_eq("default aggro", data.aggro, 100)
 
 
 # 저장소의 시작 카드 파일이 불러와지고 값이 설계와 맞는지.

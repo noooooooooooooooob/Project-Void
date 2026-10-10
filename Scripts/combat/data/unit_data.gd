@@ -14,6 +14,16 @@ extends Resource
 @export var max_hp: int = 10
 ## 행동 속도. 매 라운드 이 값이 큰 유닛부터 차례가 온다.
 @export var speed: int = 10
+## 공격 스탯. 피해·회복 효과의 % 계수가 이 값을 기준으로 계산된다.
+@export var attack: int = 10
+## 방어 스탯. 방어도 효과의 % 계수 기준 (받는 피해는 줄이지 않는다).
+@export var defense: int = 10
+## 치명타 확률 (%). 피해 효과가 맞을 때마다 따로 판정한다.
+@export var crit_chance: int = 1
+## 치명타 피해 배율 (%). 175 면 1.75 배.
+@export var crit_damage: int = 175
+## 어그로. 값만 저장한다 — 적 대상 고르기 규칙은 나중에 정한다.
+@export var aggro: int = 100
 ## 2.5D 화면에서 유닛을 그릴 그림. 비어 있으면 Board3D 가 임시 실루엣 그림(placeholder_unit.png)을 쓴다.
 @export var sprite: Texture2D
 ## 64px 프레임을 가로로 이어 붙인 대기 애니메이션 띠 (프레임 수 = 너비 ÷ 높이). 비어 있으면 sprite 한 장 + 코드 숨쉬기.
