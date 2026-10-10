@@ -189,9 +189,13 @@ static func _is_damage(kind: BattleEvent.Kind) -> bool:
 	return kind == BattleEvent.Kind.DAMAGED or kind == BattleEvent.Kind.DIED
 
 
-# 대상이 있는 공격인지 (카드 사용, 또는 대상 있는 적 공격).
+# 대상 쪽으로 공격하는 행동인지 (근접·원거리 카드, 또는 대상 있는 적 공격). 아군·자신 카드는 공격이 아니다.
 static func _is_attack(event: BattleEvent) -> bool:
-	return event.kind == BattleEvent.Kind.CARD_PLAYED or (event.action == EnemyBrain.Action.ATTACK and event.target != null)
+	# 카드 사용이면 공격 종류로 판단한다.
+	if event.kind == BattleEvent.Kind.CARD_PLAYED:
+		return event.card.attack_type == CardData.AttackType.MELEE or event.card.attack_type == CardData.AttackType.RANGED
+	# 적 행동이면 대상 있는 공격만.
+	return event.action == EnemyBrain.Action.ATTACK and event.target != null
 
 
 # 연출 부품이 쓸 수 있는지 (instant 면 모두 끈다).
@@ -280,7 +284,7 @@ func _turn_started(event: BattleEvent) -> void:
 		await _wait(ENEMY_TURN_PAUSE)
 
 
-## 카드 사용 연출: 손패에서 카드를 빼고, 사용자가 대상 쪽으로 공격한다. hits 가 있으면 무기가 닿는 순간 재생한다.
+## 카드 사용 연출: 손패에서 카드를 빼고, 근접·원거리면 기준 유닛 쪽으로 공격(hits 는 무기가 닿는 순간 재생), 아군·자신이면 제자리 시전.
 func _card_played(event: BattleEvent, logs: Array[BattleEvent], hits: Array[BattleEvent]) -> void:
 	# 손패에서 쓴 카드를 없애고 SP·묘지 숫자를 갱신한다 (instant 에서도 해야 하므로 먼저).
 	hud.remove_played_card(event)
@@ -293,7 +297,11 @@ func _card_played(event: BattleEvent, logs: Array[BattleEvent], hits: Array[Batt
 	var view: UnitView = board.view_for(event.unit)
 	# 머리 위에 카드 이름.
 	view.pop_text(event.card.display_name, Color.WHITE)
-	# 겨냥한 칸 쪽으로 공격한다 (유닛이 없어도 칸 위치로).
+	# 아군·자신 카드는 돌진하지 않고 제자리에서 시전한다.
+	if not _is_attack(event):
+		await view.hop()
+		return
+	# 기준 유닛이 서 있던 칸 쪽으로 공격한다.
 	await _attack(view, board.layout.cell_position(event.target_team, event.target_cell), event.card.attack_type, logs, hits)
 
 

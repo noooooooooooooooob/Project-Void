@@ -39,6 +39,8 @@ func run() -> Array[Dictionary]:
 	_test_impact_start()
 	# 넉백 거리·카메라 유지·발사음 시점.
 	_test_impact_rules()
+	# 아군·자신 카드는 공격 연출이 아니다.
+	_test_only_melee_and_ranged_cards_attack()
 	# instant 재생은 소리를 내지 않는다.
 	_test_instant_is_silent()
 	# 결과를 돌려준다.
@@ -519,3 +521,22 @@ func _test_instant_is_silent() -> void:
 	# 정리.
 	audio.free()
 	_free(rig)
+
+
+# 카드 사용 이벤트는 근접·원거리 카드일 때만 공격(돌진·화살)이고, 아군·자신 카드는 아니다.
+func _test_only_melee_and_ranged_cards_attack() -> void:
+	# 종류별 기대값.
+	var expected: Dictionary = {
+		CardData.AttackType.MELEE: true,
+		CardData.AttackType.RANGED: true,
+		CardData.AttackType.ALLY: false,
+		CardData.AttackType.SELF: false,
+	}
+	# 종류마다.
+	for attack_type in expected:
+		# 카드 사용 이벤트.
+		var event := BattleEvent.new(BattleEvent.Kind.CARD_PLAYED)
+		# 그 종류의 카드.
+		event.card = Fixtures.damage_card(&"c", attack_type, 10)
+		# 판정.
+		check_eq("card type %d attacks" % attack_type, BattlePlayback._is_attack(event), expected[attack_type])

@@ -27,6 +27,10 @@ func run() -> Array[Dictionary]:
 	_test_escape_toggles_the_flee_menu()
 	_test_fleeing_emits_battle_fled_only()
 	_test_escape_is_ignored_after_the_battle_ends()
+	# 근접 카드는 놓기만 하면 자동으로 쓰인다.
+	_test_melee_card_drop_plays_automatically()
+	# 아군 카드는 아군 칸을 겨냥한다.
+	_test_ally_card_targets_ally_cell()
 	# 결과를 돌려준다.
 	return results()
 
@@ -44,7 +48,7 @@ func _placement(data: UnitData, cell: Vector2i) -> UnitPlacement:
 
 
 # 아군 a 가 피해 50 원거리 카드 한 장으로 HP 20 적 e 를 한 방에 쓰러뜨리는 전투.
-func _encounter() -> EncounterData:
+func _encounter(deck_card: CardData = null) -> EncounterData:
 	# 한 방 카드.
 	var card: CardData = CardDataScript.new()
 	# id.
@@ -69,8 +73,8 @@ func _encounter() -> EncounterData:
 	ally.speed = 10
 	# SP.
 	ally.max_sp = 3
-	# 덱은 한 방 카드 한 장.
-	var deck: Array[CardData] = [card]
+	# 덱은 한 방 카드 한 장 (따로 준 카드가 있으면 그 카드).
+	var deck: Array[CardData] = [card if deck_card == null else deck_card]
 	# 덱을 넣는다.
 	ally.deck = deck
 	# 적.
@@ -217,5 +221,51 @@ func _test_escape_is_ignored_after_the_battle_ends() -> void:
 	battle._unhandled_input(_escape_event())
 	# 메뉴가 열리지 않는다.
 	check("Esc does not open the menu after the battle", not battle._flee_menu.is_open())
+	# 정리.
+	battle.free()
+
+
+# 덱이 card 한 장인 전투 씬을 연출 없이 띄운다 (첫 아군 차례에서 멈춘 상태).
+func _battle(card: CardData) -> BattleRoot:
+	# 씬을 만든다.
+	var battle: BattleRoot = BattleScene.instantiate()
+	# 전투 구성.
+	battle.encounter = _encounter(card)
+	# 연출 없이 즉시 재생.
+	(battle.get_node("Playback") as BattlePlayback).instant = true
+	# 트리에 붙여 전투를 시작한다.
+	(Engine.get_main_loop() as SceneTree).root.add_child(battle)
+	# 돌려준다.
+	return battle
+
+
+# 근접 카드는 놓기만 하면(위치와 상관없이) 같은 행 맨 앞 적에게 쓰인다.
+func _test_melee_card_drop_plays_automatically() -> void:
+	# 근접 피해 100% (공격 10 → 10).
+	var battle: BattleRoot = _battle(Fixtures.damage_card(&"auto", CardData.AttackType.MELEE, 100))
+	# 적 (아군과 같은 행 1).
+	var foe: Unit = battle._state.living_units(Unit.Team.ENEMY)[0]
+	# 아무 위치에나 놓는다.
+	battle._on_card_dropped(0, Vector2(5, 5))
+	# 20 - 10 = 10.
+	check_eq("melee auto hit the front enemy", foe.hp, 10)
+	# 정리.
+	battle.free()
+
+
+# 아군 회복 카드는 아군 칸을 클릭해 쓴다.
+func _test_ally_card_targets_ally_cell() -> void:
+	# 아군 회복 30% (공격 10 → 3).
+	var effects: Array[CardEffect] = [Fixtures.effect(CardEffect.Kind.HEAL, 30)]
+	var battle: BattleRoot = _battle(Fixtures.card(&"heal", CardData.AttackType.ALLY, effects))
+	# 차례 아군.
+	var actor: Unit = battle._state.current_unit()
+	# 체력을 5 깎아 둔다.
+	actor.hp -= 5
+	# 고른 뒤 자기 칸을 클릭한다.
+	battle._on_card_selected(0)
+	battle._on_cell_clicked(actor.team, actor.cell)
+	# 30 - 5 + 3 = 28.
+	check_eq("ally heal applied", actor.hp, 28)
 	# 정리.
 	battle.free()
