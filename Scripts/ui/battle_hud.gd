@@ -15,6 +15,8 @@ signal card_drag_moved(screen_position: Vector2)
 signal end_turn_pressed
 ## 이동 버튼을 켜거나(true) 껐다(false).
 signal move_mode_toggled(on: bool)
+## 지금 쓸 수 없는 카드를 눌렀다 (BattleRoot 가 이유를 로그로 알린다).
+signal card_blocked(index: int)
 
 ## 순서 바에서 지금 차례인 유닛 이름 색 (노란색).
 const CURRENT_TURN_COLOR := Color(1.0, 0.82, 0.3)
@@ -65,6 +67,8 @@ func _ready() -> void:
 	_hand.card_dropped.connect(_on_hand_card_dropped)
 	# 손패 카드 끄는 중 커서 이동을 밖으로 전달한다.
 	_hand.card_drag_moved.connect(_on_hand_card_drag_moved)
+	# 쓸 수 없는 카드 누르기 → 그대로 전달.
+	_hand.blocked_card_pressed.connect(func(index: int) -> void: card_blocked.emit(index))
 	# 묘지 더미 이름은 항상 "묘지".
 	_discard_pile.set_owner_name(DISCARD_PILE_NAME)
 	# 처음에는 차례인 아군이 없으므로 SP 패널을 숨긴다.
@@ -81,8 +85,13 @@ func sync_from_state(state: BattleState, selected_card: int) -> void:
 	_refresh_sp(actor)
 	# 아군 차례면 손패와 더미를 그 유닛 것으로 보여 준다.
 	if actor != null and actor.is_ally():
-		# 손패를 규칙의 손패와 같게 만든다 (같으면 기존 카드 화면을 유지).
-		_hand.set_cards(actor.hand, actor.sp, selected_card)
+		# 기준 유닛이 없어 지금 쓸 수 없는 카드들 (예: 근접인데 같은 행에 적 없음).
+		var blocked: Array[CardData] = []
+		for card in actor.hand:
+			if state.resolver.valid_anchors(actor, card, state.units).is_empty():
+				blocked.append(card)
+		# 손패를 규칙의 손패와 같게 만든다 (같으면 기존 카드 화면을 유지). 카드 효과는 이 유닛의 스탯으로 계산한다.
+		_hand.set_cards(actor.hand, actor.sp, selected_card, actor.data, blocked)
 		# 더미 이름과 장수를 보여 준다.
 		_show_piles(actor.data.display_name, actor.deck.size(), actor.discard.size())
 	# 적 차례이거나 끝난 전투면 손패를 비우고 더미를 흐리게 한다.
@@ -113,6 +122,8 @@ func show_turn(event: BattleEvent) -> void:
 	if event.unit.is_ally():
 		# 드로우 연출이 이어지므로 손패를 비우고, 새 카드가 SP 부족으로 흐려지지 않게 현재 SP 로 시작한다.
 		_clear_hand(event.unit.sp)
+		# 드로우로 들어오는 카드가 이 유닛의 스탯으로 계산값을 보이게 한다.
+		_hand.set_stats(event.unit.data)
 		# SP 패널을 이 유닛으로.
 		_refresh_sp(event.unit)
 		# 더미를 이 유닛의 기록 시점 장수로.

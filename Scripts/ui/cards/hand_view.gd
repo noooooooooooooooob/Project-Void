@@ -13,6 +13,8 @@ signal card_selected(index: int)
 signal card_dropped(index: int, screen_position: Vector2)
 ## 카드를 끄는 동안 커서가 화면 좌표 screen_position 으로 움직였다 (놓기 전, 매 이동마다).
 signal card_drag_moved(screen_position: Vector2)
+## SP 는 충분하지만 지금 쓸 수 없는(예: 근접인데 같은 행에 적 없음) 카드를 눌렀다.
+signal blocked_card_pressed(index: int)
 
 ## 부채꼴 중심점이 화면 아래 끝에서 올라와 있는 거리.
 const BOTTOM_OFFSET: float = 110.0
@@ -65,6 +67,10 @@ var _selected: int = -1
 var _pending_play: int = -1
 ## 현재 SP (카드 흐림과 입력 차단 판정에 쓴다).
 var _sp: int = 0
+## 카드 효과를 계산할 스탯 (없으면 % 로 보인다).
+var _stats: UnitData
+## 지금 쓸 수 없는 카드들 (SP 와 상관없이 흐리고 누를 수 없다).
+var _blocked: Array[CardData] = []
 ## 마우스로 누르고 있는 카드. 없으면 null.
 var _press_view: CardView
 ## 누르기 시작한 화면 좌표 (끌기 거리 계산용).
@@ -94,13 +100,16 @@ func anchor() -> Vector2:
 
 
 ## 연출 없이 손패를 cards 로 맞춘다. sp 는 흐림 기준, selected 는 선택할 카드 번호.
-func set_cards(cards: Array[CardData], sp: int, selected: int) -> void:
-	# 재생 직후 동기화가 날아오는 카드를 끊지 않게, 이미 같은 손패면 다시 만들지 않는다.
-	if _shows(cards):
+## stats 는 카드 효과를 계산할 스탯(없으면 %), blocked 는 지금 쓸 수 없는 카드들.
+func set_cards(cards: Array[CardData], sp: int, selected: int, stats: UnitData = null, blocked: Array[CardData] = []) -> void:
+	# 재생 직후 동기화가 날아오는 카드를 끊지 않게, 이미 같은 손패·같은 스탯이면 다시 만들지 않는다.
+	if _shows(cards) and _stats == stats:
 		# 누르기·끌기를 취소한다.
 		_cancel_press()
 		# SP 를 바꾼다.
 		_sp = sp
+		# 막힌 카드를 바꾼다.
+		_blocked = blocked
 		# 선택을 바꾼다.
 		_selected = selected
 		# 사용 대기 번호를 지운다.
@@ -119,6 +128,10 @@ func set_cards(cards: Array[CardData], sp: int, selected: int) -> void:
 	_cancel_press()
 	# SP 를 바꾼다.
 	_sp = sp
+	# 스탯을 바꾼다 (새로 만드는 카드 화면이 쓴다).
+	_stats = stats
+	# 막힌 카드를 바꾼다.
+	_blocked = blocked
 	# 선택을 바꾼다.
 	_selected = selected
 	# 사용 대기 번호를 지운다.
@@ -297,8 +310,20 @@ func set_sp(sp: int) -> void:
 	_sp = sp
 	# 카드마다.
 	for view in _cards:
-		# 비용이 SP 이하면 또렷하게, 아니면 흐리게.
-		view.set_affordable(view.card.sp_cost <= _sp)
+		# 쓸 수 있으면 또렷하게, 아니면 흐리게.
+		view.set_affordable(_usable(view.card))
+
+
+## 이후 만드는 카드 화면(드로우 연출 등)이 효과를 계산할 스탯을 정한다.
+func set_stats(stats: UnitData) -> void:
+	# 기억한다.
+	_stats = stats
+
+
+## 이 카드를 지금 쓸 수 있는지 (SP 충분, 막히지 않음).
+func _usable(card: CardData) -> bool:
+	# 둘 다 만족해야 한다.
+	return card.sp_cost <= _sp and not _blocked.has(card)
 
 
 ## 곧 사용될 카드 번호를 기억한다 (재생 전 잠금으로 선택이 풀려도 유지된다).
@@ -355,9 +380,9 @@ func _make_view(card: CardData) -> CardView:
 	# 카드 화면을 만든다.
 	var view := CardView.new()
 	# 앞면·뒷면을 채운다.
-	view.setup(card)
+	view.setup(card, _stats)
 	# 현재 SP 로 흐림을 정한다.
-	view.set_affordable(card.sp_cost <= _sp)
+	view.set_affordable(_usable(card))
 	# 이 카드의 마우스 입력을 받으면 어느 카드인지 함께 넘기도록 연결한다.
 	view.gui_input.connect(_on_card_gui_input.bind(view))
 	# 자식으로 붙인다.
@@ -407,8 +432,8 @@ func _layout(animate: bool) -> void:
 	for i in _cards.size():
 		# 이번 카드 화면.
 		var view: CardView = _cards[i]
-		# SP 기준으로 흐림을 정한다.
-		view.set_affordable(view.card.sp_cost <= _sp)
+		# SP·막힘 기준으로 흐림을 정한다.
+		view.set_affordable(_usable(view.card))
 		# 그리기 순서: 선택된 카드는 가장 위(카드 수), 나머지는 오른쪽일수록 위(번호).
 		view.z_index = _cards.size() if i == _selected else i
 		# 비행 중인 카드는 비행 트윈이 옮기므로 건드리지 않는다.
@@ -481,6 +506,11 @@ func _on_card_gui_input(event: InputEvent, view: CardView) -> void:
 			# SP 가 모자란 카드는 누르기 자체를 받지 않는다 (선택·끌기 불가).
 			if view.card.sp_cost > _sp:
 				# 이벤트를 소비해 뒤의 보드로 새지 않게 한다.
+				view.accept_event()
+				return
+			# SP 는 되지만 막힌 카드는 이유를 알릴 수 있게 신호만 낸다 (선택·끌기 불가).
+			if _blocked.has(view.card):
+				blocked_card_pressed.emit(_cards.find(view))
 				view.accept_event()
 				return
 			# 누른 카드를 기억한다.

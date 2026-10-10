@@ -49,6 +49,8 @@ func run() -> Array[Dictionary]:
 	_test_set_move_mode_does_not_emit()
 	# HUD 가 손패 선택을 풀어 준다.
 	_test_clear_card_selection()
+	# 같은 행에 적이 없는 근접 카드는 흐리다.
+	_test_melee_card_blocked_when_row_empty()
 	# 결과를 돌려준다.
 	return results()
 
@@ -573,5 +575,29 @@ func _test_clear_card_selection() -> void:
 	hud.clear_card_selection()
 	# 선택 없음.
 	check_eq("card selection cleared", hud.hand_view().selected_index(), -1)
+	# 지운다.
+	hud.free()
+
+
+# 아군을 적이 없는 행으로 옮기면 근접 카드(strike)는 흐리고 원거리 카드(shot)는 그대로다.
+func _test_melee_card_blocked_when_row_empty() -> void:
+	# HUD.
+	var hud: BattleHud = _hud()
+	# 시작한 전투.
+	var state: BattleState = _started_state()
+	# 아군을 행 0 으로 옮긴다 (적은 행 1).
+	state.living_units(Unit.Team.ALLY)[0].cell = Vector2i(0, 0)
+	# 동기화.
+	hud.sync_from_state(state, -1)
+	# 카드 화면들.
+	var views: Array[CardView] = hud.hand_view().card_views()
+	# 근접 카드는 흐림.
+	check_eq("melee card dimmed when row empty", _view_named(views, "strike").modulate, CardView.UNAFFORDABLE_MODULATE)
+	# 원거리 카드는 또렷.
+	check_eq("ranged card stays bright", _view_named(views, "shot").modulate, Color.WHITE)
+	# 아군을 다시 행 1 로 돌리고 동기화하면 근접 카드도 또렷해진다.
+	state.living_units(Unit.Team.ALLY)[0].cell = Vector2i(0, 1)
+	hud.sync_from_state(state, -1)
+	check_eq("melee card usable again", _view_named(hud.hand_view().card_views(), "strike").modulate, Color.WHITE)
 	# 지운다.
 	hud.free()

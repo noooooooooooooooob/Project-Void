@@ -7,6 +7,8 @@ const Fixtures := preload("res://tests/fixtures.gd")
 
 # 테스트용 카드를 만들 스크립트.
 const CardDataScript := preload("res://Scripts/combat/data/card_data.gd")
+# 아군 데이터 스크립트 (스탯을 담는 데 쓴다).
+const AllyDataScript := preload("res://Scripts/combat/data/ally_data.gd")
 
 
 # 실행기가 부르는 진입점.
@@ -35,6 +37,10 @@ func run() -> Array[Dictionary]:
 	_test_unaffordable_card_ignores_input()
 	# 밖에서 선택을 푼다.
 	_test_deselect_lowers_without_signal()
+	# 막힌 카드는 흐리고 눌러도 선택되지 않는다.
+	_test_blocked_card_is_dimmed_and_reports()
+	# 스탯이 카드 화면까지 간다.
+	_test_stats_reach_card_views()
 	# 결과를 돌려준다.
 	return results()
 
@@ -428,5 +434,53 @@ func _test_deselect_lowers_without_signal() -> void:
 	check("lowered back to its slot", view.position.is_equal_approx(slot["position"] - CardView.SIZE / 2.0))
 	# 신호는 나지 않는다 (푼 쪽이 이미 안다).
 	check_eq("deselect does not emit", picked, [])
+	# 지운다.
+	hand.free()
+
+
+# 막힌 카드는 흐리고, 누르면 선택되지 않고 blocked_card_pressed 가 나간다.
+func _test_blocked_card_is_dimmed_and_reports() -> void:
+	# 손패.
+	var hand: HandView = _hand()
+	# 입력 허용.
+	hand.interactive = true
+	# 카드 둘 (하나는 막힘).
+	var free_card: CardData = _card("free", 1)
+	var blocked_card: CardData = _card("blocked", 1)
+	var blocked: Array[CardData] = [blocked_card]
+	# SP 넉넉히.
+	hand.set_cards(_cards([free_card, blocked_card]), 5, -1, null, blocked)
+	# 흐림.
+	check_eq("free card bright", hand.card_views()[0].modulate, Color.WHITE)
+	check_eq("blocked card dimmed", hand.card_views()[1].modulate, CardView.UNAFFORDABLE_MODULATE)
+	# 신호 기록.
+	var pressed: Array[int] = []
+	hand.blocked_card_pressed.connect(func(index: int) -> void: pressed.append(index))
+	var picked: Array[int] = []
+	hand.card_selected.connect(func(index: int) -> void: picked.append(index))
+	# 막힌 카드를 눌렀다 뗀다.
+	_press(hand.card_views()[1], Vector2(100, 100), true)
+	_press(hand.card_views()[1], Vector2(100, 100), false)
+	# 선택 안 됨, 신호 나감.
+	check_eq("blocked card is not selected", picked, [])
+	check_eq("blocked press reported", pressed, [1])
+	# 지운다.
+	hand.free()
+
+
+# 스탯을 주면 카드에 계산값이 쓰인다.
+func _test_stats_reach_card_views() -> void:
+	# 손패.
+	var hand: HandView = _hand()
+	# 공격 20.
+	var stats: AllyData = AllyDataScript.new()
+	stats.attack = 20
+	# 피해 10% 카드 → 2.
+	hand.set_cards(_cards([_card("c", 1)]), 5, -1, stats)
+	# 계산값.
+	check_eq("card shows computed value", hand.card_views()[0].effect_text(), "피해 2")
+	# 드로우로 들어오는 카드도 같은 스탯을 쓴다.
+	hand.draw_card(_card("d", 1), Vector2.ZERO)
+	check_eq("drawn card uses the stats", hand.card_views()[1].effect_text(), "피해 2")
 	# 지운다.
 	hand.free()
