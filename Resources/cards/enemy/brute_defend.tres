@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_vsktw"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_wktic"]
+
+[sub_resource type="Resource" id="Resource_j2a6u"]
+script = ExtResource("1_vsktw")
+kind = 1
+percent = 60
+target = 1
+
+[resource]
+script = ExtResource("2_wktic")
+id = &"brute_defend"
+display_name = "방어"
+attack_type = 3
+category = 1
+effects = Array[ExtResource("1_vsktw")]([SubResource("Resource_j2a6u")])

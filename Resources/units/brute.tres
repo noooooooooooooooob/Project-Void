@@ -1,6 +1,9 @@
 [gd_resource type="Resource" script_class="EnemyData" format=3 uid="uid://0rtubcoetgk3"]
 
-[ext_resource type="Script" uid="uid://coph8hb3quefm" path="res://Scripts/combat/data/enemy_data.gd" id="1_3qwrm"]
+[ext_resource type="Script" path="res://Scripts/combat/data/enemy_data.gd" id="1_3qwrm"]
+[ext_resource type="Resource" path="res://Resources/cards/enemy/brute_attack.tres" id="1_yq7t4"]
+[ext_resource type="Resource" path="res://Resources/cards/enemy/brute_defend.tres" id="2_a3xbu"]
+[ext_resource type="Resource" path="res://Resources/cards/enemy/brute_rest.tres" id="5_x8xqj"]
 [ext_resource type="Texture2D" path="res://Art/units/brute.png" id="10_sprite"]
 [ext_resource type="Texture2D" path="res://Art/units/anim/brute_idle.png" id="11_idle"]
 [ext_resource type="Texture2D" path="res://Art/units/anim/brute_hit.png" id="13_hit"]
@@ -10,6 +13,9 @@ script = ExtResource("1_3qwrm")
 attack_damage = 7
 block_amount = 6
 rest_heal = 5
+attack_card = ExtResource("1_yq7t4")
+defend_card = ExtResource("2_a3xbu")
+rest_card = ExtResource("5_x8xqj")
 id = &"brute"
 display_name = "괴한"
 max_hp = 28

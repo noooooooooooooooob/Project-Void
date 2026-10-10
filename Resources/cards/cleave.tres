@@ -1,6 +1,11 @@
 [gd_resource type="Resource" script_class="CardData" format=3 uid="uid://cu38wj8qfosm7"]
 
-[ext_resource type="Script" uid="uid://c7l28pr4irggh" path="res://Scripts/combat/data/card_data.gd" id="1_aiytu"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="1_aiytu"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_vhkcs"]
+
+[sub_resource type="Resource" id="Resource_6hxan"]
+script = ExtResource("1_vhkcs")
+percent = 40
 
 [resource]
 script = ExtResource("1_aiytu")
@@ -10,3 +15,5 @@ sp_cost = 2
 shape = 2
 attack_range = 2
 damage = 4
+area = Array[Vector2i]([Vector2i(0, -1), Vector2i(0, 0), Vector2i(0, 1)])
+effects = Array[ExtResource("1_vhkcs")]([SubResource("Resource_6hxan")])

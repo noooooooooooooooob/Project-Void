@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_6lfjq"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_gsuqu"]
+
+[sub_resource type="Resource" id="Resource_t2gf3"]
+script = ExtResource("1_6lfjq")
+kind = 1
+percent = 80
+target = 1
+
+[resource]
+script = ExtResource("2_gsuqu")
+id = &"sentry_defend"
+display_name = "방어"
+attack_type = 3
+category = 1
+effects = Array[ExtResource("1_6lfjq")]([SubResource("Resource_t2gf3")])

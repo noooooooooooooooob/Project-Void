@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_bt508"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_w1rl1"]
+
+[sub_resource type="Resource" id="Resource_fd4eg"]
+script = ExtResource("1_bt508")
+percent = 40
+
+[resource]
+script = ExtResource("2_w1rl1")
+id = &"stalker_attack"
+display_name = "추적자 공격"
+attack_type = 1
+area = Array[Vector2i]([Vector2i(-2, 0), Vector2i(-1, 0), Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)])
+effects = Array[ExtResource("1_bt508")]([SubResource("Resource_fd4eg")])

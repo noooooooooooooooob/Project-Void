@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_hshvp"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_dwkpu"]
+
+[sub_resource type="Resource" id="Resource_1yr0b"]
+script = ExtResource("1_hshvp")
+percent = 70
+
+[resource]
+script = ExtResource("2_dwkpu")
+id = &"brute_attack"
+display_name = "괴한 공격"
+effects = Array[ExtResource("1_hshvp")]([SubResource("Resource_1yr0b")])

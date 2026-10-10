@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_ye4jh"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_is0qb"]
+
+[sub_resource type="Resource" id="Resource_imvdf"]
+script = ExtResource("1_ye4jh")
+kind = 2
+percent = 30
+target = 1
+
+[resource]
+script = ExtResource("2_is0qb")
+id = &"sentry_rest"
+display_name = "휴식"
+attack_type = 3
+category = 1
+effects = Array[ExtResource("1_ye4jh")]([SubResource("Resource_imvdf")])

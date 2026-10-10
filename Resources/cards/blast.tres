@@ -1,6 +1,11 @@
 [gd_resource type="Resource" script_class="CardData" format=3]
 
-[ext_resource type="Script" uid="uid://c7l28pr4irggh" path="res://Scripts/combat/data/card_data.gd" id="1_blast"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="1_blast"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_dp42j"]
+
+[sub_resource type="Resource" id="Resource_kadsd"]
+script = ExtResource("1_dp42j")
+percent = 30
 
 [resource]
 script = ExtResource("1_blast")
@@ -11,3 +16,5 @@ attack_type = 1
 shape = 3
 attack_range = 3
 damage = 3
+area = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)])
+effects = Array[ExtResource("1_dp42j")]([SubResource("Resource_kadsd")])

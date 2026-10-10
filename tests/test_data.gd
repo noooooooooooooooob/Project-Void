@@ -21,6 +21,8 @@ func run() -> Array[Dictionary]:
 	_test_starter_cards_exist()
 	# 유닛 .tres 의 그림·띠·오라 연결 상태.
 	_test_unit_art_links()
+	# 적 행동 카드.
+	_test_enemies_have_cards()
 	# 전투 방 데이터와 연결.
 	_test_rooms()
 	# 결과를 돌려준다.
@@ -87,8 +89,8 @@ func _test_starter_cards_exist() -> void:
 		return
 	# id.
 	check_eq("strike id", strike.id, &"strike")
-	# 피해 6.
-	check_eq("strike damage", strike.damage, 6)
+	# 피해 60% (공격 10 기준 6).
+	check_eq("strike damage percent", strike.effects[0].percent, 60)
 	# 근접.
 	check_eq("strike is melee", strike.attack_type, CardData.AttackType.MELEE)
 
@@ -99,30 +101,42 @@ func _test_starter_cards_exist() -> void:
 	# 못 불러왔으면 멈춘다.
 	if volley == null:
 		return
-	# 범위 횡렬.
-	check_eq("volley shape is SWEEP", volley.shape, CardData.Shape.SWEEP)
-	# 사거리 4.
-	check_eq("volley range", volley.attack_range, 4)
+	# 세로 5칸 범위.
+	check_eq("volley area", volley.area, [Vector2i(0, -2), Vector2i(0, -1), Vector2i(0, 0), Vector2i(0, 1), Vector2i(0, 2)])
 
-	# blast.tres 를 불러온다 (광역 2×2 테스트용 카드).
+	# blast.tres 를 불러온다 (2×2 범위 카드).
 	var blast: CardData = load("res://Resources/cards/blast.tres")
 	# 불러와졌는지.
 	check("blast.tres loads", blast != null)
 	# 못 불러왔으면 멈춘다.
 	if blast == null:
 		return
-	# 범위 광역.
-	check_eq("blast shape is AREA", blast.shape, CardData.Shape.AREA)
+	# 2×2 범위.
+	check_eq("blast area", blast.area, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)])
 
-	# skewer.tres 를 불러온다 (관통로 테스트용 카드).
+	# skewer.tres 를 불러온다 (뒤로 꿰뚫는 근접 카드).
 	var skewer: CardData = load("res://Resources/cards/skewer.tres")
 	# 불러와졌는지.
 	check("skewer.tres loads", skewer != null)
 	# 못 불러왔으면 멈춘다.
 	if skewer == null:
 		return
-	# 범위 관통로.
-	check_eq("skewer shape is LINE", skewer.shape, CardData.Shape.LINE)
+	# 기준 적 뒤로 3칸.
+	check_eq("skewer area", skewer.area, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)])
+
+
+# 적 3종이 공격·방어·휴식 카드를 모두 가지는지.
+func _test_enemies_have_cards() -> void:
+	# 적마다.
+	for id in ["brute", "sentry", "stalker"]:
+		# 데이터.
+		var enemy: EnemyData = load("res://Resources/units/%s.tres" % id)
+		# 세 카드.
+		check("%s has attack/defend/rest cards" % id, enemy.attack_card != null and enemy.defend_card != null and enemy.rest_card != null)
+	# 괴한 공격은 근접 70%.
+	var brute: EnemyData = load("res://Resources/units/brute.tres")
+	check_eq("brute attack percent", brute.attack_card.effects[0].percent, 70)
+	check_eq("brute attack is melee", brute.attack_card.attack_type, CardData.AttackType.MELEE)
 
 
 # 유닛 6종이 유니티와 같은 그림·애니메이션 띠·오라를 가리키는지 (설계 §4.1 표).
