@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="CardData" format=3]
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://by44p3w3lkbjt"]
 
-[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_ye4jh"]
-[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_is0qb"]
+[ext_resource type="Script" uid="uid://gepaba7pxl8q" path="res://Scripts/combat/data/card_effect.gd" id="1_ye4jh"]
+[ext_resource type="Script" uid="uid://c7l28pr4irggh" path="res://Scripts/combat/data/card_data.gd" id="2_is0qb"]
 
 [sub_resource type="Resource" id="Resource_imvdf"]
 script = ExtResource("1_ye4jh")
