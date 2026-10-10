@@ -77,6 +77,8 @@ var _press_view: CardView
 var _press_position: Vector2 = Vector2.ZERO
 ## 누른 채 DRAG_THRESHOLD 이상 움직여 끌기 중이면 true.
 var _dragging: bool = false
+## 조준이 필요 없는 카드(근접·자신)를 끄는 동안 커서를 따라다니는 카드 화면. 없으면 null. 배치가 이 카드를 건드리지 않는다.
+var _held: CardView
 ## 끌기 중에 그리는 조준 화살표.
 var _arrow: AimArrow
 
@@ -455,6 +457,9 @@ func _layout(animate: bool) -> void:
 			# 아직 돌고 있으면 멈춘다 (두 트윈이 서로 싸우지 않게).
 			if previous.is_valid():
 				previous.kill()
+		# 커서를 따라다니는 카드는 끌기 쪽이 옮기므로 건드리지 않는다.
+		if view == _held:
+			continue
 		# 연출을 원하고, 테스트 모드가 아니고, 트리에 붙어 있으면 트윈으로 옮긴다 (트리 밖에서는 트윈이 돌지 않는다).
 		if animate and not instant and view.is_inside_tree():
 			# 동시에 진행되는 트윈.
@@ -548,15 +553,24 @@ func _on_card_gui_input(event: InputEvent, view: CardView) -> void:
 	if not _dragging and motion.global_position.distance_to(_press_position) >= DRAG_THRESHOLD:
 		# 끌기 중으로 표시한다.
 		_dragging = true
+		# 조준이 필요 없는 카드는 화살표 대신 카드 자체가 커서를 따라다닌다.
+		if not view.card.needs_aim():
+			_held = view
 		# 끄는 카드를 선택한다.
 		_selected = _cards.find(view)
 		# 들어 올린다.
 		_layout(true)
 		# 선택을 알린다 (루트가 대상 힌트를 보여 준다).
 		card_selected.emit(_selected)
-	# 끌기 중이면 카드 위쪽 가운데에서 커서까지 화살표를 그리고, 커서 위치를 알린다 (보드가 그 칸을 미리보기로 비출 수 있게).
+	# 끌기 중이면 조준 카드는 카드 위쪽 가운데에서 커서까지 화살표를 그리고, 아니면 카드 가운데를 커서로 옮긴다.
+	# 어느 쪽이든 커서 위치를 알린다 (보드가 그 칸을 미리보기로 비출 수 있게).
 	if _dragging:
-		_arrow.show_aim(view.global_position + Vector2(CardView.SIZE.x / 2.0, 0.0), motion.global_position)
+		if view == _held:
+			# 기울기 없이 커서에 카드 가운데를 맞춘다.
+			view.rotation = 0.0
+			view.global_position = motion.global_position - CardView.SIZE / 2.0
+		else:
+			_arrow.show_aim(view.global_position + Vector2(CardView.SIZE.x / 2.0, 0.0), motion.global_position)
 		card_drag_moved.emit(motion.global_position)
 	# 이동 이벤트를 소비한다.
 	view.accept_event()
@@ -572,12 +586,14 @@ func _toggle(index: int) -> void:
 	card_selected.emit(_selected)
 
 
-## 끌던 카드를 놓았을 때: 화살표를 숨기고 카드를 제자리로 돌린 뒤 놓은 위치를 알린다.
+## 끌던 카드를 놓았을 때: 화살표를 숨기고(또는 따라다니던 카드를 놓고) 카드를 제자리로 돌린 뒤 놓은 위치를 알린다.
 func _finish_drag(screen_position: Vector2) -> void:
 	# 끌던 카드의 번호.
 	var index: int = _cards.find(_press_view)
 	# 끌기 상태를 끝낸다.
 	_dragging = false
+	# 커서를 따라다니던 카드를 놓아 준다 (아래 배치가 제자리로 돌린다).
+	_held = null
 	# 화살표를 숨긴다.
 	_arrow.hide_aim()
 	# 선택을 푼다 (결과 처리는 루트가 한다).
@@ -592,6 +608,8 @@ func _finish_drag(screen_position: Vector2) -> void:
 func _cancel_press() -> void:
 	# 누르던 카드를 잊는다.
 	_press_view = null
+	# 커서를 따라다니던 카드를 놓아 준다.
+	_held = null
 	# 끌기 상태를 끈다.
 	_dragging = false
 	# _init 전에 불릴 수 있으므로(세터 등) 화살표가 있을 때만 숨긴다.

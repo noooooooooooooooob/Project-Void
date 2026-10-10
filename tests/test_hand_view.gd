@@ -41,6 +41,8 @@ func run() -> Array[Dictionary]:
 	_test_blocked_card_is_dimmed_and_reports()
 	# 스탯이 카드 화면까지 간다.
 	_test_stats_reach_card_views()
+	# 조준 없는 카드는 화살표 대신 카드가 커서를 따라온다.
+	_test_auto_card_follows_cursor_without_arrow()
 	# 결과를 돌려준다.
 	return results()
 
@@ -300,8 +302,12 @@ func _test_drag_emits_drop() -> void:
 	var hand: HandView = _hand()
 	# 입력 허용.
 	hand.interactive = true
-	# 2 장.
-	hand.set_cards(_cards([_card("a", 1), _card("b", 1)]), 3, -1)
+	# 원거리 카드 2 장 (조준 화살표가 나오는 종류).
+	var first: CardData = _card("a", 1)
+	first.attack_type = CardData.AttackType.RANGED
+	var second: CardData = _card("b", 1)
+	second.attack_type = CardData.AttackType.RANGED
+	hand.set_cards(_cards([first, second]), 3, -1)
 	# 선택 신호 기록.
 	var picked: Array = []
 	# 놓기 신호 기록.
@@ -482,5 +488,32 @@ func _test_stats_reach_card_views() -> void:
 	# 드로우로 들어오는 카드도 같은 스탯을 쓴다.
 	hand.draw_card(_card("d", 1), Vector2.ZERO)
 	check_eq("drawn card uses the stats", hand.card_views()[1].effect_text(), "피해 2")
+	# 지운다.
+	hand.free()
+
+
+# 근접 카드를 끌면 화살표가 없고 카드가 커서를 따라오며, 놓으면 손패 자리로 돌아간다.
+func _test_auto_card_follows_cursor_without_arrow() -> void:
+	# 손패.
+	var hand: HandView = _hand()
+	# 입력 허용.
+	hand.interactive = true
+	# 근접 카드 한 장 (기본 공격 종류가 근접).
+	hand.set_cards(_cards([_card("melee", 1)]), 3, -1)
+	# 카드 화면.
+	var view: CardView = hand.card_views()[0]
+	# 손패 자리.
+	var home: Vector2 = view.position
+	# 누르고 끈다.
+	_press(view, Vector2(500, 560), true)
+	_move(view, Vector2(400, 300))
+	# 화살표 없음.
+	check("no aim arrow for a melee card", not hand.is_aiming())
+	# 카드 가운데가 커서에 있다.
+	check("dragged card follows the cursor", (view.global_position + CardView.SIZE / 2.0).is_equal_approx(Vector2(400, 300)))
+	# 놓는다.
+	_press(view, Vector2(400, 300), false)
+	# 제자리로 돌아간다 (instant 라 즉시).
+	check("card returns home after drop", view.position.is_equal_approx(home))
 	# 지운다.
 	hand.free()
