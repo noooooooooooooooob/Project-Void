@@ -370,12 +370,12 @@ func _damaged(event: BattleEvent) -> void:
 	# 체력·방어도 표시.
 	view.set_stats(event.hp, event.unit.data.max_hp, event.block)
 	# 로그.
-	hud.append_log("%s 에게 %d 피해" % [event.unit.data.display_name, event.amount])
+	hud.append_log("%s 에게 %d 피해%s" % [event.unit.data.display_name, event.amount, " (치명)" if event.critical else ""])
 	# 테스트 모드면 여기까지만.
 	if instant:
 		return
-	# 피해 숫자 (처치는 더 크게).
-	view.pop_text("-%d" % event.amount, DAMAGE_COLOR, UnitView.KILL_POP_PUNCH if event.hp <= 0 else UnitView.DAMAGE_POP_PUNCH)
+	# 피해 숫자 (처치는 더 크게, 치명이면 앞에 표시).
+	view.pop_text("%s-%d" % ["치명! " if event.critical else "", event.amount], DAMAGE_COLOR, UnitView.KILL_POP_PUNCH if event.hp <= 0 else UnitView.DAMAGE_POP_PUNCH)
 	# 타격음.
 	if _has_audio():
 		audio.play(audio.sounds.for_impact(_impact_type, event.amount, false))

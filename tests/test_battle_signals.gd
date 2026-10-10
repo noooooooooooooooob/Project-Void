@@ -1,6 +1,9 @@
 # BattleState 행동 신호 순서 테스트: 카드 사용·적 공격·방어·휴식에서 "행동 신호 → 결과 신호" 순서와 수치.
 extends TestCase
 
+# 픽스처.
+const Fixtures := preload("res://tests/fixtures.gd")
+
 # 전투 상태 스크립트.
 const BattleStateScript := preload("res://Scripts/combat/battle_state.gd")
 # 적 AI 스크립트.
@@ -67,12 +70,8 @@ func _ally(cell: Vector2i) -> UnitPlacement:
 	card.sp_cost = 1
 	# 원거리.
 	card.attack_type = CardData.AttackType.RANGED
-	# 단일.
-	card.shape = CardData.Shape.SINGLE
-	# 어디든 닿는 사거리 9.
-	card.attack_range = 9
 	# 피해 3.
-	card.damage = 3
+	card.effects = [Fixtures.effect(CardEffect.Kind.DAMAGE, 30)]
 
 	# 아군 데이터.
 	var data: AllyData = AllyDataScript.new()
@@ -148,15 +147,14 @@ func _state(ally_cell: Vector2i, enemy: EnemyData) -> BattleState:
 func _record(state: BattleState) -> Array:
 	# 기록 배열.
 	var seen: Array = []
-	# 카드 사용 (겨냥한 칸에 살아 있는 유닛이 있으면 그 id, 없으면 "empty").
-	state.card_played.connect(func(_actor: Unit, card: CardData, target_team: Unit.Team, target_cell: Vector2i) -> void:
-		var hit: Unit = _unit_at(state, target_team, target_cell)
-		seen.append("card:%s:%s" % [card.id, "empty" if hit == null else String(hit.data.id)]))
+	# 카드 사용 (기준 유닛의 id).
+	state.card_played.connect(func(_actor: Unit, card: CardData, anchor: Unit) -> void:
+		seen.append("card:%s:%s" % [card.id, String(anchor.data.id)]))
 	# 적 행동 (대상이 없으면 "null").
 	state.enemy_acted.connect(func(_actor: Unit, action: EnemyBrain.Action, target: Unit) -> void:
 		seen.append("acted:%d:%s" % [action, "null" if target == null else String(target.data.id)]))
 	# 피해.
-	state.unit_damaged.connect(func(_unit: Unit, amount: int) -> void:
+	state.unit_damaged.connect(func(_unit: Unit, amount: int, _critical: bool) -> void:
 		seen.append("damaged:%d" % amount))
 	# 회복.
 	state.unit_healed.connect(func(_unit: Unit, amount: int) -> void:
@@ -166,17 +164,6 @@ func _record(state: BattleState) -> Array:
 		seen.append("block:%d" % amount))
 	# 기록 배열을 돌려준다.
 	return seen
-
-
-# 그 편의 그 칸에 살아 있는 유닛을 찾는다 (없으면 null).
-func _unit_at(state: BattleState, team: Unit.Team, cell: Vector2i) -> Unit:
-	# 모든 유닛을 확인한다.
-	for unit in state.units:
-		# 같은 편, 같은 칸, 살아 있음이면 그 유닛.
-		if unit.team == team and unit.cell == cell and unit.is_alive():
-			return unit
-	# 못 찾았다.
-	return null
 
 
 # 카드를 쓰면 card_played 가 unit_damaged 보다 먼저 나오는지 (화면이 돌진 → 피격 순서로 보여 주기 위해).
@@ -191,7 +178,7 @@ func _test_card_played_precedes_damage() -> void:
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 
 	# 0 번 카드를 적에게 쓴다.
-	check("card play accepted", state.play_card(0, foe.team, foe.cell))
+	check("card play accepted", state.play_card(0, foe))
 	# 사용 → 피해 순서.
 	check_eq("card_played comes before damage", seen, ["card:zap:e", "damaged:3"])
 

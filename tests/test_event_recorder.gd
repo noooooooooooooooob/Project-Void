@@ -1,6 +1,9 @@
 # BattleEventRecorder(신호 → 이벤트 기록) 테스트: 이벤트 종류 순서와 기록 시점 값(체력, 장수, 라운드 등).
 extends TestCase
 
+# 픽스처.
+const Fixtures := preload("res://tests/fixtures.gd")
+
 # 전투 상태 스크립트.
 const BattleStateScript := preload("res://Scripts/combat/battle_state.gd")
 # 카드 데이터 스크립트.
@@ -33,6 +36,8 @@ func run() -> Array[Dictionary]:
 	_test_ally_move_records_move_then_log()
 	# 적 이동: 행동 → 이동 → 로그.
 	_test_enemy_move_records_action_move_log()
+	# 치명타 피해 기록.
+	_test_damage_records_critical()
 	# 결과를 돌려준다.
 	return results()
 
@@ -102,12 +107,8 @@ func _state(card_damage: int, enemy_count: int) -> BattleState:
 	card.sp_cost = 1
 	# 원거리.
 	card.attack_type = CardData.AttackType.RANGED
-	# 단일.
-	card.shape = CardData.Shape.SINGLE
-	# 사거리 9.
-	card.attack_range = 9
 	# 피해.
-	card.damage = card_damage
+	card.effects = [Fixtures.effect(CardEffect.Kind.DAMAGE, card_damage * 10)]
 
 	# 아군 데이터.
 	var ally: AllyData = AllyDataScript.new()
@@ -251,7 +252,7 @@ func _test_card_play_records_action_then_damage() -> void:
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 
 	# 카드 사용.
-	state.play_card(0, foe.team, foe.cell)
+	state.play_card(0, foe)
 	# 기록 꺼내기.
 	var events: Array[BattleEvent] = recorder.take_events()
 	# 종류 별칭.
@@ -286,7 +287,7 @@ func _test_kill_records_death_and_battle_end() -> void:
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 
 	# 카드 사용 (처치).
-	state.play_card(0, foe.team, foe.cell)
+	state.play_card(0, foe)
 	# 기록 꺼내기.
 	var events: Array[BattleEvent] = recorder.take_events()
 	# 종류 별칭.
@@ -441,3 +442,17 @@ func _test_enemy_move_records_action_move_log() -> void:
 	check_eq("enemy action is move", events[0].action, EnemyBrain.Action.MOVE)
 	# 기록된 새 칸 = 실제 칸.
 	check_eq("recorded destination matches the unit", events[1].to_cell, foe.cell)
+
+
+# 치명타 피해는 DAMAGED 기록의 critical 이 true.
+func _test_damage_records_critical() -> void:
+	# 상태 (카드 피해 1, 적 1명).
+	var state: BattleState = _state(1, 1)
+	# 기록기.
+	var recorder := BattleEventRecorder.new(state)
+	# 피해를 직접 적용한다 (치명).
+	state.apply_damage(state.units[1], 3, true)
+	# 기록.
+	var events: Array[BattleEvent] = recorder.take_events()
+	# DAMAGED + critical.
+	check("damaged critical recorded", events[0].kind == BattleEvent.Kind.DAMAGED and events[0].critical)

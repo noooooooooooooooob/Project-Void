@@ -2,6 +2,9 @@
 # instant 모드로 연출 없이 최종 상태만 확인하고, 마우스 입력은 gui_input 신호를 직접 내서 흉내 낸다.
 extends TestCase
 
+# 픽스처.
+const Fixtures := preload("res://tests/fixtures.gd")
+
 # 테스트용 카드를 만들 스크립트.
 const CardDataScript := preload("res://Scripts/combat/data/card_data.gd")
 
@@ -45,9 +48,7 @@ func _card(display_name: String, cost: int) -> CardData:
 	# 비용.
 	card.sp_cost = cost
 	# 피해.
-	card.damage = 1
-	# 사거리.
-	card.attack_range = 1
+	card.effects = [Fixtures.effect(CardEffect.Kind.DAMAGE, 10)]
 	# 돌려준다.
 	return card
 

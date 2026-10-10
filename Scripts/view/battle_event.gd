@@ -14,11 +14,11 @@ enum Kind { TURN_STARTED, CARD_PLAYED, ENEMY_ACTED, DAMAGED, HEALED, BLOCK_GAINE
 var kind: Kind
 ## 주인공 유닛 (차례를 받은 유닛, 카드를 쓴 유닛, 맞은 유닛 등).
 var unit: Unit
-## 대상 유닛 (적 공격 대상, 혹은 카드로 겨냥한 칸에 살아 있는 유닛이 있었다면 그 유닛). 없으면 null.
+## 대상 유닛 (적 공격 대상, 혹은 카드의 기준 유닛). 없으면 null.
 var target: Unit
-## 카드로 겨냥한 칸의 편 (CARD_PLAYED). 그 칸에 유닛이 없어도 뜻이 있다.
+## 카드 기준 유닛의 편 (CARD_PLAYED).
 var target_team: Unit.Team = Unit.Team.ALLY
-## 카드로 겨냥한 칸 좌표 (CARD_PLAYED).
+## 카드 기준 유닛이 서 있던 칸 (CARD_PLAYED).
 var target_cell: Vector2i = Vector2i.ZERO
 ## 관련 카드 (사용한 카드, 뽑은 카드).
 var card: CardData
@@ -54,6 +54,8 @@ var from_cell: Vector2i = Vector2i.ZERO
 var to_cell: Vector2i = Vector2i.ZERO
 ## 기록 시점에 유닛이 서 있던 칸 (TURN_STARTED, DIED). 재생 때는 규칙의 칸이 이미 이동 뒤일 수 있어 이 값을 쓴다.
 var cell: Vector2i = Vector2i.ZERO
+## 치명타 피해였는지 (DAMAGED).
+var critical: bool = false
 
 
 ## 종류를 정해 빈 기록을 만든다. 나머지 필드는 만든 쪽이 채운다.

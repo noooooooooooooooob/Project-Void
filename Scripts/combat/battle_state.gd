@@ -10,17 +10,17 @@ extends RefCounted
 
 ## 어떤 유닛의 차례가 시작됐다 (스탠바이 처리 직후 — 방어도 초기화·아군 SP 충전은 끝났고, 드로우는 아직 전).
 signal turn_started(unit: Unit)
-## 유닛이 공격을 받았다. amount 는 방어도로 막기 전의 공격 피해량이다.
-signal unit_damaged(unit: Unit, amount: int)
+## 유닛이 공격을 받았다. amount 는 방어도로 막기 전의 공격 피해량, critical 은 치명타였는지.
+signal unit_damaged(unit: Unit, amount: int, critical: bool)
 ## 유닛이 쓰러졌다 (unit_damaged 바로 뒤에 나간다).
 signal unit_died(unit: Unit)
 ## 전투가 끝났다. ally_won 이 true 면 아군 승리.
 signal battle_ended(ally_won: bool)
 ## 전투 로그에 한 줄을 남긴다.
 signal log_message(text: String)
-## 아군이 카드를 썼다. target_team/target_cell 은 플레이어가 겨냥한 칸 (그 칸이 비어 있어도 광역·관통로 카드는
-## 범위 안의 다른 칸을 맞힐 수 있다 — 실제로 맞는 유닛은 resolver.expand_shape_cell 로 다시 계산해야 한다).
-signal card_played(actor: Unit, card: CardData, target_team: Unit.Team, target_cell: Vector2i)
+## 카드가 쓰였다. anchor 는 카드의 기준 유닛 (근접·자신은 자동으로 정해진 유닛). 실제로 맞는 유닛은
+## resolver.units_in_area(anchor, card.area_offsets(), units) 로 다시 계산한다.
+signal card_played(actor: Unit, card: CardData, anchor: Unit)
 ## 적이 행동을 정했다. 공격이 아니면 target 은 null.
 signal enemy_acted(actor: Unit, action: EnemyBrain.Action, target: Unit)
 ## 유닛이 회복했다. amount 는 최대 체력에 막혀 실제로 오른 양이다.
@@ -52,6 +52,8 @@ var resolver: TargetResolver
 var rng: RandomNumberGenerator
 ## 적 AI 전용 난수 생성기. 덱 섞기와 따로 써서, 적이 난수를 몇 번 쓰든 카드 순서가 바뀌지 않는다.
 var ai_rng: RandomNumberGenerator
+## 치명타 판정 전용 난수 생성기. 덱 섞기와 섞으면 같은 시드의 드로우 순서가 바뀌므로 따로 둔다.
+var crit_rng: RandomNumberGenerator
 ## 현재 라운드 번호 (1 부터).
 var round_index: int = 0
 ## 이번 라운드의 행동 순서 (속도가 빠른 순).
@@ -74,6 +76,10 @@ func _init(encounter: EncounterData, p_rng: RandomNumberGenerator) -> void:
 	ai_rng = RandomNumberGenerator.new()
 	# 전투 시드에서 따로 뽑은 시드로 시작한다: 전투 시드가 같으면 적 행동도 같지만, 덱 섞기와 같은 수열을 되풀이하지 않는다.
 	ai_rng.seed = hash([p_rng.seed, "enemy_ai"])
+	# 치명 판정 전용 난수 생성기를 만든다.
+	crit_rng = RandomNumberGenerator.new()
+	# 전투 시드에서 따로 뽑은 시드 (전투 시드가 같으면 치명 결과도 같다).
+	crit_rng.seed = hash([p_rng.seed, "crit"])
 	# 양쪽 격자 크기로 대상 판정기를 만든다.
 	resolver = TargetResolver.new(encounter.ally_grid, encounter.enemy_grid)
 
@@ -130,11 +136,11 @@ func write_log(text: String) -> void:
 
 ## 유닛에게 피해를 주고 알린다. 쓰러지면 쓰러짐도 알린다.
 ## 카드 공격과 적 공격 모두 이 함수를 거친다.
-func apply_damage(target: Unit, amount: int) -> void:
+func apply_damage(target: Unit, amount: int, critical: bool = false) -> void:
 	# 방어도 → 체력 순서로 피해를 적용한다.
 	target.take_damage(amount)
 	# 피해 신호를 낸다.
-	unit_damaged.emit(target, amount)
+	unit_damaged.emit(target, amount, critical)
 	# 이번 피해로 체력이 0 이 됐는지 확인한다.
 	if not target.is_alive():
 		# 쓰러짐 신호를 낸다.
@@ -187,11 +193,10 @@ func check_end() -> void:
 	battle_ended.emit(ally_won)
 
 
-## 지금 차례인 아군이 손패의 hand_index 번째 카드를 target_team 편의 target_cell 칸에 쓴다.
-## 그 칸에 유닛이 없어도(빈 칸을 겨냥한 광역·관통로 카드) 사거리 안이고 막히지 않았으면 쓸 수 있다 —
-## 실제로 맞는 유닛이 없을 수도 있다(빗나간 셈이 되어 SP 만 쓴다).
+## 지금 차례인 아군이 손패의 hand_index 번째 카드를 anchor 를 기준으로 쓴다.
+## anchor 는 resolver.valid_anchors 가 돌려준 후보 중 하나여야 한다 (근접·자신은 그 한 명).
 ## 규칙에 맞지 않으면 아무것도 바꾸지 않고 false 를 돌려준다. 성공하면 true.
-func play_card(hand_index: int, target_team: Unit.Team, target_cell: Vector2i) -> bool:
+func play_card(hand_index: int, anchor: Unit) -> bool:
 	# 끝난 전투에서는 카드를 쓸 수 없다.
 	if finished:
 		return false
@@ -210,8 +215,8 @@ func play_card(hand_index: int, target_team: Unit.Team, target_cell: Vector2i) -
 	# SP 가 모자라면 실패.
 	if card.sp_cost > actor.sp:
 		return false
-	# 겨냥한 칸이 유효하지 않으면(사거리 밖, 막힘, 같은 편 등) 실패.
-	if not resolver.is_valid_cell(actor, target_team, target_cell, card.attack_type, card.attack_range, units):
+	# 기준 유닛이 없거나 이 카드의 후보가 아니면 실패.
+	if anchor == null or not resolver.valid_anchors(actor, card, units).has(anchor):
 		return false
 
 	# 여기부터는 검사를 모두 통과했으므로 상태를 바꾼다.
@@ -221,30 +226,50 @@ func play_card(hand_index: int, target_team: Unit.Team, target_cell: Vector2i) -
 	actor.hand.remove_at(hand_index)
 	# 쓴 카드는 묘지로 간다.
 	actor.discard.append(card)
-	# 카드 사용 신호를 낸다 (피해 신호보다 먼저 나가야 화면이 돌진 → 피격 순으로 연출한다).
-	card_played.emit(actor, card, target_team, target_cell)
-	# 로그에 "사용자 → 대상 (카드)" 형식으로 남긴다 (겨냥한 칸이 비어 있으면 "빈 칸"으로 남긴다).
-	write_log("%s → %s (%s)" % [actor.data.display_name, _describe_cell(target_team, target_cell), card.display_name])
+	# 카드 사용 신호를 낸다 (효과 신호보다 먼저 나가야 화면이 돌진 → 피격 순으로 연출한다).
+	card_played.emit(actor, card, anchor)
+	# 로그에 "사용자 → 기준 유닛 (카드)" 형식으로 남긴다.
+	write_log("%s → %s (%s)" % [actor.data.display_name, anchor.data.display_name, card.display_name])
+	# 효과를 적용한다.
+	resolve_card(actor, card, anchor)
 
-	# 범위 모양에 따라 맞는 유닛마다 피해를 준다.
-	for victim in resolver.expand_shape_cell(target_team, target_cell, card.shape, units):
-		apply_damage(victim, card.damage)
-
-	# 이번 공격으로 전투가 끝났는지 확인한다.
+	# 이번 카드로 전투가 끝났는지 확인한다.
 	check_end()
 	# 성공.
 	return true
 
 
-## 그 편의 그 칸에 살아 있는 유닛이 있으면 그 이름을, 없으면 "빈 칸"을 돌려준다 (카드 사용 로그용).
-func _describe_cell(team: Unit.Team, cell: Vector2i) -> String:
-	# 모든 유닛을 확인한다.
-	for unit in units:
-		# 같은 편, 같은 칸, 살아 있음이면 그 이름.
-		if unit.team == team and unit.cell == cell and unit.is_alive():
-			return unit.data.display_name
-	# 아무도 없으면.
-	return "빈 칸"
+## 카드 효과를 순서대로 적용한다. 아군 카드(play_card)와 적 행동(EnemyBrain)이 함께 쓴다.
+## AREA 효과의 대상은 효과마다 다시 계산하므로 앞 효과로 쓰러진 유닛은 뒤 효과에서 빠진다.
+func resolve_card(actor: Unit, card: CardData, anchor: Unit) -> void:
+	# 사용자의 스탯.
+	var stats: UnitData = actor.data
+	# 효과마다.
+	for effect in card.effects:
+		# 수치.
+		var amount: int = CardMath.amount(effect, stats)
+		# 0 이면 적용하지 않는다.
+		if amount <= 0:
+			continue
+		# 대상 목록: 자신이면 사용자, 아니면 기준 유닛의 범위.
+		var targets: Array[Unit] = []
+		if effect.target == CardEffect.Target.SELF:
+			targets.append(actor)
+		else:
+			targets = resolver.units_in_area(anchor, card.area_offsets(), units)
+		# 대상마다 종류에 맞게 적용한다.
+		for target in targets:
+			match effect.kind:
+				# 피해: 맞는 유닛마다 치명 판정.
+				CardEffect.Kind.DAMAGE:
+					var critical: bool = CardMath.rolls_crit(stats, crit_rng)
+					apply_damage(target, CardMath.critical_amount(amount, stats) if critical else amount, critical)
+				# 방어도.
+				CardEffect.Kind.BLOCK:
+					apply_block(target, amount)
+				# 회복.
+				CardEffect.Kind.HEAL:
+					apply_heal(target, amount)
 
 
 ## 지금 차례인 아군이 SP 1 을 써서 to_cell 로 한 칸 이동한다.

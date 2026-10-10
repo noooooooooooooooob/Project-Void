@@ -272,18 +272,20 @@ func _on_cell_clicked(team: Unit.Team, cell: Vector2i) -> void:
 		return
 	# 지금 차례인 유닛.
 	var actor: Unit = _state.current_unit()
-	# 차례 유닛이 없거나, 아군 칸을 눌렀거나(카드는 적 칸만 겨냥한다), 선택 번호가 손패 범위를 벗어나면 쓰지 않는다.
-	if actor == null or team != Unit.Team.ENEMY or _selected_card >= actor.hand.size():
+	# 차례 유닛이 없거나 선택 번호가 손패 범위를 벗어나면 쓰지 않는다.
+	if actor == null or _selected_card >= actor.hand.size():
 		# 드래그였다면 카드를 손패로 돌려보낸다(선택 해제).
 		if from_drop:
 			_clear_selection()
 		return
 	# 사용하려는 카드.
 	var card: CardData = actor.hand[_selected_card]
+	# 그 칸에 서 있는 살아 있는 유닛 (카드의 기준 유닛 후보).
+	var anchor: Unit = _living_unit_at(team, cell)
 	# 클릭은 선택을 유지한 채 다른 칸을 다시 고를 수 있게 규칙 호출 전에 거르고, 드래그는 손패로 돌려보낸다.
-	if not _state.resolver.is_valid_cell(actor, team, cell, card.attack_type, card.attack_range, _state.units):
+	if anchor == null or not _state.resolver.valid_anchors(actor, card, _state.units).has(anchor):
 		# 로그로 알린다.
-		_hud.append_log("사용할 수 없는 위치")
+		_hud.append_log("사용할 수 없는 대상")
 		# 드래그였다면 선택을 푼다.
 		if from_drop:
 			_clear_selection()
@@ -294,8 +296,19 @@ func _on_cell_clicked(team: Unit.Team, cell: Vector2i) -> void:
 	_hud.set_pending_play(card_index)
 	# 카드 사용을 실행한다. 규칙이 거절하면(예상 밖 상황) 로그를 남긴다.
 	_run(func() -> void:
-		if not _state.play_card(card_index, team, cell):
-			_hud.append_log("사용할 수 없는 위치"))
+		if not _state.play_card(card_index, anchor):
+			_hud.append_log("사용할 수 없는 대상"))
+
+
+## 그 편의 그 칸에 살아 있는 유닛 (없으면 null).
+func _living_unit_at(team: Unit.Team, cell: Vector2i) -> Unit:
+	# 모든 유닛 중.
+	for unit in _state.units:
+		# 같은 편·같은 칸·생존.
+		if unit.team == team and unit.cell == cell and unit.is_alive():
+			return unit
+	# 없음.
+	return null
 
 
 ## 차례 종료 버튼을 눌렀다.

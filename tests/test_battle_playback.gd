@@ -2,6 +2,9 @@
 # 규칙 → 기록기 → 재생 → 보드·HUD 로 이어지는 실제 연결을 그대로 만들어 쓴다.
 extends TestCase
 
+# 픽스처.
+const Fixtures := preload("res://tests/fixtures.gd")
+
 # 실제 HUD 씬 (노드 구성이 씬 파일에 있다).
 const HudScene := preload("res://Scenes/battle_hud.tscn")
 # 카드 데이터 스크립트.
@@ -67,10 +70,8 @@ func _rig() -> Dictionary:
 	card.sp_cost = 1
 	# 원거리.
 	card.attack_type = CardData.AttackType.RANGED
-	# 사거리 9.
-	card.attack_range = 9
 	# 한 방에 쓰러뜨리는 피해 50.
-	card.damage = 50
+	card.effects = [Fixtures.effect(CardEffect.Kind.DAMAGE, 500)]
 
 	# 아군 데이터.
 	var ally: AllyData = AllyDataScript.new()
@@ -209,7 +210,7 @@ func _test_kill_plays_to_banner() -> void:
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 
 	# 카드를 쓴다 (적 처치, 전투 종료).
-	state.play_card(0, foe.team, foe.cell)
+	state.play_card(0, foe)
 	# 그 이벤트들을 재생한다.
 	playback.play(recorder.take_events())
 	# 체력 글자 0/20.
@@ -509,7 +510,7 @@ func _test_instant_is_silent() -> void:
 	playback.play(recorder.take_events())
 	board.sync_from_state(state)
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
-	state.play_card(0, foe.team, foe.cell)
+	state.play_card(0, foe)
 	playback.play(recorder.take_events())
 	# 결과는 그대로.
 	check("instant kill still hides the foe", not board.view_for(foe).visible)

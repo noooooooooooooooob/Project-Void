@@ -2,6 +2,9 @@
 # 실제 HUD 씬을 루트 창에 붙여 _ready 로 노드가 연결된 상태에서 검사한다.
 extends TestCase
 
+# 픽스처.
+const Fixtures := preload("res://tests/fixtures.gd")
+
 # 실제 HUD 씬.
 const HudScene := preload("res://Scenes/battle_hud.tscn")
 # 카드 데이터 스크립트.
@@ -72,10 +75,8 @@ func _card(id: StringName, attack_type: CardData.AttackType, cost: int) -> CardD
 	card.sp_cost = cost
 	# 공격 방식.
 	card.attack_type = attack_type
-	# 사거리.
-	card.attack_range = 2
 	# 피해.
-	card.damage = 6
+	card.effects = [Fixtures.effect(CardEffect.Kind.DAMAGE, 60)]
 	# 돌려준다.
 	return card
 
