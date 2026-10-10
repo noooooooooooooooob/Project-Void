@@ -234,10 +234,13 @@ func _on_card_dropped(index: int, screen_position: Vector2) -> void:
 	_select_card(index)
 	# 힌트를 그 카드 기준으로 갱신한다.
 	_refresh_hints()
-	# 자동 카드(근접·자신)는 놓는 위치와 상관없이 바로 쓴다.
+	# 자동 카드(근접·자신)는 손패 위쪽(보드 쪽)에 놓으면 바로 쓰고, 손패 영역에 되돌려 놓으면 취소한다.
 	var actor: Unit = _state.current_unit()
 	if actor != null and index < actor.hand.size() and not actor.hand[index].needs_aim():
-		_play_selected(_auto_anchor(actor, actor.hand[index]))
+		if screen_position.y < _hud.hand_top_y():
+			_play_selected(_auto_anchor(actor, actor.hand[index]))
+		else:
+			_clear_selection()
 		return
 	# 이제부터 오는 판정 결과는 드래그에서 온 것이다.
 	_awaiting_drop = true
@@ -470,10 +473,16 @@ func _apply_hover_preview(team: Unit.Team, cell: Vector2i) -> void:
 	var card: CardData = actor.hand[_selected_card]
 	if not card.needs_aim():
 		return
-	# 그 칸의 유닛이 기준 후보면 범위를 덧그린다.
+	# 그 칸의 유닛.
 	var anchor: Unit = _living_unit_at(team, cell)
-	if anchor != null and _state.resolver.valid_anchors(actor, card, _state.units).has(anchor):
+	# 유닛이 없으면 표시할 것이 없다.
+	if anchor == null:
+		return
+	# 기준 후보면 범위를 덧그리고, 아니면 그 칸을 무효(주황)로 표시한다.
+	if _state.resolver.valid_anchors(actor, card, _state.units).has(anchor):
 		_show_area_preview(anchor, card)
+	else:
+		_board.show_shape_preview(team, {cell: {"valid": false, "text": "✕"}})
 
 
 ## 고른 카드의 기준 후보 칸을 ✓ 로 보여 준다. 자동 카드(근접·자신)면 그 기준의 범위까지 함께 보여 준다.

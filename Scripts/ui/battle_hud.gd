@@ -236,6 +236,12 @@ func show_banner(ally_won: bool) -> void:
 	_banner.visible = true
 
 
+## 손패 영역의 위쪽 끝 (화면 좌표 y). BattleRoot 가 놓기 위치가 손패 위인지 판단하는 데 쓴다.
+func hand_top_y() -> float:
+	# 손패에 묻는다.
+	return _hand.top_y()
+
+
 ## 손패 노드 (테스트용 접근자).
 func hand_view() -> HandView:
 	# 손패를 돌려준다.

@@ -33,6 +33,10 @@ func run() -> Array[Dictionary]:
 	_test_ally_card_targets_ally_cell()
 	# 실제 전투 구성에서 같은 행에 적이 없으면 근접 카드가 흐리다.
 	_test_melee_cards_dim_in_skirmish_when_row_empty()
+	# 자동 카드를 손패 위로 되돌려 놓으면 취소된다.
+	_test_auto_card_dropped_on_hand_is_cancelled()
+	# 조준 카드로 후보가 아닌 유닛에 커서를 올리면 무효 표시.
+	_test_hovering_an_invalid_unit_shows_invalid()
 	# 결과를 돌려준다.
 	return results()
 
@@ -297,5 +301,37 @@ func _test_melee_cards_dim_in_skirmish_when_row_empty() -> void:
 	# 확인.
 	check("row empty for the first actor", row_empty)
 	check("melee cards dimmed when the row is empty", not melee_bright)
+	# 정리.
+	battle.free()
+
+
+# 근접 카드를 손패 영역(화면 아래쪽)에 되돌려 놓으면 쓰이지 않고 선택이 풀린다.
+func _test_auto_card_dropped_on_hand_is_cancelled() -> void:
+	# 근접 피해 100%.
+	var battle: BattleRoot = _battle(Fixtures.damage_card(&"auto", CardData.AttackType.MELEE, 100))
+	# 적.
+	var foe: Unit = battle._state.living_units(Unit.Team.ENEMY)[0]
+	# 손패 아래쪽에 놓는다.
+	battle._on_card_dropped(0, Vector2(5, 100000))
+	# 맞지 않았다.
+	check_eq("dropping on the hand does not play", foe.hp, 20)
+	# 선택이 풀렸다.
+	check_eq("dropping on the hand clears the selection", battle._selected_card, -1)
+	# 정리.
+	battle.free()
+
+
+# 원거리 카드를 고르고 아군 유닛(후보 아님)에 커서를 올리면 그 칸이 무효(주황)로 표시된다.
+func _test_hovering_an_invalid_unit_shows_invalid() -> void:
+	# 원거리 피해 카드.
+	var battle: BattleRoot = _battle(Fixtures.damage_card(&"shot", CardData.AttackType.RANGED, 50))
+	# 차례 아군.
+	var actor: Unit = battle._state.current_unit()
+	# 카드를 고른다.
+	battle._on_card_selected(0)
+	# 아군 칸에 커서를 올린다.
+	battle._on_cell_hovered(actor.team, actor.cell)
+	# 무효 표시.
+	check_eq("invalid hover is marked", battle._board.tile_state(actor.team, actor.cell), Board3D.TileState.SHAPE_OUT)
 	# 정리.
 	battle.free()

@@ -93,6 +93,12 @@ func _init() -> void:
 	add_child(_arrow)
 
 
+## 손패 영역의 위쪽 끝 (화면 좌표 y). 들린 카드의 윗변까지 포함한다. 이보다 아래에 놓은 카드는 손패로 되돌린 것으로 본다.
+func top_y() -> float:
+	# 부채꼴 중심에서 카드 반 높이와 들림 높이만큼 위.
+	return global_position.y + anchor().y - CardView.SIZE.y / 2.0 - LIFT
+
+
 ## 부채꼴의 중심점 (이 노드 기준 좌표): 가로 가운데, 아래 끝에서 BOTTOM_OFFSET 위.
 func anchor() -> Vector2:
 	# 크기에서 계산한다 (창 크기가 바뀌면 함께 바뀐다).
