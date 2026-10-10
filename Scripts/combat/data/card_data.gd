@@ -7,10 +7,12 @@ class_name CardData
 # Resource: 파일로 저장·불러오기가 되는 데이터 객체.
 extends Resource
 
-## 공격 방식.
-## MELEE(근접): 대상과 같은 행에서 대상보다 앞 열에 살아 있는 유닛이 있으면 막혀서 칠 수 없다.
-## RANGED(원거리): 막힘을 무시하고 사거리만 따진다.
-enum AttackType { MELEE, RANGED }
+## 공격 종류. 카드의 기준 유닛을 고르는 방법이 다르다 (TargetResolver.valid_anchors).
+## MELEE(근접): 사용자와 같은 행에서 가장 앞 열의 적 한 명. 없으면 쓸 수 없다. 조준 없이 자동.
+## RANGED(원거리): 상대 편 아무나. ALLY(아군): 같은 편 아무나(자신 포함). SELF(자신): 사용자. 조준 없이 자동.
+enum AttackType { MELEE, RANGED, ALLY, SELF }
+## 카드 분류. 카드 색을 정한다.
+enum Category { ATTACK, SKILL, SPECIAL }
 ## 피해 범위 모양 (TargetResolver.expand_shape 가 실제 맞는 유닛을 고른다).
 ## SINGLE(단일): 고른 대상 한 명만.
 ## PIERCE(관통): 대상과 같은 행(cell.y)에 있는 그 편 유닛 전부 — 앞뒤로 꿰뚫는다.
@@ -33,3 +35,25 @@ enum Shape { SINGLE, PIERCE, SWEEP, AREA, LINE }
 @export var attack_range: int = 1
 ## 맞은 유닛마다 주는 피해량 (방어도가 먼저 깎인다).
 @export var damage: int = 0
+## 카드 분류 (공격·스킬·특수).
+@export var category: Category = Category.ATTACK
+## 범위: 기준 칸에서의 오프셋 목록 (x = 열, + 가 뒤쪽 / y = 행, + 가 아래). 비어 있으면 기준 칸 하나(단일).
+@export var area: Array[Vector2i] = []
+## 효과 목록. 순서대로 적용된다.
+@export var effects: Array[CardEffect] = []
+
+
+## 실제로 쓸 범위 오프셋. 비어 있으면 단일 [(0,0)].
+func area_offsets() -> Array[Vector2i]:
+	# 비었으면 기준 칸 하나.
+	if area.is_empty():
+		var single: Array[Vector2i] = [Vector2i.ZERO]
+		return single
+	# 아니면 그대로.
+	return area
+
+
+## 플레이어가 기준 유닛을 직접 겨냥해야 하는 카드인지 (원거리·아군). 근접·자신은 자동으로 정해진다.
+func needs_aim() -> bool:
+	# 원거리나 아군이면 조준한다.
+	return attack_type == AttackType.RANGED or attack_type == AttackType.ALLY

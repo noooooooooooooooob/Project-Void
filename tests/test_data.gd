@@ -35,6 +35,10 @@ func _test_card_defaults() -> void:
 	check_eq("card default sp_cost", card.sp_cost, 1)
 	# 기본 범위 단일.
 	check_eq("card default shape is SINGLE", card.shape, CardData.Shape.SINGLE)
+	# 기본 분류는 공격.
+	check_eq("card default category", card.category, CardData.Category.ATTACK)
+	# 기본 효과 없음.
+	check("card default effects empty", card.effects.is_empty())
 
 
 # AllyData 와 EnemyData 가 모두 UnitData 를 상속하고, 서로는 다른 타입인지.
