@@ -7,6 +7,8 @@ const UnitScript := preload("res://Scripts/combat/unit.gd")
 const ResolverScript := preload("res://Scripts/combat/target_resolver.gd")
 # 공통 유닛 데이터 스크립트.
 const UnitDataScript := preload("res://Scripts/combat/data/unit_data.gd")
+# 픽스처.
+const Fixtures := preload("res://tests/fixtures.gd")
 
 
 # 실행기가 부르는 진입점.
@@ -49,6 +51,16 @@ func run() -> Array[Dictionary]:
 	_test_movable_cells_skip_living_units()
 	# 자기 편 격자 크기 안에서만.
 	_test_movable_cells_stay_in_own_grid()
+	# 근접 기준: 같은 행 맨 앞.
+	_test_melee_anchor_is_front_of_same_row()
+	# 근접 기준: 행이 비면 없음, 쓰러진 유닛 무시.
+	_test_melee_anchor_empty_row_and_dead()
+	# 종류별 기준 후보.
+	_test_valid_anchors_by_type()
+	# 범위 칸: 격자 밖·중복 무시.
+	_test_area_cells_clip_and_dedupe()
+	# 범위 유닛: 같은 편·생존만.
+	_test_units_in_area_same_team_alive()
 	# 결과를 돌려준다.
 	return results()
 
@@ -395,3 +407,93 @@ func _test_movable_cells_stay_in_own_grid() -> void:
 	var expected: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1)]
 	# 비교.
 	check_eq("moves stay inside the unit's own grid", resolver.movable_cells(e, all), expected)
+
+
+# 아군 (0,1) 의 같은 행(1) 에 적 (2,1)·(1,1) 이 있으면 앞 열인 (1,1) 이 기준. 다른 행의 (0,0) 은 무관.
+func _test_melee_anchor_is_front_of_same_row() -> void:
+	# 판정기.
+	var resolver := ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 아군.
+	var ally: Unit = _unit(0, Unit.Team.ALLY, Vector2i(0, 1))
+	# 같은 행 뒤.
+	var back: Unit = _unit(1, Unit.Team.ENEMY, Vector2i(2, 1))
+	# 같은 행 앞.
+	var front: Unit = _unit(2, Unit.Team.ENEMY, Vector2i(1, 1))
+	# 다른 행 맨 앞.
+	var other_row: Unit = _unit(3, Unit.Team.ENEMY, Vector2i(0, 0))
+	# 전장.
+	var units: Array[Unit] = [ally, back, front, other_row]
+	# 같은 행 맨 앞.
+	check_eq("melee anchor is front of same row", resolver.melee_anchor(ally, units), front)
+
+
+# 같은 행의 유일한 적이 쓰러져 있으면 기준이 없다.
+func _test_melee_anchor_empty_row_and_dead() -> void:
+	# 판정기.
+	var resolver := ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 아군 (0,2).
+	var ally: Unit = _unit(0, Unit.Team.ALLY, Vector2i(0, 2))
+	# 같은 행의 쓰러진 적.
+	var dead: Unit = _unit(1, Unit.Team.ENEMY, Vector2i(0, 2))
+	dead.hp = 0
+	# 다른 행 적.
+	var other: Unit = _unit(2, Unit.Team.ENEMY, Vector2i(0, 0))
+	# 전장.
+	var units: Array[Unit] = [ally, dead, other]
+	# 없음.
+	check("no melee anchor when row has only dead", resolver.melee_anchor(ally, units) == null)
+	# 근접 카드의 후보도 비어 있다.
+	check("melee valid_anchors empty", resolver.valid_anchors(ally, Fixtures.damage_card(&"m", CardData.AttackType.MELEE, 50), units).is_empty())
+
+
+# 원거리 = 살아 있는 적 전부, 아군 = 살아 있는 아군 전부(자신 포함), 자신 = [사용자].
+func _test_valid_anchors_by_type() -> void:
+	# 판정기.
+	var resolver := ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 사용자.
+	var me: Unit = _unit(0, Unit.Team.ALLY, Vector2i(0, 0))
+	# 다른 아군.
+	var friend: Unit = _unit(1, Unit.Team.ALLY, Vector2i(1, 1))
+	# 적 둘 (하나는 쓰러짐).
+	var foe: Unit = _unit(2, Unit.Team.ENEMY, Vector2i(2, 2))
+	var dead_foe: Unit = _unit(3, Unit.Team.ENEMY, Vector2i(0, 1))
+	dead_foe.hp = 0
+	# 전장.
+	var units: Array[Unit] = [me, friend, foe, dead_foe]
+	# 원거리.
+	check_eq("ranged anchors", resolver.valid_anchors(me, Fixtures.damage_card(&"r", CardData.AttackType.RANGED, 1), units), [foe])
+	# 아군.
+	check_eq("ally anchors", resolver.valid_anchors(me, Fixtures.damage_card(&"a", CardData.AttackType.ALLY, 1), units), [me, friend])
+	# 자신.
+	check_eq("self anchors", resolver.valid_anchors(me, Fixtures.damage_card(&"s", CardData.AttackType.SELF, 1), units), [me])
+
+
+# (2,0) 기준 [(0,0),(1,0),(0,-1),(0,0)] → (2,0) 만 남는다 (뒤쪽·위쪽은 격자 밖, 중복 제거).
+func _test_area_cells_clip_and_dedupe() -> void:
+	# 판정기.
+	var resolver := ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 범위.
+	var area: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 0)]
+	# 결과.
+	check_eq("area cells clipped and deduped", resolver.area_cells(Vector2i(2, 0), area, Vector2i(3, 3)), [Vector2i(2, 0)])
+
+
+# 기준 적 (0,1) + 세로 3칸: 같은 편 살아 있는 (0,1)·(0,0) 만. 쓰러진 (0,2) 와 같은 좌표의 아군은 제외.
+func _test_units_in_area_same_team_alive() -> void:
+	# 판정기.
+	var resolver := ResolverScript.new(Vector2i(3, 3), Vector2i(3, 3))
+	# 기준 적.
+	var anchor: Unit = _unit(0, Unit.Team.ENEMY, Vector2i(0, 1))
+	# 위 적.
+	var above: Unit = _unit(1, Unit.Team.ENEMY, Vector2i(0, 0))
+	# 아래 쓰러진 적.
+	var below: Unit = _unit(2, Unit.Team.ENEMY, Vector2i(0, 2))
+	below.hp = 0
+	# 같은 좌표의 아군.
+	var ally: Unit = _unit(3, Unit.Team.ALLY, Vector2i(0, 0))
+	# 전장.
+	var units: Array[Unit] = [anchor, above, below, ally]
+	# 세로 범위.
+	var area: Array[Vector2i] = [Vector2i(0, -1), Vector2i(0, 0), Vector2i(0, 1)]
+	# 결과 (전장 순서).
+	check_eq("units in area", resolver.units_in_area(anchor, area, units), [anchor, above])
