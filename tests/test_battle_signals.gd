@@ -93,8 +93,8 @@ func _ally(cell: Vector2i) -> UnitPlacement:
 	return _placement(data, cell)
 
 
-# 체력 20, 피해 6, 방어도 7 인 원거리 적 (사거리·회복량 지정).
-func _enemy(attack_range: int, rest_heal: int) -> EnemyData:
+# 체력 20, 피해 6, 방어도 7 인 단일 공격 적 (공격 종류·회복량 지정).
+func _enemy(attack_type: int, rest_heal: int) -> EnemyData:
 	# 적 데이터.
 	var data: EnemyData = EnemyDataScript.new()
 	# id.
@@ -105,18 +105,10 @@ func _enemy(attack_range: int, rest_heal: int) -> EnemyData:
 	data.max_hp = 20
 	# 아군보다 느리게.
 	data.speed = 1
-	# 공격 피해 6.
-	data.attack_damage = 6
-	# 원거리.
-	data.attack_type = CardData.AttackType.RANGED
-	# 단일.
-	data.attack_shape = CardData.Shape.SINGLE
-	# 사거리.
-	data.attack_range = attack_range
-	# 방어도 7.
-	data.block_amount = 7
-	# 회복량.
-	data.rest_heal = rest_heal
+	# 치명타를 끈다 (수치를 정확히 확인하기 위해).
+	data.crit_chance = 0
+	# 피해 6·방어도 7·회복 rest_heal 카드 (공격·방어 10 기준이라 % = 수치 × 10).
+	Fixtures.enemy_cards(data, Fixtures.damage_card(&"enemy_attack", attack_type, 60), 70, rest_heal * 10)
 	# 무작위 이동을 끈다 (신호 순서를 정확히 확인하기 위해).
 	data.move_chance = 0.0
 	# 돌려준다.
@@ -169,7 +161,7 @@ func _record(state: BattleState) -> Array:
 # 카드를 쓰면 card_played 가 unit_damaged 보다 먼저 나오는지 (화면이 돌진 → 피격 순서로 보여 주기 위해).
 func _test_card_played_precedes_damage() -> void:
 	# 사거리 9, 회복 4 적.
-	var state: BattleState = _state(Vector2i(0, 1), _enemy(9, 4))
+	var state: BattleState = _state(Vector2i(0, 1), _enemy(CardData.AttackType.RANGED, 4))
 	# 시작 (아군 차례).
 	state.start_battle()
 	# 여기서부터 기록.
@@ -186,7 +178,7 @@ func _test_card_played_precedes_damage() -> void:
 # 적 공격: enemy_acted(ATTACK, a) → 피해 6 순서인지.
 func _test_enemy_attack_signals() -> void:
 	# 사거리 9 적.
-	var state: BattleState = _state(Vector2i(0, 1), _enemy(9, 4))
+	var state: BattleState = _state(Vector2i(0, 1), _enemy(CardData.AttackType.RANGED, 4))
 	# 기록 연결.
 	var seen: Array = _record(state)
 	# 적 유닛.
@@ -201,7 +193,7 @@ func _test_enemy_attack_signals() -> void:
 # 적 방어: enemy_acted(DEFEND, null) → 방어도 7 순서이고 실제 방어도도 7 인지.
 func _test_enemy_defend_signals() -> void:
 	# 사거리 1 인데 아군이 col 2 라 reach 가 3 이어서 방어를 고른다.
-	var state: BattleState = _state(Vector2i(2, 1), _enemy(1, 4))
+	var state: BattleState = _state(Vector2i(2, 0), _enemy(CardData.AttackType.MELEE, 4))
 	# 기록 연결.
 	var seen: Array = _record(state)
 	# 적 유닛.
@@ -218,7 +210,7 @@ func _test_enemy_defend_signals() -> void:
 # 적 휴식: enemy_acted(REST, null) → 회복 4 순서이고 체력이 5 → 9 인지.
 func _test_enemy_rest_signals() -> void:
 	# 회복 4 적.
-	var state: BattleState = _state(Vector2i(0, 1), _enemy(9, 4))
+	var state: BattleState = _state(Vector2i(0, 1), _enemy(CardData.AttackType.RANGED, 4))
 	# 적 유닛.
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 	# 체력 5 로 (휴식 조건).
@@ -237,7 +229,7 @@ func _test_enemy_rest_signals() -> void:
 # 회복량 30 이어도 최대 체력 20 에 막히므로 신호의 양은 실제로 오른 15 인지.
 func _test_enemy_rest_reports_capped_amount() -> void:
 	# 회복 30 적.
-	var state: BattleState = _state(Vector2i(0, 1), _enemy(9, 30))
+	var state: BattleState = _state(Vector2i(0, 1), _enemy(CardData.AttackType.RANGED, 30))
 	# 적 유닛.
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 	# 체력 5 로.

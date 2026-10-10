@@ -300,13 +300,13 @@ func _card_played(event: BattleEvent, logs: Array[BattleEvent], hits: Array[Batt
 ## 적 행동 연출: 공격이면 공격(뒤따르는 피해를 타격 순간에), 방어·휴식이면 깡충, 이동이면 없음.
 func _enemy_acted(event: BattleEvent, logs: Array[BattleEvent], hits: Array[BattleEvent]) -> void:
 	# 테스트 모드거나 이동이면 연출 없음.
-	if instant or event.action == EnemyBrain.Action.MOVE:
+	if instant or event.action == EnemyBrain.Action.MOVE or event.action == EnemyBrain.Action.WAIT:
 		return
 	# 행동한 적.
 	var view: UnitView = board.view_for(event.unit)
 	# 대상이 있는 공격.
 	if event.action == EnemyBrain.Action.ATTACK and event.target != null:
-		await _attack(view, board.view_for(event.target).home_position, (event.unit.data as EnemyData).attack_type, logs, hits)
+		await _attack(view, board.view_for(event.target).home_position, (event.unit.data as EnemyData).attack_card.attack_type, logs, hits)
 	# 방어·휴식.
 	else:
 		await view.hop()

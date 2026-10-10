@@ -47,3 +47,15 @@ static func damage_card(id: StringName, attack_type: int, percent: int, area: Ar
 	var effects: Array[CardEffect] = [effect(CardEffect.Kind.DAMAGE, percent)]
 	# 카드를 만든다.
 	return card(id, attack_type, effects, area, cost)
+
+
+# 적 데이터에 공격 카드와 자신 방어도·자신 회복 카드를 단다 (% 가 0 이하면 그 카드는 비워 둔다).
+static func enemy_cards(enemy: EnemyData, attack: CardData, block_percent: int, heal_percent: int) -> void:
+	# 공격 카드.
+	enemy.attack_card = attack
+	# 방어 카드 (자신 방어도).
+	var block_effects: Array[CardEffect] = [effect(CardEffect.Kind.BLOCK, block_percent, CardEffect.Target.SELF)]
+	enemy.defend_card = null if block_percent <= 0 else card(&"defend", CardData.AttackType.SELF, block_effects)
+	# 휴식 카드 (자신 회복).
+	var heal_effects: Array[CardEffect] = [effect(CardEffect.Kind.HEAL, heal_percent, CardEffect.Target.SELF)]
+	enemy.rest_card = null if heal_percent <= 0 else card(&"rest", CardData.AttackType.SELF, heal_effects)

@@ -14,6 +14,8 @@ const EnemyDataScript := preload("res://Scripts/combat/data/enemy_data.gd")
 const PlacementScript := preload("res://Scripts/combat/data/unit_placement.gd")
 # 전투 구성 스크립트.
 const EncounterScript := preload("res://Scripts/combat/data/encounter_data.gd")
+# 픽스처.
+const Fixtures := preload("res://tests/fixtures.gd")
 
 
 # 실행기가 부르는 진입점.
@@ -81,6 +83,9 @@ func _state(ally_cell: Vector2i) -> BattleState:
 	enemy.speed = 1
 	# 무작위 이동을 끈다 (적이 확실히 공격·방어하도록).
 	enemy.move_chance = 0.0
+	# 옛 기본값(근접 피해 5·방어도 5·회복 4)과 같은 행동 카드, 치명 없음.
+	enemy.crit_chance = 0
+	Fixtures.enemy_cards(enemy, Fixtures.damage_card(&"enemy_attack", CardData.AttackType.MELEE, 50), 50, 40)
 
 	# 전투 구성 (격자 기본 3×3).
 	var encounter: EncounterData = EncounterScript.new()
@@ -150,8 +155,8 @@ func _test_end_turn_runs_end_phases_then_enemy_turn() -> void:
 
 # 스탠바이 신호가 날 때는 이전 block·SP 이고, 차례 시작 신호가 날 때는 초기화된 값인지.
 func _test_standby_resets_before_turn_started() -> void:
-	# 아군이 뒷줄(2,1)이라 사거리 1 적에게 맞지 않는다.
-	var state: BattleState = _state(Vector2i(2, 1))
+	# 아군이 다른 행(0)이라 근접 적(행 1)에게 맞지 않는다.
+	var state: BattleState = _state(Vector2i(2, 0))
 	# 시작.
 	state.start_battle()
 	# 아군 유닛.
@@ -184,7 +189,7 @@ func _test_standby_resets_before_turn_started() -> void:
 
 # 적 공격으로 마지막 아군이 쓰러지면 전투가 끝나고 적의 종료 전·종료 후 단계는 오지 않는지.
 func _test_battle_end_skips_end_phases() -> void:
-	# 아군이 적 사거리 안(0,1).
+	# 아군이 근접 적과 같은 행(0,1).
 	var state: BattleState = _state(Vector2i(0, 1))
 	# 시작.
 	state.start_battle()

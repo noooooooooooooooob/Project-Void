@@ -64,7 +64,7 @@ func _placement(data: UnitData, cell: Vector2i) -> UnitPlacement:
 	return placement
 
 
-# 사거리 9 원거리 단일 공격 적 (회복 0 이라 휴식하지 않는다).
+# 원거리 단일 공격 적 (휴식 카드가 없어 휴식하지 않는다).
 func _enemy(id: StringName, speed: int, damage: int) -> EnemyData:
 	# 적 데이터.
 	var data: EnemyData = EnemyDataScript.new()
@@ -76,18 +76,10 @@ func _enemy(id: StringName, speed: int, damage: int) -> EnemyData:
 	data.max_hp = 20
 	# 속도.
 	data.speed = speed
-	# 공격 피해.
-	data.attack_damage = damage
-	# 원거리.
-	data.attack_type = CardData.AttackType.RANGED
-	# 단일.
-	data.attack_shape = CardData.Shape.SINGLE
-	# 사거리 9.
-	data.attack_range = 9
-	# 방어도 5.
-	data.block_amount = 5
-	# 회복 0.
-	data.rest_heal = 0
+	# 치명타를 끈다.
+	data.crit_chance = 0
+	# 원거리 단일 피해 damage·방어도 5·회복 없음 카드 (공격·방어 10 기준이라 % = 수치 × 10).
+	Fixtures.enemy_cards(data, Fixtures.damage_card(&"enemy_attack", CardData.AttackType.RANGED, damage * 10), 50, 0)
 	# 무작위 이동을 끈다 (이벤트 순서를 정확히 확인하기 위해).
 	data.move_chance = 0.0
 	# 돌려준다.
@@ -317,8 +309,8 @@ func _test_defend_and_rest_record_snapshots() -> void:
 	# 종류 별칭.
 	var k := BattleEvent.Kind
 
-	# 사거리 0 이면 어떤 아군에도 닿지 않아 방어를 고른다.
-	data.attack_range = 0
+	# 공격 카드를 빼면 칠 대상이 없어 방어를 고른다.
+	data.attack_card = null
 	# 적 차례 처리.
 	EnemyBrain.take_turn(state, foe)
 	# 기록 꺼내기.
@@ -334,8 +326,8 @@ func _test_defend_and_rest_record_snapshots() -> void:
 	# 방어도 5.
 	check_eq("block snapshot", defend[1].block, 5)
 
-	# 방어도 5 가 먼저 흡수해 HP 는 5 (25%) 가 되고, 회복량이 있으니 휴식을 고른다.
-	data.rest_heal = 4
+	# 방어도 5 가 먼저 흡수해 HP 는 5 (25%) 가 되고, 휴식 카드(회복 40% = 4)가 있으니 휴식을 고른다.
+	Fixtures.enemy_cards(data, null, 50, 40)
 	# 피해 20.
 	foe.take_damage(20)
 	# 적 차례 처리.

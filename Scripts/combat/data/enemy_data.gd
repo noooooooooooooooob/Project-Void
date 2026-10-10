@@ -21,3 +21,9 @@ extends UnitData
 @export var rest_heal: int = 4
 ## 차례마다 이동을 먼저 고를 확률 (0.25 = 25%). 0 이면 이동하지 않고 난수도 쓰지 않는다.
 @export var move_chance: float = 0.25
+## 공격 행동에 쓰는 카드 (근접·원거리·범위·% 계수를 아군 카드와 같은 규칙으로 적용). 비어 있으면 공격하지 않는다.
+@export var attack_card: CardData
+## 방어 행동에 쓰는 카드 (보통 자신 방어도). 비어 있으면 방어하지 않는다.
+@export var defend_card: CardData
+## 휴식 행동에 쓰는 카드 (보통 자신 회복). 비어 있으면 휴식하지 않는다.
+@export var rest_card: CardData
