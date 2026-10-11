@@ -12,6 +12,10 @@ const BOSS_CLEARED_TEXT: String = "챕터 클리어! 새 지도를 펼칩니다"
 const DEFEATED_TEXT: String = "패배... 파티를 정비하고 다시 도전하세요"
 ## 도망쳤을 때 지도에 띄우는 문구.
 const FLED_TEXT: String = "전투에서 도망쳤습니다"
+## 의뢰 중 빈 칸(이벤트·상점·휴식)에 들어갔을 때 띄우는 문구.
+const EMPTY_ROOM_TEXT: String = "아무 일도 없었다"
+## 의뢰 중 일반 전투에서 이겼을 때 첫 줄.
+const BATTLE_WON_TEXT: String = "승리!"
 ## 시작할 때 가방에 넣어 주는 아이템 수.
 const STARTING_ITEM_COUNT: int = 3
 
@@ -23,6 +27,10 @@ var party: PartyState
 var map_view: MapView
 ## 캐릭터 정보·인벤토리 화면.
 var party_view: PartyView
+## 의뢰 화면. 의뢰 중이 아니면 null.
+var stage_view: StageView
+## 진행 중인 의뢰. 의뢰 중이 아니면 null.
+var _commission: CommissionRun
 ## 게임 전체가 함께 쓰는 난수 생성기.
 var _rng: RandomNumberGenerator
 ## 보상으로 뽑을 수 있는 아이템 전부.
@@ -71,13 +79,60 @@ func _ready() -> void:
 	party_view.closed.connect(_on_party_closed)
 
 
-## 지도에서 노드를 눌렀다.
+## 지도에서 노드를 눌렀다: 그 노드의 의뢰를 시작한다.
 func _on_node_selected(node_id: int) -> void:
-	# 이미 전투 중이거나 들어갈 수 없는 노드면 무시한다.
-	if _battle != null or not run_state.is_selectable(node_id):
+	# 이미 전투·의뢰 중이거나 들어갈 수 없는 노드면 무시한다.
+	if _battle != null or _commission != null or not run_state.is_selectable(node_id):
 		return
-	# 전투를 시작한다.
-	_start_battle(node_id)
+	# 체력이 가득 찬 새 의뢰를 만든다.
+	_commission = CommissionRun.new(_rng, node_id, _member_max_hp())
+	# 의뢰 화면을 만든다.
+	stage_view = StageView.new(_commission)
+	# 붙인다.
+	add_child(stage_view)
+	# 칸을 누르면 그 칸으로 간다.
+	stage_view.node_selected.connect(_on_stage_node_selected)
+	# 칸 색과 체력 줄을 맞춘다.
+	stage_view.sync_from_run(_commission, party)
+	# 지난 결과 문구를 지운다.
+	map_view.hide_result()
+	# 지도를 숨긴다.
+	map_view.hide()
+
+
+## 파티원별 최대 체력 (장비 반영).
+func _member_max_hp() -> Array[int]:
+	# 모을 목록.
+	var result: Array[int] = []
+	# 파티원마다.
+	for i in party.member_count():
+		result.append(party.stats(i)["max_hp"])
+	# 돌려준다.
+	return result
+
+
+## 의뢰 화면에서 칸을 눌렀다: 이동하고, 전투·보스면 전투를 연다.
+func _on_stage_node_selected(id: int) -> void:
+	# 전투 중이거나 갈 수 없으면 무시한다.
+	if _battle != null or _commission == null or not _commission.enter(id):
+		return
+	# 들어간 칸의 종류.
+	var kind: StageNode.Kind = _commission.current_kind()
+	# 빈 칸: 문구만 띄운다.
+	if kind != StageNode.Kind.BATTLE and kind != StageNode.Kind.BOSS:
+		stage_view.show_result(EMPTY_ROOM_TEXT)
+		stage_view.sync_from_run(_commission, party)
+		return
+	# 아군: 장비 반영 배치에서 쓰러진 파티원을 빼고 지금 체력을 싣는다.
+	var allies: Array[UnitPlacement] = _commission.battle_roster(party.build_battle_roster())
+	# 보스는 그 월드맵 노드의 적, 일반 전투는 새로 뽑은 적.
+	var encounter: EncounterData
+	if kind == StageNode.Kind.BOSS:
+		encounter = run_state.encounter_for(_commission.map_node_id, allies)
+	else:
+		encounter = EncounterGenerator.assemble_encounter(allies, EncounterGenerator.build_enemy_placements(_rng, false))
+	# 전투를 연다.
+	_start_battle(encounter)
 
 
 ## 지도에서 파티 버튼을 눌렀다.
@@ -96,25 +151,25 @@ func _on_party_closed() -> void:
 	map_view.show()
 
 
-## 그 노드의 전투 씬을 만들어 띄운다.
-func _start_battle(node_id: int) -> void:
+## 전투 씬을 만들어 띄운다.
+func _start_battle(encounter: EncounterData) -> void:
 	# 전투 씬을 만든다.
 	_battle = BattleScene.instantiate()
-	# 장비를 바꿨을 수 있으니 아군은 전투 직전의 파티 상태로 만든다.
-	_battle.encounter = run_state.encounter_for(node_id, party.build_battle_roster())
-	# 전투가 끝나면 결과를 처리한다 (어느 노드였는지 함께 넘긴다).
-	_battle.battle_finished.connect(_on_battle_finished.bind(node_id))
-	# 도망치면 지도로 돌아간다.
+	# 전투 구성.
+	_battle.encounter = encounter
+	# 전투가 끝나면 결과를 처리한다.
+	_battle.battle_finished.connect(_on_battle_finished)
+	# 도망치면 의뢰 실패.
 	_battle.battle_fled.connect(_on_battle_fled)
 	# 지난 결과 문구를 지운다.
-	map_view.hide_result()
-	# 지도를 숨긴다.
-	map_view.hide()
+	stage_view.hide_result()
+	# 의뢰 화면을 숨긴다.
+	stage_view.hide()
 	# 전투 씬을 붙인다.
 	add_child(_battle)
 
 
-## 도망쳤다: 보상도 진행도 변화도 없이 지도로 돌아온다 (패배와 달리 "졌다" 가 아니다).
+## 도망쳤다: 의뢰 실패, 진행도 변화 없이 지도로 돌아온다.
 func _on_battle_fled() -> void:
 	# 전투 중이 아니면 무시한다 (중복 신호 방어).
 	if _battle == null:
@@ -123,46 +178,68 @@ func _on_battle_fled() -> void:
 	_battle.queue_free()
 	# 전투 중이 아니라고 표시한다.
 	_battle = null
-	# 도망 문구를 띄운다.
-	map_view.show_result(FLED_TEXT)
-	# 노드 색을 맞춘다.
-	map_view.sync_from_state(run_state)
-	# 지도를 보인다.
-	map_view.show()
+	# 의뢰 실패.
+	_commission.fail()
+	# 지도로.
+	_return_to_map(FLED_TEXT)
 
 
-## 전투가 끝났다. 이겼으면 진행도와 보상을 반영하고 지도로 돌아온다.
-func _on_battle_finished(ally_won: bool, node_id: int) -> void:
+## 전투가 끝났다. 체력을 넘기고, 이겼으면 보상을 주고, 의뢰 결과에 따라 의뢰 화면이나 지도로 간다.
+func _on_battle_finished(ally_won: bool) -> void:
 	# 전투 중이 아니면 무시한다 (중복 신호 방어).
 	if _battle == null:
 		return
+	# 씬을 지우기 전에 아군 체력을 의뢰로 넘긴다.
+	_commission.apply_battle_hp(_battle.ally_final_hp())
 	# 전투 씬을 지운다.
 	_battle.queue_free()
 	# 전투 중이 아니라고 표시한다.
 	_battle = null
-
-	# 결과 반영 전의 지도. 보스를 깨서 지도가 바뀌었는지 비교하는 데 쓴다.
-	var previous_graph: MapGraph = run_state.graph
-	# 이겼을 때.
+	# 의뢰에 결과를 반영한다.
+	_commission.finish_battle(ally_won)
+	# 얻은 아이템 (지면 없음).
+	var loot: ItemData = null
+	# 이겼으면 보상 아이템을 하나 뽑아 가방에 넣는다.
 	if ally_won:
-		# 보스 노드였는지 미리 기억한다 (resolve_win 이 지도를 바꿀 수 있어서).
-		var was_boss: bool = node_id == run_state.graph.boss_id
-		# 진행도를 반영한다.
-		run_state.resolve_win(node_id)
-		# 보상 아이템을 하나 뽑는다.
-		var loot: ItemData = ItemPool.roll(_rng, _item_pool)
-		# 가방에 넣는다.
+		loot = ItemPool.roll(_rng, _item_pool)
 		party.add_item(loot)
-		# 승리 문구를 띄운다.
-		map_view.show_result(_victory_text(was_boss, loot))
-	# 졌을 때.
-	else:
-		# 패배 문구를 띄운다 (진행도·파티는 그대로).
-		map_view.show_result(DEFEATED_TEXT)
+	# 의뢰 결과별.
+	match _commission.state:
+		# 보스까지 이겼다: 월드맵 노드를 깬다.
+		CommissionRun.State.SUCCEEDED:
+			# 보스 노드였는지 미리 기억한다 (resolve_win 이 지도를 바꿀 수 있어서).
+			var was_boss: bool = _commission.map_node_id == run_state.graph.boss_id
+			# 진행도를 반영한다.
+			run_state.resolve_win(_commission.map_node_id)
+			# 지도로.
+			_return_to_map(_victory_text(was_boss, loot))
+		# 졌다.
+		CommissionRun.State.FAILED:
+			_return_to_map(DEFEATED_TEXT)
+		# 아직 의뢰 중: 의뢰 화면으로.
+		_:
+			# 승리 문구 (+ 획득 아이템).
+			var text: String = BATTLE_WON_TEXT
+			if loot != null:
+				text += "\n획득: %s" % loot.display_name
+			stage_view.show_result(text)
+			# 칸 색과 체력 줄을 맞춘다.
+			stage_view.sync_from_run(_commission, party)
+			# 의뢰 화면을 보인다.
+			stage_view.show()
 
-	# 보스를 깨면 run_state 가 새 그래프를 만든다 — 화면도 그 그래프로 다시 짜야 한다.
-	if run_state.graph != previous_graph:
-		map_view.rebuild(run_state.graph)
+
+## 의뢰를 끝내고 지도로 돌아온다.
+func _return_to_map(text: String) -> void:
+	# 의뢰 화면을 지운다.
+	stage_view.queue_free()
+	# 의뢰 중이 아니라고 표시한다 (체력은 다음 의뢰에서 새로 가득 찬다).
+	stage_view = null
+	_commission = null
+	# 문구를 띄운다.
+	map_view.show_result(text)
+	# 보스를 깨면 run_state 가 새 그래프를 만든다 — 바뀌었는지 따로 들고 다니지 않고 항상 다시 짠다 (버튼 몇 개라 비용이 작다).
+	map_view.rebuild(run_state.graph)
 	# 노드 색을 맞춘다.
 	map_view.sync_from_state(run_state)
 	# 지도를 보인다.
