@@ -23,6 +23,8 @@ const EncounterScript := preload("res://Scripts/combat/data/encounter_data.gd")
 func run() -> Array[Dictionary]:
 	# 종료 신호는 재생 뒤.
 	_test_finish_signal_waits_for_playback()
+	# 끝난 전투의 아군 체력.
+	_test_ally_final_hp_reports_allies_in_placement_order()
 	# Esc 메뉴와 도망가기.
 	_test_escape_toggles_the_flee_menu()
 	_test_fleeing_emits_battle_fled_only()
@@ -333,5 +335,30 @@ func _test_hovering_an_invalid_unit_shows_invalid() -> void:
 	battle._on_cell_hovered(actor.team, actor.cell)
 	# 무효 표시.
 	check_eq("invalid hover is marked", battle._board.tile_state(actor.team, actor.cell), Board3D.TileState.SHAPE_OUT)
+	# 정리.
+	battle.free()
+
+
+# 시작 체력 17 로 들어가 한 방에 이긴 전투: 아군 최종 체력은 [17].
+func _test_ally_final_hp_reports_allies_in_placement_order() -> void:
+	# 씬을 만든다.
+	var battle: BattleRoot = BattleScene.instantiate()
+	# 전투 구성.
+	var encounter: EncounterData = _encounter()
+	# 아군을 체력 17 로 시작시킨다.
+	encounter.ally_units[0].start_hp = 17
+	# 넣는다.
+	battle.encounter = encounter
+	# 연출 없이 즉시 재생.
+	(battle.get_node("Playback") as BattlePlayback).instant = true
+	# 트리에 붙여 전투를 시작한다.
+	(Engine.get_main_loop() as SceneTree).root.add_child(battle)
+	# 적.
+	var foe: Unit = battle._state.living_units(Unit.Team.ENEMY)[0]
+	# 결정타.
+	battle._run(func() -> void: battle._state.play_card(0, foe))
+	# 아군 한 명, 체력 17.
+	var expected: Array[int] = [17]
+	check_eq("ally_final_hp lists the ally's remaining hp", battle.ally_final_hp(), expected)
 	# 정리.
 	battle.free()

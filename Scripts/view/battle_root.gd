@@ -190,6 +190,19 @@ func _unhandled_input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 
+## 아군의 지금 체력을 배치 순서대로 돌려준다. 의뢰가 다음 전투로 체력을 넘길 때 쓴다 (battle_finished 를 받은 직후 읽는다).
+func ally_final_hp() -> Array[int]:
+	# 모을 체력 목록.
+	var result: Array[int] = []
+	# 유닛은 아군이 배치 순서대로 먼저 들어 있다.
+	for unit in _state.units:
+		# 아군만.
+		if unit.is_ally():
+			result.append(unit.hp)
+	# 돌려준다.
+	return result
+
+
 ## 도망가기를 골랐다. 메뉴를 닫고 맵에 알린다 (전투가 이미 끝났다면 결과 신호가 우선이라 무시한다).
 func _on_flee_requested() -> void:
 	_flee_menu.close()
