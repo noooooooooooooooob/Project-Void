@@ -1,0 +1,12 @@
+[
+  {"op":"set","collection":"cards","doc_id":"strike","data":{"name":"베기","sp":1,"category":"attack","attackType":"melee","area":[],"illustration":null,"description":"","createdAt":1760227200000}},
+  {"op":"set","collection":"cards","doc_id":"shoot","data":{"name":"사격","sp":1,"category":"attack","attackType":"ranged","area":[],"illustration":null,"description":"","createdAt":1760227200001}},
+  {"op":"set","collection":"cards","doc_id":"cleave","data":{"name":"횡베기","sp":2,"category":"attack","attackType":"melee","area":[[0,-1],[0,0],[0,1]],"illustration":null,"description":"","createdAt":1760227200002}},
+  {"op":"set","collection":"cards","doc_id":"skewer","data":{"name":"꿰뚫기","sp":2,"category":"attack","attackType":"melee","area":[[0,0],[1,0],[2,0]],"illustration":null,"description":"","createdAt":1760227200003}},
+  {"op":"set","collection":"cards","doc_id":"volley","data":{"name":"일제사격","sp":2,"category":"attack","attackType":"ranged","area":[[0,-2],[0,-1],[0,0],[0,1],[0,2]],"illustration":null,"description":"","createdAt":1760227200004}},
+  {"op":"set","collection":"cards","doc_id":"piercing_shot","data":{"name":"관통사격","sp":2,"category":"attack","attackType":"ranged","area":[[-2,0],[-1,0],[0,0],[1,0],[2,0]],"illustration":null,"description":"","createdAt":1760227200005}},
+  {"op":"set","collection":"cards","doc_id":"blast","data":{"name":"폭발탄","sp":2,"category":"attack","attackType":"ranged","area":[[0,0],[1,0],[0,1],[1,1]],"illustration":null,"description":"","createdAt":1760227200006}},
+  {"op":"set","collection":"decks","doc_id":"archer","data":{"name":"사수","entries":{"shoot":3,"volley":1,"piercing_shot":2,"blast":2},"createdAt":1760227200100}},
+  {"op":"set","collection":"decks","doc_id":"scout","data":{"name":"정찰병","entries":{"strike":2,"shoot":2,"volley":1,"cleave":1},"createdAt":1760227200101}},
+  {"op":"set","collection":"decks","doc_id":"vanguard","data":{"name":"선봉","entries":{"strike":3,"cleave":2,"shoot":1,"skewer":2},"createdAt":1760227200102}}
+]
