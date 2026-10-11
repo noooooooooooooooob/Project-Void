@@ -5,7 +5,7 @@ const M = require("./card_model.js");
 test("normalizeCard fills defaults", () => {
   assert.deepEqual(M.normalizeCard({ name: "  베기 ", sp: "1" }), {
     name: "베기", sp: 1, category: "attack", attackType: "melee",
-    area: [], illustration: null, description: "",
+    area: [], illustration: null, description: "", deckId: null,
   });
 });
 
@@ -53,7 +53,6 @@ const cards = [
   { id: "b", ...M.normalizeCard({ name: "방어", sp: 0, category: "skill" }) },
   { id: "c", ...M.normalizeCard({ name: "관통사격", sp: 2, category: "attack" }) },
 ];
-const byId = Object.fromEntries(cards.map((c) => [c.id, c]));
 
 test("filterSort by category and query", () => {
   assert.deepEqual(M.filterSort(cards, { category: "attack", query: "", sort: "name" }).map((c) => c.id), ["c", "a"]);
@@ -62,30 +61,6 @@ test("filterSort by category and query", () => {
 
 test("filterSort by sp then name", () => {
   assert.deepEqual(M.filterSort(cards, { category: "all", query: "", sort: "sp" }).map((c) => c.id), ["b", "a", "c"]);
-});
-
-test("normalizeDeck drops bad counts and names empty decks", () => {
-  assert.deepEqual(M.normalizeDeck({ name: " ", entries: { a: 2, b: 0, c: -1, d: 1.5, e: "x" } }),
-    { name: "이름 없는 덱", entries: { a: 2 } });
-});
-
-test("setEntryCount adds, changes and removes at zero", () => {
-  const e1 = M.setEntryCount({}, "a", 1);
-  assert.deepEqual(e1, { a: 1 });
-  assert.deepEqual(M.setEntryCount(e1, "a", 3), { a: 3 });
-  assert.deepEqual(M.setEntryCount(e1, "a", 0), {});
-  assert.deepEqual(e1, { a: 1 }, "input not mutated");
-});
-
-test("removeCardFromEntries", () => {
-  assert.deepEqual(M.removeCardFromEntries({ a: 2, b: 1 }, "a"), { b: 1 });
-});
-
-test("missing cards are skipped in deck math", () => {
-  const entries = { a: 3, c: 2, gone: 5 };
-  assert.equal(M.deckTotal(entries, byId), 5);
-  assert.deepEqual(M.spHistogram(entries, byId), [{ sp: 1, count: 3 }, { sp: 2, count: 2 }]);
-  assert.deepEqual(M.resolveEntries(entries, byId).map((r) => [r.card.id, r.count]), [["c", 2], ["a", 3]]);
 });
 
 test("isAssetShared checks other cards only", () => {
@@ -101,4 +76,42 @@ test("writeErrorKind tells a too-large document from a refused write", () => {
   assert.equal(M.writeErrorKind({ code: "quota_exceeded" }, true), "quota");
   assert.equal(M.writeErrorKind({ code: "unavailable" }, true), "retry");
   assert.equal(M.writeErrorKind(undefined, true), "retry");
+});
+
+test("normalizeCard keeps deckId", () => {
+  assert.equal(M.normalizeCard({ name: "x", sp: 1, deckId: "archer" }).deckId, "archer");
+  assert.equal(M.normalizeCard({ name: "x", sp: 1, deckId: "" }).deckId, null);
+});
+
+test("normalizeDeck keeps only the name", () => {
+  assert.deepEqual(M.normalizeDeck({ name: " ", entries: { a: 1 } }), { name: "이름 없는 덱" });
+  assert.deepEqual(M.normalizeDeck({ name: "사수" }), { name: "사수" });
+});
+
+test("cardsInDeck filters by deck and keeps common cards apart", () => {
+  const list = [
+    { id: "1", ...M.normalizeCard({ name: "사격", sp: 1, deckId: "archer" }) },
+    { id: "2", ...M.normalizeCard({ name: "관통", sp: 2, deckId: "archer" }) },
+    { id: "3", ...M.normalizeCard({ name: "베기", sp: 1 }) },
+    { id: "4", ...M.normalizeCard({ name: "고아", sp: 1, deckId: "gone" }) },
+  ];
+  assert.deepEqual(M.cardsInDeck(list, "archer").map((c) => c.id), ["2", "1"]);
+  assert.deepEqual(M.cardsInDeck(list, null).map((c) => c.id), ["3"]);
+  assert.deepEqual(M.spHistogram(M.cardsInDeck(list, "archer")), [{ sp: 1, count: 1 }, { sp: 2, count: 1 }]);
+});
+
+test("migrationWrites copies deck entries into deck cards and clears entries", () => {
+  const cardDocs = [{ id: "shoot", version: 1, data: { name: "사격", sp: 1, category: "attack", attackType: "ranged", area: [], illustration: null, description: "", createdAt: 5 } }];
+  const deckDocs = [{ id: "archer", version: 3, data: { name: "사수", entries: { shoot: 3, gone: 1 }, createdAt: 9 } }];
+  assert.deepEqual(M.migrationWrites(cardDocs, deckDocs), [
+    { op: "set", collection: "cards", doc_id: "archer--shoot",
+      data: { name: "사격", sp: 1, category: "attack", attackType: "ranged", area: [], illustration: null, description: "", deckId: "archer", createdAt: 5 } },
+    { op: "set", collection: "decks", doc_id: "archer", if_version: 3, data: { name: "사수", createdAt: 9 } },
+  ]);
+});
+
+test("migrationWrites is a no-op once migrated", () => {
+  const cardDocs = [{ id: "archer--shoot", version: 1, data: { name: "사격", sp: 1, deckId: "archer", createdAt: 5 } }];
+  const deckDocs = [{ id: "archer", version: 4, data: { name: "사수", createdAt: 9 } }];
+  assert.deepEqual(M.migrationWrites(cardDocs, deckDocs), []);
 });

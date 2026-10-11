@@ -41,6 +41,7 @@
       area: normalizeArea(r.area),
       illustration: typeof r.illustration === "string" && r.illustration ? r.illustration : null,
       description: String(r.description ?? ""),
+      deckId: typeof r.deckId === "string" && r.deckId ? r.deckId : null,
     };
   }
 
@@ -70,42 +71,37 @@
   }
 
   function normalizeDeck(raw) {
-    const r = raw || {};
-    const entries = {};
-    for (const [id, n] of Object.entries(r.entries || {})) {
-      if (Number.isInteger(n) && n > 0) entries[id] = n;
-    }
-    return { name: String(r.name ?? "").trim() || "이름 없는 덱", entries };
+    return { name: String(raw?.name ?? "").trim() || "이름 없는 덱" };
   }
 
-  function setEntryCount(entries, cardId, count) {
-    const next = { ...entries };
-    if (count > 0) next[cardId] = count;
-    else delete next[cardId];
-    return next;
+  // deckId 가 null 이면 공용 카드.
+  function cardsInDeck(cards, deckId) {
+    return cards.filter((c) => (c.deckId ?? null) === (deckId ?? null)).sort(byName);
   }
 
-  function removeCardFromEntries(entries, cardId) {
-    return setEntryCount(entries, cardId, 0);
-  }
-
-  function resolveEntries(entries, cardsById) {
-    return Object.entries(entries)
-      .filter(([id]) => cardsById[id])
-      .map(([id, count]) => ({ card: cardsById[id], count }))
-      .sort((a, b) => byName(a.card, b.card));
-  }
-
-  function deckTotal(entries, cardsById) {
-    return resolveEntries(entries, cardsById).reduce((sum, r) => sum + r.count, 0);
-  }
-
-  function spHistogram(entries, cardsById) {
+  function spHistogram(cards) {
     const bins = new Map();
-    for (const { card, count } of resolveEntries(entries, cardsById)) {
-      bins.set(card.sp, (bins.get(card.sp) || 0) + count);
-    }
+    for (const c of cards) bins.set(c.sp, (bins.get(c.sp) || 0) + 1);
     return [...bins.entries()].sort((a, b) => a[0] - b[0]).map(([sp, count]) => ({ sp, count }));
+  }
+
+  // 덱 entries → 덱 전용 카드 사본. 이미 이전된 덱(entries 없음)은 건드리지 않는다.
+  function migrationWrites(cardDocs, deckDocs) {
+    const byId = Object.fromEntries(cardDocs.map((d) => [d.id, d]));
+    const writes = [];
+    for (const deck of deckDocs) {
+      if (!deck.data.entries) continue;
+      for (const cardId of Object.keys(deck.data.entries)) {
+        const src = byId[cardId];
+        const copyId = deck.id + "--" + cardId;
+        if (!src || byId[copyId]) continue;
+        writes.push({ op: "set", collection: "cards", doc_id: copyId,
+          data: { ...normalizeCard(src.data), deckId: deck.id, createdAt: src.data.createdAt ?? 0 } });
+      }
+      writes.push({ op: "set", collection: "decks", doc_id: deck.id, if_version: deck.version,
+        data: { name: normalizeDeck(deck.data).name, createdAt: deck.data.createdAt ?? 0 } });
+    }
+    return writes;
   }
 
   function isAssetShared(cards, assetId, exceptCardId) {
@@ -124,7 +120,7 @@
   const api = {
     CATEGORIES, CATEGORY_LABELS, ATTACK_TYPES, ATTACK_LABELS, ATTACK_BADGES, AREA_RADIUS,
     normalizeCard, validateCard, normalizeArea, toggleCell, areaOrDefault,
-    filterSort, normalizeDeck, setEntryCount, removeCardFromEntries, resolveEntries, deckTotal, spHistogram, isAssetShared,
+    filterSort, normalizeDeck, cardsInDeck, spHistogram, migrationWrites, isAssetShared,
     writeErrorKind,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
