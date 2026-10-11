@@ -79,6 +79,33 @@ button.card:hover { transform: translateY(-2px); }
 .card-desc:empty::before { content: "설명 없음"; color: var(--muted); }
 .card-count { position: absolute; right: 8px; bottom: 8px; background: var(--fg); color: var(--face); border-radius: 999px; padding: 1px 8px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
+/* 편집 시트 */
+.scrim { position: fixed; inset: 0; background: color-mix(in srgb, var(--fg) 35%, transparent); }
+.sheet { position: fixed; top: 0; right: 0; bottom: 0; width: min(760px, 100%); background: var(--surface); border-left: 1px solid var(--line); display: grid; grid-template-rows: auto 1fr auto; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.sheet-head, .sheet-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.sheet-foot { border-bottom: 0; border-top: 1px solid var(--line); }
+.sheet-head h2 { font-family: var(--display); font-weight: 400; font-size: 18px; margin: 0; flex: 1; }
+.sheet-body { overflow: auto; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 20px; align-items: start; }
+@media (max-width: 640px) { .sheet-body { grid-template-columns: minmax(0, 1fr); } .preview { order: -1; justify-self: center; width: 200px; position: static; } }
+.form { display: grid; gap: 14px; min-width: 0; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field > span { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+.field input[type="text"], .field input[type="number"], .field textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px 10px; min-width: 0; }
+.field input[type="file"] { min-width: 0; max-width: 100%; }
+.field textarea { min-height: 140px; resize: vertical; line-height: 1.5; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; }
+.row > .field { flex: 1 1 120px; }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg button { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 6px 12px; }
+.seg button[aria-pressed="true"] { border-color: var(--fg); font-weight: 600; }
+.area-edit { display: grid; grid-template-columns: repeat(5, 32px); gap: 4px; }
+.area-edit button { width: 32px; height: 32px; border: 1px solid var(--line); background: var(--bg); border-radius: 4px; padding: 0; }
+.area-edit button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
+.area-edit button.origin { box-shadow: inset 0 0 0 2px var(--fg); }
+.errors { color: var(--danger); font-size: 13px; margin: 0; padding-left: 18px; }
+.preview { position: sticky; top: 0; display: grid; gap: 8px; }
+.preview .notice { text-align: center; margin: 0; }
+
 /* 토스트 */
 .toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-size: 13px; max-width: calc(100% - 32px); }
 
@@ -110,6 +137,47 @@ button.card:hover { transform: translateY(-2px); }
   </section>
 
   <section id="view-decks" class="view" hidden></section>
+</div>
+<div id="editor" hidden>
+  <div class="scrim" id="editor-scrim"></div>
+  <aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+    <div class="sheet-head">
+      <h2 id="editor-title">카드 편집</h2>
+      <button class="btn" type="button" id="editor-close">닫기</button>
+    </div>
+    <div class="sheet-body">
+      <form class="form" id="editor-form" novalidate>
+        <div class="row">
+          <label class="field"><span>이름</span><input id="f-name" type="text" autocomplete="off"></label>
+          <label class="field" style="flex:0 1 96px"><span>SP</span><input id="f-sp" type="number" min="0" step="1" inputmode="numeric"></label>
+        </div>
+        <div class="field"><span>분류</span><div class="seg" id="f-category"></div></div>
+        <div class="field"><span>공격 종류</span><div class="seg" id="f-attack"></div></div>
+        <div class="field"><span>범위 (가운데가 기준 칸, 아무것도 안 고르면 단일)</span><div class="area-edit" id="f-area"></div></div>
+        <div class="field" id="f-illust-field">
+          <span>일러스트</span>
+          <div class="row" style="align-items:center">
+            <input id="f-illust" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+            <button class="btn" type="button" id="f-illust-clear">그림 빼기</button>
+          </div>
+        </div>
+        <label class="field"><span>설명</span><textarea id="f-desc"></textarea></label>
+        <ul class="errors" id="f-errors" hidden></ul>
+      </form>
+      <div class="preview">
+        <div id="f-preview"></div>
+        <p class="notice">미리보기</p>
+      </div>
+    </div>
+    <div class="sheet-foot">
+      <button class="btn primary" type="button" id="f-save">저장</button>
+      <button class="btn" type="button" id="f-dup">복제</button>
+      <select id="f-deck" aria-label="추가할 덱" class="btn"></select>
+      <button class="btn" type="button" id="f-add-deck">덱에 추가</button>
+      <span style="flex:1"></span>
+      <button class="btn danger" type="button" id="f-delete">삭제</button>
+    </div>
+  </aside>
 </div>
 <div id="toast" class="toast" hidden></div>
 
@@ -227,8 +295,195 @@ function render() {
   else renderDecks();
 }
 
-// Task 5 에서 채운다.
-function openEditor(card) {}
+// 편집 중인 초안. id 가 없으면 아직 저장 안 된 새 카드.
+let draft = null;
+let deleteArmed = false;
+
+function draftCard() {
+  return { id: draft.id, ...M.normalizeCard(draft) };
+}
+
+function syncEditorPreview() {
+  $("#f-preview").replaceChildren(renderCard(draftCard()));
+}
+
+function renderSeg(box, values, labels, current, onPick) {
+  box.replaceChildren(...values.map((v) => h("button", {
+    type: "button", "aria-pressed": String(v === current), disabled: !state.canWrite,
+    onclick: () => { onPick(v); renderEditorControls(); syncEditorPreview(); },
+  }, labels[v])));
+}
+
+function renderEditorControls() {
+  renderSeg($("#f-category"), M.CATEGORIES, M.CATEGORY_LABELS, draft.category, (v) => { draft.category = v; });
+  renderSeg($("#f-attack"), M.ATTACK_TYPES, M.ATTACK_LABELS, draft.attackType, (v) => { draft.attackType = v; });
+  const on = new Set(draft.area.map(([x, y]) => x + "," + y));
+  const cells = [];
+  for (let y = -M.AREA_RADIUS; y <= M.AREA_RADIUS; y++) {
+    for (let x = -M.AREA_RADIUS; x <= M.AREA_RADIUS; x++) {
+      cells.push(h("button", {
+        type: "button", class: x === 0 && y === 0 ? "origin" : null, disabled: !state.canWrite,
+        "aria-pressed": String(on.has(x + "," + y)), "aria-label": `열 ${x}, 행 ${y}`,
+        onclick: () => { draft.area = M.toggleCell(draft.area, x, y); renderEditorControls(); syncEditorPreview(); },
+      }));
+    }
+  }
+  $("#f-area").replaceChildren(...cells);
+  const saved = Boolean(draft.id);
+  const w = state.canWrite;
+  const hasDecks = state.decks.length > 0;
+  $("#f-save").hidden = !w;
+  $("#f-dup").hidden = !w;
+  $("#f-dup").disabled = !saved;
+  $("#f-delete").hidden = !w || !saved;
+  $("#f-deck").hidden = !w || !saved || !hasDecks;
+  $("#f-add-deck").hidden = !w || !saved || !hasDecks;
+  const pickedDeck = $("#f-deck").value;
+  $("#f-deck").replaceChildren(...state.decks.map((d) => h("option", { value: d.id }, d.name)));
+  if (state.decks.some((d) => d.id === pickedDeck)) $("#f-deck").value = pickedDeck;
+  $("#f-illust-field").hidden = !assets;
+  $("#f-illust-clear").disabled = !draft.illustration;
+}
+
+function fillEditorInputs() {
+  $("#f-name").value = draft.name;
+  $("#f-sp").value = draft.sp;
+  $("#f-desc").value = draft.description;
+  $("#f-illust").value = "";
+}
+
+function openEditor(card) {
+  draft = card
+    ? { ...card, area: [...card.area], sp: String(card.sp) }
+    : { id: null, ...M.normalizeCard({ name: "", sp: 1 }), sp: "1" };
+  deleteArmed = false;
+  $("#f-delete").classList.remove("armed");
+  $("#f-delete").textContent = "삭제";
+  $("#editor-title").textContent = !state.canWrite ? "카드 보기" : draft.id ? "카드 편집" : "새 카드";
+  fillEditorInputs();
+  showErrors([]);
+  for (const id of ["#f-name", "#f-sp", "#f-desc"]) $(id).readOnly = !state.canWrite;
+  renderEditorControls();
+  syncEditorPreview();
+  $("#editor").hidden = false;
+  $("#f-name").focus();
+}
+
+function closeEditor() {
+  $("#editor").hidden = true;
+  draft = null;
+}
+
+function showErrors(list) {
+  const ul = $("#f-errors");
+  ul.replaceChildren(...list.map((m) => h("li", {}, m)));
+  ul.hidden = !list.length;
+}
+
+function writeFailed(e) {
+  console.warn("write", e);
+  if (e?.code === "invalid_argument") {
+    state.canWrite = false;
+    $("#notice").textContent = "읽기 전용으로 보고 있어요.";
+    toast("편집 권한이 없어 저장하지 못했어요.");
+    render();
+    if (draft) renderEditorControls();
+  } else if (e?.code === "quota_exceeded") {
+    toast("저장 공간이 가득 찼어요. 안 쓰는 카드를 지운 뒤 다시 저장하세요.");
+  } else {
+    toast("저장하지 못했어요. 잠시 후 다시 시도하세요.");
+  }
+}
+
+$("#f-name").addEventListener("input", (e) => { draft.name = e.target.value; syncEditorPreview(); });
+$("#f-sp").addEventListener("input", (e) => { draft.sp = e.target.value; syncEditorPreview(); });
+$("#f-desc").addEventListener("input", (e) => { draft.description = e.target.value; syncEditorPreview(); });
+$("#editor-close").addEventListener("click", closeEditor);
+$("#editor-scrim").addEventListener("click", closeEditor);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && draft) closeEditor(); });
+
+$("#f-illust").addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file || !assets || !draft) return;
+  try {
+    const res = await assets.upload(file);
+    if (!draft) return;
+    draft.illustration = res.id;
+    renderEditorControls();
+    syncEditorPreview();
+  } catch (err) {
+    console.warn("upload", err);
+    toast(err?.code === "too_large" ? "20MB 이하 그림만 올릴 수 있어요."
+      : err?.code === "unsupported_type" ? "PNG, JPG, WEBP, GIF 그림만 올릴 수 있어요."
+      : "그림을 올리지 못했어요.");
+  }
+});
+$("#f-illust-clear").addEventListener("click", () => {
+  draft.illustration = null;
+  $("#f-illust").value = "";
+  renderEditorControls();
+  syncEditorPreview();
+});
+
+$("#f-save").addEventListener("click", async () => {
+  const errors = M.validateCard(draft);
+  showErrors(errors);
+  if (errors.length || !db) return;
+  const body = M.normalizeCard(draft);
+  const prev = draft.id ? state.cards.find((c) => c.id === draft.id) : null;
+  const ref = draft.id ? db.doc("cards/" + draft.id) : db.collection("cards").doc();
+  try {
+    await ref.set({ ...body, createdAt: prev?.createdAt ?? Date.now() });
+    if (!draft) return;
+    draft.id = ref.id;
+    toast("저장했어요");
+    $("#editor-title").textContent = "카드 편집";
+    renderEditorControls();
+  } catch (e) { writeFailed(e); }
+});
+
+$("#f-dup").addEventListener("click", () => {
+  const copy = { ...draftCard(), id: null, name: draft.name.trim() + " 사본" };
+  openEditor(null);
+  draft = { ...copy, sp: String(copy.sp) };
+  fillEditorInputs();
+  renderEditorControls();
+  syncEditorPreview();
+});
+
+$("#f-add-deck").addEventListener("click", async () => {
+  const deck = state.decks.find((d) => d.id === $("#f-deck").value);
+  if (!deck || !draft?.id) return;
+  const cardId = draft.id;
+  const entries = M.setEntryCount(deck.entries, cardId, (deck.entries[cardId] || 0) + 1);
+  try {
+    // update 는 중첩 객체를 병합하므로 덱은 항상 set 으로 통째로 쓴다.
+    await db.doc("decks/" + deck.id).set({ name: deck.name, entries, createdAt: deck.createdAt });
+    toast(`${deck.name}에 추가했어요 (×${entries[cardId]})`);
+  } catch (e) { writeFailed(e); }
+});
+
+$("#f-delete").addEventListener("click", async () => {
+  if (!deleteArmed) {
+    deleteArmed = true;
+    $("#f-delete").classList.add("armed");
+    $("#f-delete").textContent = "한 번 더 누르면 삭제";
+    return;
+  }
+  const id = draft.id;
+  const illustration = draft.illustration;
+  try {
+    for (const deck of state.decks.filter((d) => d.entries[id])) {
+      await db.doc("decks/" + deck.id).set({ name: deck.name, entries: M.removeCardFromEntries(deck.entries, id), createdAt: deck.createdAt });
+    }
+    await db.doc("cards/" + id).delete();
+    if (illustration && assets && !M.isAssetShared(state.cards, illustration, id)) {
+      await assets.delete(illustration).catch((e) => console.warn("asset delete", e));
+    }
+    closeEditor();
+    toast("삭제했어요");
+  } catch (e) { writeFailed(e); }
+});
 // Task 6 에서 채운다.
 function renderDecks() {}
 
