@@ -48,6 +48,8 @@ func run() -> Array[Dictionary]:
 	_test_empty_and_zero_effects()
 	# 치명타.
 	_test_critical_hit()
+	# 시작 체력 지정.
+	_test_start_hp_sets_the_ally_starting_hp()
 	# 결과를 돌려준다.
 	return results()
 
@@ -523,3 +525,25 @@ func _test_critical_hit() -> void:
 	state.play_card(0, front)
 	# 17, true.
 	check_eq("critical damage", got, [[17, true]])
+
+
+# 배치의 start_hp: −1 이면 최대 체력(30), 값이 있으면 그 체력, 최대보다 크면 최대 체력.
+func _test_start_hp_sets_the_ally_starting_hp() -> void:
+	# 기본값(−1) 전투.
+	var plain: BattleState = BattleStateScript.new(_encounter([]), _rng())
+	# 최대 체력으로 시작.
+	check_eq("start_hp -1 starts at max hp", plain.living_units(Unit.Team.ALLY)[0].hp, 30)
+	# 시작 체력 12 인 구성.
+	var hurt_encounter: EncounterData = _encounter([])
+	hurt_encounter.ally_units[0].start_hp = 12
+	# 그 구성의 전투.
+	var hurt: BattleState = BattleStateScript.new(hurt_encounter, _rng())
+	# 12 로 시작.
+	check_eq("start_hp 12 starts at 12", hurt.living_units(Unit.Team.ALLY)[0].hp, 12)
+	# 최대보다 큰 시작 체력.
+	var over_encounter: EncounterData = _encounter([])
+	over_encounter.ally_units[0].start_hp = 99
+	# 그 구성의 전투.
+	var over: BattleState = BattleStateScript.new(over_encounter, _rng())
+	# 최대 체력으로 잘린다.
+	check_eq("start_hp above max is clamped", over.living_units(Unit.Team.ALLY)[0].hp, 30)

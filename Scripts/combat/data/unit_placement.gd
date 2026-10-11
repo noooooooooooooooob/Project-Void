@@ -9,3 +9,5 @@ extends Resource
 @export var unit_data: UnitData
 ## 자기 편 격자 안의 칸 좌표. x = 열(0 이 가장 앞줄), y = 행(위에서부터).
 @export var cell: Vector2i = Vector2i.ZERO
+## 전투를 시작할 때의 체력. −1 이면 최대 체력으로 시작한다 (의뢰 안에서 체력을 이어갈 때 쓴다).
+@export var start_hp: int = -1
