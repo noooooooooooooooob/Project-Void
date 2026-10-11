@@ -188,7 +188,7 @@ button.card:hover { transform: translateY(-2px); }
             <button class="btn" type="button" id="f-illust-clear">그림 빼기</button>
           </div>
         </div>
-        <label class="field"><span>설명</span><textarea id="f-desc"></textarea></label>
+        <label class="field"><span>설명</span><textarea id="f-desc" maxlength="20000"></textarea></label>
         <ul class="errors" id="f-errors" hidden></ul>
       </form>
       <div class="preview">
@@ -214,7 +214,7 @@ const M = window.CardModel;
 const state = {
   cards: [], decks: [], loaded: false, view: "cards",
   filter: { category: "all", query: "", sort: "name" },
-  deckId: null, canWrite: false,
+  deckId: null, canWrite: false, writeAllowed: null,
 };
 let db = null;
 let assets = null;
@@ -409,13 +409,16 @@ function showErrors(list) {
 
 function writeFailed(e) {
   console.warn("write", e);
-  if (e?.code === "invalid_argument") {
+  const kind = M.writeErrorKind(e, state.writeAllowed);
+  if (kind === "too_large") {
+    toast("내용이 너무 길어 저장하지 못했어요. 설명을 줄여 주세요.");
+  } else if (kind === "readonly") {
     state.canWrite = false;
     $("#notice").textContent = "읽기 전용으로 보고 있어요.";
     toast("편집 권한이 없어 저장하지 못했어요.");
     render();
     if (draft) renderEditorControls();
-  } else if (e?.code === "quota_exceeded") {
+  } else if (kind === "quota") {
     toast("저장 공간이 가득 찼어요. 안 쓰는 카드를 지운 뒤 다시 저장하세요.");
   } else {
     toast("저장하지 못했어요. 잠시 후 다시 시도하세요.");
@@ -458,15 +461,24 @@ $("#f-save").addEventListener("click", async () => {
   if (errors.length || !db) return;
   const body = M.normalizeCard(draft);
   const prev = draft.id ? state.cards.find((c) => c.id === draft.id) : null;
+  const wasNew = !draft.id;
   const ref = draft.id ? db.doc("cards/" + draft.id) : db.collection("cards").doc();
+  const saving = draft;
+  // 연타해도 새 카드가 둘 생기지 않게: 버튼을 잠그고 id 를 먼저 정한다.
+  saving.id = ref.id;
+  $("#f-save").disabled = true;
   try {
     await ref.set({ ...body, createdAt: prev?.createdAt ?? Date.now() });
-    if (!draft) return;
-    draft.id = ref.id;
+    if (draft !== saving) return;
     toast("저장했어요");
     $("#editor-title").textContent = "카드 편집";
     renderEditorControls();
-  } catch (e) { writeFailed(e); }
+  } catch (e) {
+    if (wasNew) saving.id = null;
+    writeFailed(e);
+  } finally {
+    $("#f-save").disabled = false;
+  }
 });
 
 $("#f-dup").addEventListener("click", () => {
@@ -598,8 +610,17 @@ function renderDecks() {
             onclick: () => saveDeck(deck, { entries: M.setEntryCount(deck.entries, card.id, count + 1) }) }, "+")))))
     : h("div", { class: "empty" }, "이 덱은 비어 있어요. 위에서 카드를 넣거나, 카드 편집 창의 ‘덱에 추가’를 쓰세요.");
 
+  // 다른 사람의 저장으로 다시 그려질 때 입력 중인 덱 이름을 잃지 않게 한다.
+  const typing = document.activeElement?.id === "deck-name" && document.activeElement.dataset.deck === deck.id
+    ? document.activeElement : null;
+  nameInput.dataset.deck = deck.id;
+  if (typing) nameInput.value = typing.value;
   root.replaceChildren(h("div", { class: "decks" }, list,
     h("div", { class: "deck-detail" }, h("div", { class: "deck-head" }, nameInput, delBtn), summary, addRow, grid)));
+  if (typing) {
+    nameInput.focus();
+    nameInput.setSelectionRange(typing.selectionStart, typing.selectionEnd);
+  }
 }
 
 for (const b of document.querySelectorAll(".tabs button")) {
@@ -630,7 +651,8 @@ async function boot() {
     return;
   }
   const user = await claude.use("user");
-  state.canWrite = user ? (await user.can("data.write")) !== false : true;
+  state.writeAllowed = user ? await user.can("data.write") : null;
+  state.canWrite = state.writeAllowed !== false;
   assets = state.canWrite ? await claude.use("assets") : null;
   if (!state.canWrite) $("#notice").textContent = "읽기 전용으로 보고 있어요.";
   db.collection("cards").onSnapshot((snap) => {

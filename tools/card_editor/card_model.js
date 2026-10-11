@@ -112,10 +112,20 @@
     return cards.some((c) => c.id !== exceptCardId && c.illustration === assetId);
   }
 
+  // db 는 권한 거절과 256KiB 초과 문서를 같은 invalid_argument 로 돌려준다.
+  // 쓰기 권한이 확인된(true) 사람이면 크기 문제로 본다.
+  function writeErrorKind(err, writeAllowed) {
+    const code = err?.code;
+    if (code === "invalid_argument") return writeAllowed === true ? "too_large" : "readonly";
+    if (code === "quota_exceeded") return "quota";
+    return "retry";
+  }
+
   const api = {
     CATEGORIES, CATEGORY_LABELS, ATTACK_TYPES, ATTACK_LABELS, ATTACK_BADGES, AREA_RADIUS,
     normalizeCard, validateCard, normalizeArea, toggleCell, areaOrDefault,
     filterSort, normalizeDeck, setEntryCount, removeCardFromEntries, resolveEntries, deckTotal, spHistogram, isAssetShared,
+    writeErrorKind,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.CardModel = api;

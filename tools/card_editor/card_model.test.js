@@ -93,3 +93,12 @@ test("isAssetShared checks other cards only", () => {
   assert.equal(M.isAssetShared(list, "img1", "x"), true);
   assert.equal(M.isAssetShared(list.slice(0, 1), "img1", "x"), false);
 });
+
+test("writeErrorKind tells a too-large document from a refused write", () => {
+  assert.equal(M.writeErrorKind({ code: "invalid_argument" }, true), "too_large");
+  assert.equal(M.writeErrorKind({ code: "invalid_argument" }, null), "readonly");
+  assert.equal(M.writeErrorKind({ code: "invalid_argument" }, false), "readonly");
+  assert.equal(M.writeErrorKind({ code: "quota_exceeded" }, true), "quota");
+  assert.equal(M.writeErrorKind({ code: "unavailable" }, true), "retry");
+  assert.equal(M.writeErrorKind(undefined, true), "retry");
+});
