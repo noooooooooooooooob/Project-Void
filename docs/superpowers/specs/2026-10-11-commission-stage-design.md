@@ -73,7 +73,7 @@
 | `visited` | 지나온 칸 id 들 (화면에서 길 강조용). |
 | `member_hp: Array[int]` | 파티원 번호별 현재 체력. |
 | `is_selectable(id)` | 지금 칸의 `connections` 에 있고, 의뢰가 끝나지 않았으면 true. |
-| `enter(id) -> Kind` | 고른 칸으로 이동하고 그 종류를 돌려준다. 빈 칸이면 이동으로 끝. 전투·보스면 호출한 쪽이 전투를 연다. 고를 수 없는 칸이면 아무것도 바꾸지 않는다. |
+| `enter(id) -> bool` | 고른 칸으로 이동한다. 고를 수 없는 칸이면 아무것도 바꾸지 않고 false. 이동한 칸의 종류는 `current_kind()` 로 본다. 빈 칸이면 이동으로 끝, 전투·보스면 호출한 쪽이 전투를 연다. |
 | `battle_roster(full: Array[UnitPlacement])` | `PartyState.build_battle_roster()` 결과에서 **체력 0 인 파티원을 뺀** 배치를 돌려주고, 각 배치에 `start_hp = member_hp[i]` 를 넣는다. 어떤 파티원 번호가 들어갔는지 기억한다. |
 | `apply_battle_hp(final_hp: Array[int])` | 전투가 끝난 뒤 아군 최종 체력(배치 순서)을 기억해 둔 번호로 되돌려 `member_hp` 에 쓴다. |
 | `state` | `IN_PROGRESS` / `SUCCEEDED` (보스 승리) / `FAILED` (패배·도망). |
