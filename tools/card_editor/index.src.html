@@ -45,6 +45,8 @@ button { cursor: pointer; }
 .btn.danger.armed { background: var(--danger); border-color: var(--danger); color: var(--on-accent); }
 .btn:disabled { opacity: .45; cursor: default; }
 .notice { color: var(--muted); font-size: 13px; }
+.usage { font-variant-numeric: tabular-nums; }
+.usage.warn { color: var(--danger); font-weight: 600; }
 
 /* 툴바 */
 .view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
@@ -142,6 +144,7 @@ button.card:hover { transform: translateY(-2px); }
     </nav>
     <span class="spacer"></span>
     <span id="notice" class="notice"></span>
+    <span id="usage" class="notice usage" hidden></span>
     <button id="new-card" type="button" class="btn primary" hidden>새 카드</button>
   </header>
 
@@ -441,6 +444,7 @@ $("#f-illust").addEventListener("change", async (e) => {
     const res = await assets.upload(file);
     if (!draft) return;
     draft.illustration = res.id;
+    refreshUsage();
     renderEditorControls();
     syncEditorPreview();
   } catch (err) {
@@ -526,6 +530,7 @@ $("#f-delete").addEventListener("click", async () => {
     }
     closeEditor();
     toast("삭제했어요");
+    refreshUsage();
   } catch (e) { writeFailed(e); }
 });
 let deckDeleteArmed = null;
@@ -592,6 +597,7 @@ function renderDecks() {
         }
         await db.doc("decks/" + deck.id).delete();
         toast("덱을 삭제했어요");
+        refreshUsage();
       } catch (e) { writeFailed(e); }
     },
   }, armed ? `한 번 더 누르면 삭제 (카드 ${rows.length}장도 삭제)` : "덱 삭제");
@@ -631,6 +637,21 @@ $("#search").addEventListener("input", (e) => { state.filter.query = e.target.va
 $("#sort").addEventListener("change", (e) => { state.filter.sort = e.target.value; renderCardGrid(); });
 $("#new-card").addEventListener("click", () => openEditor(null));
 
+// 그림 저장 공간. 편집 권한이 있는 사람(assets 있음)에게만 보인다.
+async function refreshUsage() {
+  if (!assets) return;
+  try {
+    const { usage } = await assets.list();
+    const { text, warn } = M.formatUsage(usage);
+    const el = $("#usage");
+    el.textContent = text;
+    el.classList.toggle("warn", warn);
+    el.hidden = false;
+  } catch (e) {
+    console.warn("usage", e);
+  }
+}
+
 function onDbError(e) {
   $("#notice").textContent = "저장소 연결이 끊겼어요. 새로고침해 주세요.";
   console.warn("db", e);
@@ -655,6 +676,7 @@ async function boot() {
   state.writeAllowed = user ? await user.can("data.write") : null;
   state.canWrite = state.writeAllowed !== false;
   assets = state.canWrite ? await claude.use("assets") : null;
+  refreshUsage();
   if (!state.canWrite) $("#notice").textContent = "읽기 전용으로 보고 있어요.";
   db.collection("cards").onSnapshot((snap) => {
     state.cards = snap.docs.map((d) => ({ id: d.id, ...M.normalizeCard(d.data()) }));

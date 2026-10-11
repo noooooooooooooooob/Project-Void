@@ -118,6 +118,18 @@
     return [...freed];
   }
 
+  function formatBytes(n) {
+    const MB = 1024 * 1024;
+    if (n >= 1024 * MB) return Math.round((n / (1024 * MB)) * 10) / 10 + "GB";
+    return Math.round((n / MB) * 10) / 10 + "MB";
+  }
+
+  // assets.list() 의 usage → 상단 표시 문구. 용량이나 파일 수가 80% 이상이면 경고.
+  function formatUsage({ bytes, maxBytes, files, maxFiles }) {
+    const warn = (maxBytes > 0 && bytes / maxBytes >= 0.8) || (maxFiles > 0 && files / maxFiles >= 0.8);
+    return { text: `그림 저장 공간 ${formatBytes(bytes)} / ${formatBytes(maxBytes)} · 파일 ${files} / ${maxFiles}개`, warn };
+  }
+
   // db 는 권한 거절과 256KiB 초과 문서를 같은 invalid_argument 로 돌려준다.
   // 쓰기 권한이 확인된(true) 사람이면 크기 문제로 본다.
   function writeErrorKind(err, writeAllowed) {
@@ -130,7 +142,7 @@
   const api = {
     CATEGORIES, CATEGORY_LABELS, ATTACK_TYPES, ATTACK_LABELS, ATTACK_BADGES, AREA_RADIUS,
     normalizeCard, validateCard, normalizeArea, toggleCell, areaOrDefault,
-    filterSort, normalizeDeck, cardsInDeck, spHistogram, migrationWrites, isAssetShared, assetsFreedByDeckDelete,
+    filterSort, normalizeDeck, cardsInDeck, spHistogram, migrationWrites, isAssetShared, assetsFreedByDeckDelete, formatUsage,
     writeErrorKind,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;

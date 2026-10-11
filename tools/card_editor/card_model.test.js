@@ -130,3 +130,18 @@ test("assetsFreedByDeckDelete keeps illustrations used outside the deck", () => 
   ];
   assert.deepEqual(M.assetsFreedByDeckDelete(list, "archer"), ["only"]);
 });
+
+test("formatUsage shows bytes and files against the limits", () => {
+  const MB = 1024 * 1024;
+  assert.deepEqual(M.formatUsage({ bytes: 12.4 * MB, maxBytes: 1024 * MB, files: 34, maxFiles: 1000 }),
+    { text: "그림 저장 공간 12.4MB / 1GB · 파일 34 / 1000개", warn: false });
+  assert.deepEqual(M.formatUsage({ bytes: 0, maxBytes: 500 * MB, files: 0, maxFiles: 100 }),
+    { text: "그림 저장 공간 0MB / 500MB · 파일 0 / 100개", warn: false });
+});
+
+test("formatUsage warns at 80% of bytes or files", () => {
+  const MB = 1024 * 1024;
+  assert.equal(M.formatUsage({ bytes: 80 * MB, maxBytes: 100 * MB, files: 1, maxFiles: 100 }).warn, true);
+  assert.equal(M.formatUsage({ bytes: 1, maxBytes: 100 * MB, files: 80, maxFiles: 100 }).warn, true);
+  assert.equal(M.formatUsage({ bytes: 79 * MB, maxBytes: 100 * MB, files: 79, maxFiles: 100 }).warn, false);
+});
