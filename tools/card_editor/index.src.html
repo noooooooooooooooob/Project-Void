@@ -26,7 +26,8 @@
   color-scheme: dark;
 }
 body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; }
-.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 48px; display: grid; gap: 16px; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 48px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+[hidden] { display: none !important; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -46,7 +47,7 @@ button { cursor: pointer; }
 .notice { color: var(--muted); font-size: 13px; }
 
 /* 툴바 */
-.view { display: grid; gap: 16px; }
+.view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .chips { display: flex; gap: 4px; flex-wrap: wrap; }
 .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
@@ -79,18 +80,44 @@ button.card:hover { transform: translateY(-2px); }
 .card-desc:empty::before { content: "설명 없음"; color: var(--muted); }
 .card-count { position: absolute; right: 8px; bottom: 8px; background: var(--fg); color: var(--face); border-radius: 999px; padding: 1px 8px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
+/* 덱 */
+.decks { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 720px) { .decks { grid-template-columns: minmax(0, 1fr); } }
+.deck-list { display: grid; gap: 4px; }
+.deck-list button.item { display: flex; justify-content: space-between; gap: 8px; text-align: left; border: 1px solid transparent; background: none; border-radius: 6px; padding: 8px 10px; }
+.deck-list button.item[aria-current="true"] { background: var(--surface); border-color: var(--line); font-weight: 600; }
+.deck-list .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.deck-detail { display: grid; gap: 16px; min-width: 0; }
+.deck-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.deck-head input { font-family: var(--display); font-size: 20px; border: 1px solid transparent; background: none; border-radius: 6px; padding: 4px 8px; flex: 1 1 200px; min-width: 0; }
+.deck-head input:not([readonly]):hover, .deck-head input:not([readonly]):focus { border-color: var(--line); background: var(--surface); }
+.summary { display: flex; flex-wrap: wrap; gap: 24px; align-items: end; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+.total { display: grid; }
+.total b { font-family: var(--display); font-weight: 400; font-size: 32px; line-height: 1; font-variant-numeric: tabular-nums; }
+.total span, .bars-label { font-size: 12px; color: var(--muted); }
+.bars { display: flex; gap: 6px; align-items: end; height: 72px; }
+.bar { display: grid; grid-template-rows: auto 1fr auto; justify-items: center; gap: 2px; height: 100%; font-size: 11px; font-variant-numeric: tabular-nums; }
+.bar i { width: 18px; align-self: end; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
+.bar small { color: var(--muted); }
+.slot { display: grid; gap: 6px; align-content: start; }
+.stepper { display: flex; justify-content: center; align-items: center; gap: 6px; }
+.stepper button { width: 28px; height: 28px; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 0; }
+.stepper span { min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
+.add-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.add-row select { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 6px 10px; min-width: 0; flex: 0 1 240px; }
+
 /* 편집 시트 */
 .scrim { position: fixed; inset: 0; background: color-mix(in srgb, var(--fg) 35%, transparent); }
-.sheet { position: fixed; top: 0; right: 0; bottom: 0; width: min(760px, 100%); background: var(--surface); border-left: 1px solid var(--line); display: grid; grid-template-rows: auto 1fr auto; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.sheet { position: fixed; top: 0; right: 0; bottom: 0; width: min(760px, 100%); grid-template-columns: minmax(0, 1fr); background: var(--surface); border-left: 1px solid var(--line); display: grid; grid-template-rows: auto 1fr auto; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 .sheet-head, .sheet-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
 .sheet-foot { border-bottom: 0; border-top: 1px solid var(--line); }
 .sheet-head h2 { font-family: var(--display); font-weight: 400; font-size: 18px; margin: 0; flex: 1; }
 .sheet-body { overflow: auto; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 20px; align-items: start; }
 @media (max-width: 640px) { .sheet-body { grid-template-columns: minmax(0, 1fr); } .preview { order: -1; justify-self: center; width: 200px; position: static; } }
 .form { display: grid; gap: 14px; min-width: 0; }
-.field { display: grid; gap: 6px; min-width: 0; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
 .field > span { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
-.field input[type="text"], .field input[type="number"], .field textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px 10px; min-width: 0; }
+.field input[type="text"], .field input[type="number"], .field textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px 10px; min-width: 0; }
 .field input[type="file"] { min-width: 0; max-width: 100%; }
 .field textarea { min-height: 140px; resize: vertical; line-height: 1.5; }
 .row { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -484,8 +511,96 @@ $("#f-delete").addEventListener("click", async () => {
     toast("삭제했어요");
   } catch (e) { writeFailed(e); }
 });
-// Task 6 에서 채운다.
-function renderDecks() {}
+let deckDeleteArmed = null;
+
+async function saveDeck(deck, patch) {
+  try {
+    // update 는 중첩 객체를 병합하므로 덱은 항상 set 으로 통째로 쓴다.
+    await db.doc("decks/" + deck.id).set({ name: deck.name, entries: deck.entries, createdAt: deck.createdAt, ...patch });
+  } catch (e) { writeFailed(e); }
+}
+
+async function createDeck() {
+  try {
+    const ref = db.collection("decks").doc();
+    await ref.set({ name: "새 덱", entries: {}, createdAt: Date.now() });
+    state.deckId = ref.id;
+    renderDecks();
+  } catch (e) { writeFailed(e); }
+}
+
+function renderDecks() {
+  const root = $("#view-decks");
+  const byId = cardsById();
+  if (!state.decks.find((d) => d.id === state.deckId)) state.deckId = state.decks[0]?.id ?? null;
+  const deck = state.decks.find((d) => d.id === state.deckId);
+  const ro = !state.canWrite || !db;
+
+  const list = h("nav", { class: "deck-list", "aria-label": "덱 목록" },
+    ...state.decks.map((d) => h("button", {
+      type: "button", class: "item", "aria-current": String(d.id === state.deckId),
+      onclick: () => { state.deckId = d.id; deckDeleteArmed = null; renderDecks(); },
+    }, h("span", {}, d.name), h("span", { class: "n" }, M.deckTotal(d.entries, byId) + "장"))),
+    ro ? null : h("button", { type: "button", class: "btn", onclick: createDeck }, "새 덱"));
+
+  if (!deck) {
+    root.replaceChildren(h("div", { class: "decks" }, list,
+      h("div", { class: "empty" }, h("strong", {}, "아직 덱이 없어요"),
+        ro ? "편집 권한이 있는 사람이 덱을 만들면 여기에 보여요." : "‘새 덱’으로 만들고 카드를 넣어 보세요.")));
+    return;
+  }
+
+  const rows = M.resolveEntries(deck.entries, byId);
+  const hist = M.spHistogram(deck.entries, byId);
+  const peak = Math.max(1, ...hist.map((b) => b.count));
+
+  const nameInput = h("input", { id: "deck-name", type: "text", value: deck.name, "aria-label": "덱 이름", readonly: ro });
+  nameInput.addEventListener("change", () => {
+    const name = nameInput.value.trim() || "이름 없는 덱";
+    if (name !== deck.name) saveDeck(deck, { name });
+  });
+
+  const armed = deckDeleteArmed === deck.id;
+  const delBtn = ro ? null : h("button", {
+    type: "button", class: "btn danger" + (armed ? " armed" : ""),
+    onclick: async () => {
+      if (!armed) { deckDeleteArmed = deck.id; renderDecks(); return; }
+      deckDeleteArmed = null;
+      try { await db.doc("decks/" + deck.id).delete(); toast("덱을 삭제했어요"); } catch (e) { writeFailed(e); }
+    },
+  }, armed ? "한 번 더 누르면 삭제" : "덱 삭제");
+
+  const summary = h("div", { class: "summary" },
+    h("div", { class: "total" }, h("b", {}, M.deckTotal(deck.entries, byId)), h("span", {}, "총 장수")),
+    h("div", {},
+      h("div", { class: "bars-label" }, "SP별 장수"),
+      hist.length
+        ? h("div", { class: "bars" }, ...hist.map((b) => h("div", { class: "bar", title: `SP ${b.sp}: ${b.count}장` },
+            h("span", {}, b.count), h("i", { style: `height:${Math.round((b.count / peak) * 40)}px` }), h("small", {}, "SP " + b.sp))))
+        : h("div", { class: "notice" }, "카드가 없어요")));
+
+  const addable = M.filterSort(state.cards, { category: "all", query: "", sort: "name" });
+  const addSel = h("select", { id: "deck-add", "aria-label": "넣을 카드" }, ...addable.map((c) => h("option", { value: c.id }, `${c.name} (SP ${c.sp})`)));
+  const addRow = ro || !addable.length ? null : h("div", { class: "add-row" }, addSel,
+    h("button", { type: "button", class: "btn", onclick: () => {
+      const id = addSel.value;
+      saveDeck(deck, { entries: M.setEntryCount(deck.entries, id, (deck.entries[id] || 0) + 1) });
+    } }, "덱에 넣기"));
+
+  const grid = rows.length
+    ? h("div", { class: "grid" }, ...rows.map(({ card, count }) => h("div", { class: "slot" },
+        renderCard(card, { count, onClick: () => openEditor(card) }),
+        ro ? null : h("div", { class: "stepper" },
+          h("button", { type: "button", "aria-label": card.name + " 한 장 빼기",
+            onclick: () => saveDeck(deck, { entries: M.setEntryCount(deck.entries, card.id, count - 1) }) }, "−"),
+          h("span", {}, count),
+          h("button", { type: "button", "aria-label": card.name + " 한 장 더",
+            onclick: () => saveDeck(deck, { entries: M.setEntryCount(deck.entries, card.id, count + 1) }) }, "+")))))
+    : h("div", { class: "empty" }, "이 덱은 비어 있어요. 위에서 카드를 넣거나, 카드 편집 창의 ‘덱에 추가’를 쓰세요.");
+
+  root.replaceChildren(h("div", { class: "decks" }, list,
+    h("div", { class: "deck-detail" }, h("div", { class: "deck-head" }, nameInput, delBtn), summary, addRow, grid)));
+}
 
 for (const b of document.querySelectorAll(".tabs button")) {
   b.addEventListener("click", () => { state.view = b.dataset.view; render(); });
