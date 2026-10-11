@@ -5,32 +5,25 @@ const seed = require("./seed.json");
 
 const cards = seed.filter((o) => o.collection === "cards");
 const decks = seed.filter((o) => o.collection === "decks");
+const deckIds = new Set(decks.map((d) => d.doc_id));
 
-test("seed has 7 cards and 3 decks", () => {
-  assert.equal(cards.length, 7);
+test("seed has 7 common cards, 3 decks and 12 deck cards", () => {
+  assert.equal(cards.filter((c) => c.data.deckId === null).length, 7);
   assert.equal(decks.length, 3);
+  const count = (id) => cards.filter((c) => c.data.deckId === id).length;
+  assert.deepEqual([count("archer"), count("scout"), count("vanguard")], [4, 4, 4]);
 });
 
-test("seed cards are already normalized and valid", () => {
+test("seed cards are normalized, valid and point at seed decks", () => {
   for (const c of cards) {
     const { createdAt, ...body } = c.data;
     assert.deepEqual(M.validateCard(body), [], c.doc_id);
     assert.deepEqual(M.normalizeCard(body), body, c.doc_id);
     assert.ok(Number.isInteger(createdAt));
+    if (body.deckId !== null) assert.ok(deckIds.has(body.deckId), c.doc_id);
   }
 });
 
-test("seed decks only reference seed cards", () => {
-  const ids = new Set(cards.map((c) => c.doc_id));
-  for (const d of decks) {
-    for (const id of Object.keys(d.data.entries)) assert.ok(ids.has(id), `${d.doc_id} → ${id}`);
-    assert.deepEqual(M.normalizeDeck(d.data).entries, d.data.entries);
-  }
-});
-
-test("seed deck sizes match the game", () => {
-  const size = (id) => Object.values(decks.find((d) => d.doc_id === id).data.entries).reduce((a, b) => a + b, 0);
-  assert.equal(size("archer"), 8);
-  assert.equal(size("scout"), 6);
-  assert.equal(size("vanguard"), 8);
+test("seed decks hold only name and createdAt", () => {
+  for (const d of decks) assert.deepEqual(Object.keys(d.data).sort(), ["createdAt", "name"]);
 });
