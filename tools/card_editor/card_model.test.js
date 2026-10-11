@@ -115,3 +115,18 @@ test("migrationWrites is a no-op once migrated", () => {
   const deckDocs = [{ id: "archer", version: 4, data: { name: "사수", createdAt: 9 } }];
   assert.deepEqual(M.migrationWrites(cardDocs, deckDocs), []);
 });
+
+test("assetsFreedByDeckDelete keeps illustrations used outside the deck", () => {
+  const list = [
+    { id: "a1", deckId: "archer", illustration: "only" },
+    { id: "a2", deckId: "archer", illustration: "shared-copy" },
+    { id: "a3", deckId: "archer", illustration: "shared-common" },
+    { id: "a4", deckId: "archer", illustration: "only" },
+    { id: "a5", deckId: "archer", illustration: "shared-orphan" },
+    { id: "a6", deckId: "archer", illustration: null },
+    { id: "s1", deckId: "scout", illustration: "shared-copy" },
+    { id: "c1", deckId: null, illustration: "shared-common" },
+    { id: "o1", deckId: "gone", illustration: "shared-orphan" },
+  ];
+  assert.deepEqual(M.assetsFreedByDeckDelete(list, "archer"), ["only"]);
+});

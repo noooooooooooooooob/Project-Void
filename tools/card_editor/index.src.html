@@ -494,12 +494,20 @@ $("#f-dup").addEventListener("click", () => {
 $("#f-add-deck").addEventListener("click", async () => {
   const deck = state.decks.find((d) => d.id === $("#f-deck").value);
   if (!deck || !draft?.id) return;
+  const errors = M.validateCard(draft);
+  showErrors(errors);
+  if (errors.length) return;
   // 일러스트 id 는 사본과 공유한다 (삭제 시 isAssetShared 가 지켜 준다).
   const copy = { ...M.normalizeCard(draft), deckId: deck.id, createdAt: Date.now() };
+  $("#f-add-deck").disabled = true;
   try {
     await db.collection("cards").doc().set(copy);
     toast(`${deck.name}에 복사했어요`);
-  } catch (e) { writeFailed(e); }
+  } catch (e) {
+    writeFailed(e);
+  } finally {
+    $("#f-add-deck").disabled = false;
+  }
 });
 
 $("#f-delete").addEventListener("click", async () => {
@@ -578,10 +586,8 @@ function renderDecks() {
         // 덱 카드 → 다른 카드가 안 쓰는 일러스트 → 덱 순서로 지운다.
         for (const card of rows) await db.doc("cards/" + card.id).delete();
         if (assets) {
-          const others = state.cards.filter((c) => c.deckId !== deck.id);
-          const ids = new Set(rows.map((c) => c.illustration).filter(Boolean));
-          for (const id of ids) {
-            if (!others.some((c) => c.illustration === id)) await assets.delete(id).catch((e) => console.warn("asset delete", e));
+          for (const id of M.assetsFreedByDeckDelete(state.cards, deck.id)) {
+            await assets.delete(id).catch((e) => console.warn("asset delete", e));
           }
         }
         await db.doc("decks/" + deck.id).delete();

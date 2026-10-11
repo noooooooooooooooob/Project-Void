@@ -108,6 +108,16 @@
     return cards.some((c) => c.id !== exceptCardId && c.illustration === assetId);
   }
 
+  // 덱을 지울 때 함께 지워도 되는 일러스트: 그 덱 밖의 어떤 카드도 쓰지 않는 것만.
+  function assetsFreedByDeckDelete(cards, deckId) {
+    const used = new Set(cards.filter((c) => c.deckId !== deckId).map((c) => c.illustration));
+    const freed = new Set();
+    for (const c of cards) {
+      if (c.deckId === deckId && c.illustration && !used.has(c.illustration)) freed.add(c.illustration);
+    }
+    return [...freed];
+  }
+
   // db 는 권한 거절과 256KiB 초과 문서를 같은 invalid_argument 로 돌려준다.
   // 쓰기 권한이 확인된(true) 사람이면 크기 문제로 본다.
   function writeErrorKind(err, writeAllowed) {
@@ -120,7 +130,7 @@
   const api = {
     CATEGORIES, CATEGORY_LABELS, ATTACK_TYPES, ATTACK_LABELS, ATTACK_BADGES, AREA_RADIUS,
     normalizeCard, validateCard, normalizeArea, toggleCell, areaOrDefault,
-    filterSort, normalizeDeck, cardsInDeck, spHistogram, migrationWrites, isAssetShared,
+    filterSort, normalizeDeck, cardsInDeck, spHistogram, migrationWrites, isAssetShared, assetsFreedByDeckDelete,
     writeErrorKind,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
