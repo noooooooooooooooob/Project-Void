@@ -60,9 +60,62 @@
     return area && area.length ? area : [[0, 0]];
   }
 
+  const byName = (a, b) => a.name.localeCompare(b.name, "ko");
+
+  function filterSort(cards, { category = "all", query = "", sort = "name" } = {}) {
+    const q = query.trim().toLowerCase();
+    const list = cards.filter((c) =>
+      (category === "all" || c.category === category) && (!q || c.name.toLowerCase().includes(q)));
+    return list.sort(sort === "sp" ? (a, b) => a.sp - b.sp || byName(a, b) : byName);
+  }
+
+  function normalizeDeck(raw) {
+    const r = raw || {};
+    const entries = {};
+    for (const [id, n] of Object.entries(r.entries || {})) {
+      if (Number.isInteger(n) && n > 0) entries[id] = n;
+    }
+    return { name: String(r.name ?? "").trim() || "이름 없는 덱", entries };
+  }
+
+  function setEntryCount(entries, cardId, count) {
+    const next = { ...entries };
+    if (count > 0) next[cardId] = count;
+    else delete next[cardId];
+    return next;
+  }
+
+  function removeCardFromEntries(entries, cardId) {
+    return setEntryCount(entries, cardId, 0);
+  }
+
+  function resolveEntries(entries, cardsById) {
+    return Object.entries(entries)
+      .filter(([id]) => cardsById[id])
+      .map(([id, count]) => ({ card: cardsById[id], count }))
+      .sort((a, b) => byName(a.card, b.card));
+  }
+
+  function deckTotal(entries, cardsById) {
+    return resolveEntries(entries, cardsById).reduce((sum, r) => sum + r.count, 0);
+  }
+
+  function spHistogram(entries, cardsById) {
+    const bins = new Map();
+    for (const { card, count } of resolveEntries(entries, cardsById)) {
+      bins.set(card.sp, (bins.get(card.sp) || 0) + count);
+    }
+    return [...bins.entries()].sort((a, b) => a[0] - b[0]).map(([sp, count]) => ({ sp, count }));
+  }
+
+  function isAssetShared(cards, assetId, exceptCardId) {
+    return cards.some((c) => c.id !== exceptCardId && c.illustration === assetId);
+  }
+
   const api = {
     CATEGORIES, CATEGORY_LABELS, ATTACK_TYPES, ATTACK_LABELS, ATTACK_BADGES, AREA_RADIUS,
     normalizeCard, validateCard, normalizeArea, toggleCell, areaOrDefault,
+    filterSort, normalizeDeck, setEntryCount, removeCardFromEntries, resolveEntries, deckTotal, spHistogram, isAssetShared,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.CardModel = api;
