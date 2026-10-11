@@ -1,0 +1,279 @@
+<title>Project Void 카드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<style>
+/* 레이아웃: 위 탭 바 → 카드 그리드 / 덱 화면은 왼쪽 덱 목록 + 오른쪽 덱 상세. 편집은 오른쪽에서 열리는 시트 */
+:root {
+  --bg: #f2f1f5; --surface: #ffffff; --fg: #1d1b24; --muted: #686577; --line: #dcd9e3; --accent: #5b4bd6;
+  --face: #fbfaf7; --art: #e7e4ee; --art-line: #d3cfdc;
+  --attack: #c3413a; --skill: #2d6cc9; --special: #8b3fc2; --danger: #b3261e; --on-accent: #ffffff;
+  --display: "Black Han Sans", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  --body: "IBM Plex Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131219; --surface: #1c1a24; --fg: #ecebf2; --muted: #9a97a8; --line: #302d3c; --accent: #a092ff;
+    --face: #24222d; --art: #2e2b38; --art-line: #3b3848;
+    --attack: #e0625a; --skill: #5b93e8; --special: #b06ee0; --danger: #f2867e; --on-accent: #131219;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131219; --surface: #1c1a24; --fg: #ecebf2; --muted: #9a97a8; --line: #302d3c; --accent: #a092ff;
+  --face: #24222d; --art: #2e2b38; --art-line: #3b3848;
+  --attack: #e0625a; --skill: #5b93e8; --special: #b06ee0; --danger: #f2867e; --on-accent: #131219;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 48px; display: grid; gap: 16px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 상단 */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.brand { font-family: var(--display); font-weight: 400; font-size: 22px; letter-spacing: .02em; margin: 0; }
+.tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+.tabs button { border: 0; background: none; padding: 6px 14px; border-radius: 6px; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
+.top .spacer { flex: 1; }
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 7px 14px; border-radius: 6px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn.danger { color: var(--danger); }
+.btn.danger.armed { background: var(--danger); border-color: var(--danger); color: var(--on-accent); }
+.btn:disabled { opacity: .45; cursor: default; }
+.notice { color: var(--muted); font-size: 13px; }
+
+/* 툴바 */
+.view { display: grid; gap: 16px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+.chip[aria-pressed="true"] { border-color: var(--fg); font-weight: 600; }
+.chip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.toolbar input[type="search"], .toolbar select { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 6px 10px; min-width: 0; }
+.toolbar input[type="search"] { flex: 1 1 160px; max-width: 260px; }
+
+/* 카드 그리드 */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 16px; }
+.empty { border: 1px dashed var(--line); border-radius: 10px; padding: 32px 16px; text-align: center; color: var(--muted); display: grid; gap: 10px; justify-items: center; grid-column: 1 / -1; }
+
+/* 카드 한 장 (Notion 예시 그림: 이름 / SP 원이 겹친 일러스트 / 오른쪽 위 공격 종류·범위 / 설명) */
+.card { --cat: var(--attack); position: relative; aspect-ratio: 5 / 7; max-width: 100%; background: var(--face); border: 3px solid var(--cat); border-radius: 12px; padding: 10px 12px 12px; display: grid; grid-template-rows: auto auto 1fr; gap: 8px; text-align: left; overflow: hidden; color: var(--fg); }
+.card.cat-skill { --cat: var(--skill); }
+.card.cat-special { --cat: var(--special); }
+button.card { cursor: pointer; transition: transform .12s ease; width: 100%; }
+button.card:hover { transform: translateY(-2px); }
+.card-name { font-family: var(--display); font-weight: 400; font-size: 17px; line-height: 1.2; margin: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-art { position: relative; margin: 4px 22px 0 10px; aspect-ratio: 4 / 3; background: var(--art); border: 1px solid var(--art-line); border-radius: 4px; background-image: repeating-linear-gradient(135deg, transparent 0 7px, var(--art-line) 7px 8px); }
+.card-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 3px; }
+.card-sp { position: absolute; left: -14px; top: -12px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--cat); color: var(--on-accent); font-family: var(--display); font-size: 16px; border: 2px solid var(--face); font-variant-numeric: tabular-nums; }
+.card-side { position: absolute; right: -20px; top: -6px; display: grid; gap: 4px; justify-items: center; }
+.card-badge { width: 22px; height: 22px; border-radius: 4px; display: grid; place-items: center; background: var(--fg); color: var(--face); font-size: 12px; font-weight: 600; }
+.mini { display: grid; grid-template-columns: repeat(5, 5px); gap: 1px; padding: 3px; background: var(--face); border: 1px solid var(--art-line); border-radius: 4px; }
+.mini i { width: 5px; height: 5px; background: var(--art-line); border-radius: 1px; }
+.mini i.on { background: var(--cat); }
+.mini i.origin { box-shadow: 0 0 0 1px var(--fg); }
+.card-desc { margin: 0; font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent); mask-image: linear-gradient(to bottom, #000 80%, transparent); }
+.card-desc:empty::before { content: "설명 없음"; color: var(--muted); }
+.card-count { position: absolute; right: 8px; bottom: 8px; background: var(--fg); color: var(--face); border-radius: 999px; padding: 1px 8px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* 토스트 */
+.toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-size: 13px; max-width: calc(100% - 32px); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1 class="brand">Project Void 카드</h1>
+    <nav class="tabs" role="tablist">
+      <button id="tab-cards" type="button" role="tab" aria-selected="true" data-view="cards">카드</button>
+      <button id="tab-decks" type="button" role="tab" aria-selected="false" data-view="decks">덱</button>
+    </nav>
+    <span class="spacer"></span>
+    <span id="notice" class="notice"></span>
+    <button id="new-card" type="button" class="btn primary" hidden>새 카드</button>
+  </header>
+
+  <section id="view-cards" class="view">
+    <div class="toolbar">
+      <div class="chips" id="cat-chips"></div>
+      <input id="search" type="search" placeholder="이름 검색" aria-label="이름 검색">
+      <select id="sort" aria-label="정렬">
+        <option value="name">이름순</option>
+        <option value="sp">SP순</option>
+      </select>
+    </div>
+    <div id="card-grid" class="grid"></div>
+  </section>
+
+  <section id="view-decks" class="view" hidden></section>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<!-- @inline card_model.js -->
+<script>
+const M = window.CardModel;
+const state = {
+  cards: [], decks: [], loaded: false, view: "cards",
+  filter: { category: "all", query: "", sort: "name" },
+  deckId: null, canWrite: false,
+};
+let db = null;
+let assets = null;
+const $ = (sel) => document.querySelector(sel);
+
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : String(v));
+  }
+  for (const kid of kids.flat()) {
+    if (kid == null || kid === false) continue;
+    el.append(kid.nodeType ? kid : String(kid));
+  }
+  return el;
+}
+
+let toastTimer = 0;
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+
+function cardsById() {
+  return Object.fromEntries(state.cards.map((c) => [c.id, c]));
+}
+
+function miniGrid(area) {
+  const on = new Set(M.areaOrDefault(area).map(([x, y]) => x + "," + y));
+  const g = h("div", { class: "mini", title: "범위" });
+  for (let y = -M.AREA_RADIUS; y <= M.AREA_RADIUS; y++) {
+    for (let x = -M.AREA_RADIUS; x <= M.AREA_RADIUS; x++) {
+      const cls = [on.has(x + "," + y) ? "on" : "", x === 0 && y === 0 ? "origin" : ""].join(" ").trim();
+      g.append(h("i", { class: cls || null }));
+    }
+  }
+  return g;
+}
+
+// 카드 한 장. onClick 이 있으면 버튼으로 만든다.
+function renderCard(card, { count, onClick } = {}) {
+  const img = card.illustration
+    ? h("img", { src: "/_blob/" + card.illustration, alt: "", onerror: (e) => e.target.remove() })
+    : null;
+  const art = h("div", { class: "card-art" },
+    img,
+    h("span", { class: "card-sp", title: "SP " + card.sp }, card.sp),
+    h("div", { class: "card-side" },
+      h("span", { class: "card-badge", title: M.ATTACK_LABELS[card.attackType] }, M.ATTACK_BADGES[card.attackType]),
+      miniGrid(card.area)));
+  const body = [
+    h("h3", { class: "card-name", title: card.name }, card.name || "이름 없음"),
+    art,
+    h("p", { class: "card-desc" }, card.description),
+    count ? h("span", { class: "card-count" }, "×" + count) : null,
+  ];
+  const cls = "card cat-" + card.category;
+  return onClick
+    ? h("button", { class: cls, type: "button", onclick: onClick, "aria-label": card.name + " 편집" }, body)
+    : h("article", { class: cls }, body);
+}
+
+function renderChips() {
+  const box = $("#cat-chips");
+  box.replaceChildren(
+    ...[["all", "전체", null], ...M.CATEGORIES.map((c) => [c, M.CATEGORY_LABELS[c], c])].map(([value, label, cat]) =>
+      h("button", {
+        class: "chip", type: "button", "aria-pressed": String(state.filter.category === value),
+        onclick: () => { state.filter.category = value; render(); },
+      }, cat ? h("span", { class: "dot", style: `background:var(--${cat})` }) : null, label)));
+}
+
+function renderCardGrid() {
+  const grid = $("#card-grid");
+  if (!state.loaded) {
+    grid.replaceChildren(h("div", { class: "empty" }, "카드를 불러오는 중이에요"));
+    return;
+  }
+  const list = M.filterSort(state.cards, state.filter);
+  if (!state.cards.length) {
+    grid.replaceChildren(h("div", { class: "empty" },
+      h("strong", {}, "아직 카드가 없어요"),
+      state.canWrite ? "오른쪽 위 ‘새 카드’로 첫 카드를 만들어 보세요." : "편집 권한이 있는 사람이 카드를 추가하면 여기에 보여요."));
+    return;
+  }
+  if (!list.length) {
+    grid.replaceChildren(h("div", { class: "empty" }, "조건에 맞는 카드가 없어요"));
+    return;
+  }
+  grid.replaceChildren(...list.map((c) => renderCard(c, { onClick: () => openEditor(c) })));
+}
+
+function render() {
+  for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.view === state.view));
+  $("#view-cards").hidden = state.view !== "cards";
+  $("#view-decks").hidden = state.view !== "decks";
+  $("#new-card").hidden = !state.canWrite;
+  if (state.view === "cards") { renderChips(); renderCardGrid(); }
+  else renderDecks();
+}
+
+// Task 5 에서 채운다.
+function openEditor(card) {}
+// Task 6 에서 채운다.
+function renderDecks() {}
+
+for (const b of document.querySelectorAll(".tabs button")) {
+  b.addEventListener("click", () => { state.view = b.dataset.view; render(); });
+}
+$("#search").addEventListener("input", (e) => { state.filter.query = e.target.value; renderCardGrid(); });
+$("#sort").addEventListener("change", (e) => { state.filter.sort = e.target.value; renderCardGrid(); });
+$("#new-card").addEventListener("click", () => openEditor(null));
+
+function onDbError(e) {
+  $("#notice").textContent = "저장소 연결이 끊겼어요. 새로고침해 주세요.";
+  console.warn("db", e);
+}
+
+async function boot() {
+  render();
+  if (!window.claude?.use) {
+    state.loaded = true;
+    $("#notice").textContent = "claude.ai 에서 열어야 카드가 저장돼요.";
+    render();
+    return;
+  }
+  db = await claude.use("db");
+  if (!db) {
+    state.loaded = true;
+    $("#notice").textContent = "저장소를 쓸 수 없어요. 로그인했는지 확인해 주세요.";
+    render();
+    return;
+  }
+  const user = await claude.use("user");
+  state.canWrite = user ? (await user.can("data.write")) !== false : true;
+  assets = state.canWrite ? await claude.use("assets") : null;
+  if (!state.canWrite) $("#notice").textContent = "읽기 전용으로 보고 있어요.";
+  db.collection("cards").onSnapshot((snap) => {
+    state.cards = snap.docs.map((d) => ({ id: d.id, ...M.normalizeCard(d.data()) }));
+    state.loaded = true;
+    render();
+  }, onDbError);
+  db.collection("decks").onSnapshot((snap) => {
+    state.decks = snap.docs
+      .map((d) => ({ id: d.id, createdAt: d.data().createdAt || 0, ...M.normalizeDeck(d.data()) }))
+      .sort((a, b) => a.createdAt - b.createdAt);
+    render();
+  }, onDbError);
+}
+boot();
+</script>
