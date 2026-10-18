@@ -4,8 +4,8 @@ const M = require("./card_model.js");
 
 test("normalizeCard fills defaults", () => {
   assert.deepEqual(M.normalizeCard({ name: "  베기 ", sp: "1" }), {
-    name: "베기", sp: 1, cost: 0, category: "attack", attackType: "melee",
-    area: [], illustration: null, description: "", keywords: [], deckId: null, upgrades: [],
+    name: "베기", nameEn: "", sp: 1, cost: 0, category: "attack", attackType: "melee",
+    area: [], illustration: null, description: "", descriptionEn: "", keywords: [], deckId: null, upgrades: [],
   });
 });
 
@@ -84,8 +84,8 @@ test("normalizeCard keeps deckId", () => {
 });
 
 test("normalizeDeck keeps only the name", () => {
-  assert.deepEqual(M.normalizeDeck({ name: " ", entries: { a: 1 } }), { name: "이름 없는 덱" });
-  assert.deepEqual(M.normalizeDeck({ name: "사수" }), { name: "사수" });
+  assert.deepEqual(M.normalizeDeck({ name: " ", entries: { a: 1 } }), { name: "이름 없는 덱", nameEn: "" });
+  assert.deepEqual(M.normalizeDeck({ name: "사수" }), { name: "사수", nameEn: "" });
 });
 
 test("cardsInDeck filters by deck and keeps common cards apart", () => {
@@ -105,8 +105,8 @@ test("migrationWrites copies deck entries into deck cards and clears entries", (
   const deckDocs = [{ id: "archer", version: 3, data: { name: "사수", entries: { shoot: 3, gone: 1 }, createdAt: 9 } }];
   assert.deepEqual(M.migrationWrites(cardDocs, deckDocs), [
     { op: "set", collection: "cards", doc_id: "archer--shoot",
-      data: { name: "사격", sp: 1, cost: 0, category: "attack", attackType: "ranged", area: [], illustration: null, description: "", keywords: [], deckId: "archer", upgrades: [], createdAt: 5 } },
-    { op: "set", collection: "decks", doc_id: "archer", if_version: 3, data: { name: "사수", createdAt: 9 } },
+      data: { name: "사격", nameEn: "", sp: 1, cost: 0, category: "attack", attackType: "ranged", area: [], illustration: null, description: "", descriptionEn: "", keywords: [], deckId: "archer", upgrades: [], createdAt: 5 } },
+    { op: "set", collection: "decks", doc_id: "archer", if_version: 3, data: { name: "사수", nameEn: "", createdAt: 9 } },
   ]);
 });
 
@@ -150,8 +150,8 @@ test("normalizeCard keeps upgrades without deck fields, at most 5", () => {
   const c = M.normalizeCard({ name: "베기", sp: 1, deckId: "archer",
     upgrades: [{ name: " 베기+ ", sp: "0", category: "skill", area: [[0, 0], [9, 9]], illustration: "img2", deckId: "x" }, "nope"] });
   assert.deepEqual(c.upgrades, [{
-    name: "베기+", sp: 0, cost: 0, category: "skill", attackType: "melee",
-    area: [[0, 0]], illustration: "img2", description: "", keywords: [],
+    name: "베기+", nameEn: "", sp: 0, cost: 0, category: "skill", attackType: "melee",
+    area: [[0, 0]], illustration: "img2", description: "", descriptionEn: "", keywords: [],
   }]);
   const many = M.normalizeCard({ name: "x", upgrades: Array.from({ length: 7 }, (_, i) => ({ name: "u" + i })) });
   assert.equal(many.upgrades.length, M.MAX_UPGRADES);
@@ -167,11 +167,31 @@ test("normalizeCard reads an old single upgrade as the first upgrade", () => {
 test("newUpgrade copies the previous level", () => {
   const base = M.normalizeCard({ name: "베기", sp: 2, area: [[0, 0]], illustration: "img", description: "d", deckId: "archer" });
   assert.deepEqual(M.newUpgrade(base), {
-    name: "베기+", sp: 2, cost: 0, category: "attack", attackType: "melee",
-    area: [[0, 0]], illustration: "img", description: "d", keywords: [],
+    name: "", nameEn: "", sp: 2, cost: 0, category: "attack", attackType: "melee",
+    area: [[0, 0]], illustration: "img", description: "d", descriptionEn: "", keywords: [],
   });
   const lv1 = { ...base, upgrades: [{ ...M.newUpgrade(base), sp: 1, description: "d1" }] };
-  assert.deepEqual(M.newUpgrade(lv1), { ...lv1.upgrades[0], name: "베기+2" });
+  assert.deepEqual(M.newUpgrade(lv1), { ...lv1.upgrades[0], name: "" });
+});
+
+test("newUpgrade leaves both names blank", () => {
+  const base = M.normalizeCard({ name: "베기", nameEn: "Slash", descriptionEn: "e" });
+  const up = M.newUpgrade(base);
+  assert.equal(up.name, "");
+  assert.equal(up.nameEn, "");
+  assert.equal(up.descriptionEn, "e");
+});
+
+test("faces, keywords and decks keep English text", () => {
+  const c = M.normalizeCard({ name: "베기", nameEn: " Slash ", descriptionEn: "Hit\nhard",
+    upgrades: [{ name: "베기 강", nameEn: "Hard Slash" }] });
+  assert.equal(c.nameEn, "Slash");
+  assert.equal(c.descriptionEn, "Hit\nhard");
+  assert.equal(c.upgrades[0].nameEn, "Hard Slash");
+  assert.equal(c.upgrades[0].descriptionEn, "");
+  assert.deepEqual(M.normalizeKeyword({ name: "화상", nameEn: " Burn ", descriptionEn: "d" }),
+    { name: "화상", nameEn: "Burn", description: "", descriptionEn: "d" });
+  assert.deepEqual(M.normalizeDeck({ name: "포수", nameEn: " Gunner " }), { name: "포수", nameEn: "Gunner" });
 });
 
 test("validateCard checks every upgrade", () => {
@@ -225,8 +245,9 @@ test("newUpgrade copies keywords", () => {
 });
 
 test("normalizeKeyword and validateKeyword", () => {
-  assert.deepEqual(M.normalizeKeyword({ name: " 관통 ", description: "뒤까지 맞힘", x: 1 }), { name: "관통", description: "뒤까지 맞힘" });
-  assert.deepEqual(M.normalizeKeyword(null), { name: "", description: "" });
+  assert.deepEqual(M.normalizeKeyword({ name: " 관통 ", description: "뒤까지 맞힘", x: 1 }),
+    { name: "관통", nameEn: "", description: "뒤까지 맞힘", descriptionEn: "" });
+  assert.deepEqual(M.normalizeKeyword(null), { name: "", nameEn: "", description: "", descriptionEn: "" });
   assert.deepEqual(M.validateKeyword({ name: " " }), ["이름을 입력하세요"]);
   assert.deepEqual(M.validateKeyword({ name: "관통" }), []);
 });

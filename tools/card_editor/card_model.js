@@ -37,6 +37,7 @@
     const r = raw || {};
     return {
       name: String(r.name ?? "").trim(),
+      nameEn: String(r.nameEn ?? "").trim(),
       sp: isSpValid(r.sp) ? Number(String(r.sp).trim()) : 0,
       cost: isSpValid(r.cost) ? Number(String(r.cost).trim()) : 0,
       category: CATEGORIES.includes(r.category) ? r.category : "attack",
@@ -44,6 +45,7 @@
       area: normalizeArea(r.area),
       illustration: typeof r.illustration === "string" && r.illustration ? r.illustration : null,
       description: String(r.description ?? ""),
+      descriptionEn: String(r.descriptionEn ?? ""),
       keywords: normalizeKeywordIds(r.keywords),
     };
   }
@@ -55,7 +57,10 @@
   }
 
   function normalizeKeyword(raw) {
-    return { name: String(raw?.name ?? "").trim(), description: String(raw?.description ?? "") };
+    return {
+      name: String(raw?.name ?? "").trim(), nameEn: String(raw?.nameEn ?? "").trim(),
+      description: String(raw?.description ?? ""), descriptionEn: String(raw?.descriptionEn ?? ""),
+    };
   }
 
   function validateKeyword(raw) {
@@ -87,12 +92,11 @@
     return r.upgrade ? [r.upgrade] : [];
   }
 
-  // 다음 강화 단계: 바로 앞 단계를 복사하고 이름은 기본 이름 + "+", "+2", "+3" ...
+  // 다음 강화 단계: 바로 앞 단계를 복사하되 이름(한·영)은 사용자가 직접 채우도록 비워 둔다.
   function newUpgrade(card) {
     const ups = card.upgrades || [];
-    const level = ups.length + 1;
     const prev = normalizeFace(ups.length ? ups[ups.length - 1] : card);
-    return { ...prev, name: String(card.name ?? "").trim() + "+" + (level > 1 ? level : "") };
+    return { ...prev, name: "", nameEn: "" };
   }
 
   function faceErrors(raw) {
@@ -149,7 +153,7 @@
   }
 
   function normalizeDeck(raw) {
-    return { name: String(raw?.name ?? "").trim() || "이름 없는 덱" };
+    return { name: String(raw?.name ?? "").trim() || "이름 없는 덱", nameEn: String(raw?.nameEn ?? "").trim() };
   }
 
   // deckId 가 null 이면 공용 카드.
@@ -183,7 +187,7 @@
           data: { ...normalizeCard(src.data), deckId: deck.id, createdAt: src.data.createdAt ?? 0 } });
       }
       writes.push({ op: "set", collection: "decks", doc_id: deck.id, if_version: deck.version,
-        data: { name: normalizeDeck(deck.data).name, createdAt: deck.data.createdAt ?? 0 } });
+        data: { ...normalizeDeck(deck.data), createdAt: deck.data.createdAt ?? 0 } });
     }
     return writes;
   }
