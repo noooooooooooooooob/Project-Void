@@ -7,7 +7,7 @@
 :root {
   --bg: #f2f1f5; --surface: #ffffff; --fg: #1d1b24; --muted: #686577; --line: #dcd9e3; --accent: #5b4bd6;
   --face: #fbfaf7; --art: #e7e4ee; --art-line: #d3cfdc;
-  --attack: #c3413a; --skill: #2d6cc9; --special: #8b3fc2; --danger: #b3261e; --on-accent: #ffffff;
+  --attack: #c3413a; --skill: #2d6cc9; --special: #8b3fc2; --danger: #b3261e; --on-accent: #ffffff; --kw: #b0661a;
   --display: "Black Han Sans", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
   --body: "IBM Plex Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
 }
@@ -15,14 +15,14 @@
   :root:not([data-theme="light"]) {
     --bg: #131219; --surface: #1c1a24; --fg: #ecebf2; --muted: #9a97a8; --line: #302d3c; --accent: #a092ff;
     --face: #24222d; --art: #2e2b38; --art-line: #3b3848;
-    --attack: #e0625a; --skill: #5b93e8; --special: #b06ee0; --danger: #f2867e; --on-accent: #131219;
+    --attack: #e0625a; --skill: #5b93e8; --special: #b06ee0; --danger: #f2867e; --on-accent: #131219; --kw: #f0a54a;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #131219; --surface: #1c1a24; --fg: #ecebf2; --muted: #9a97a8; --line: #302d3c; --accent: #a092ff;
   --face: #24222d; --art: #2e2b38; --art-line: #3b3848;
-  --attack: #e0625a; --skill: #5b93e8; --special: #b06ee0; --danger: #f2867e; --on-accent: #131219;
+  --attack: #e0625a; --skill: #5b93e8; --special: #b06ee0; --danger: #f2867e; --on-accent: #131219; --kw: #f0a54a;
   color-scheme: dark;
 }
 body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; }
@@ -63,7 +63,7 @@ button { cursor: pointer; }
 .empty { border: 1px dashed var(--line); border-radius: 10px; padding: 32px 16px; text-align: center; color: var(--muted); display: grid; gap: 10px; justify-items: center; grid-column: 1 / -1; }
 
 /* 카드 한 장 (Notion 예시 그림: 이름 / SP 원이 겹친 일러스트 / 오른쪽 위 공격 종류·범위 / 설명) */
-.card { --cat: var(--attack); position: relative; aspect-ratio: 5 / 7; max-width: 100%; background: var(--face); border: 3px solid var(--cat); border-radius: 12px; padding: 10px 12px 12px; display: grid; grid-template-rows: auto auto 1fr; gap: 8px; text-align: left; overflow: hidden; color: var(--fg); }
+.card { --cat: var(--attack); position: relative; aspect-ratio: 5 / 7; max-width: 100%; background: var(--face); border: 3px solid var(--cat); border-radius: 12px; padding: 10px 12px 30px; display: grid; grid-template-rows: auto auto 1fr; gap: 8px; text-align: left; overflow: hidden; color: var(--fg); }
 .card.cat-skill { --cat: var(--skill); }
 .card.cat-special { --cat: var(--special); }
 button.card { cursor: pointer; transition: transform .12s ease; width: 100%; }
@@ -78,9 +78,12 @@ button.card:hover { transform: translateY(-2px); }
 .mini i { width: 5px; height: 5px; background: var(--art-line); border-radius: 1px; }
 .mini i.on { background: var(--cat); }
 .mini i.origin { box-shadow: 0 0 0 1px var(--fg); }
-.card-desc { margin: 0; font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent); mask-image: linear-gradient(to bottom, #000 80%, transparent); }
+.card-text { display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow: hidden; }
+.card-kws { display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 12px; font-weight: 600; color: var(--kw); line-height: 1.4; }
+.card-desc { flex: 1; min-height: 0; margin: 0; font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent); mask-image: linear-gradient(to bottom, #000 80%, transparent); }
 .card-desc:empty::before { content: "설명 없음"; color: var(--muted); }
 .card-count { position: absolute; right: 8px; bottom: 8px; background: var(--fg); color: var(--face); border-radius: 999px; padding: 1px 8px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.card-cost { position: absolute; left: 8px; bottom: 8px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* 덱 */
 .decks { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 20px; align-items: start; }
@@ -126,8 +129,30 @@ button.card:hover { transform: translateY(-2px); }
 .area-edit button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
 .area-edit button.origin { box-shadow: inset 0 0 0 2px var(--fg); }
 .errors { color: var(--danger); font-size: 13px; margin: 0; padding-left: 18px; }
+.face-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.face-bar .seg { flex: 1; }
+.card-up { background: var(--cat); color: var(--on-accent); }
 .preview { position: sticky; top: 0; display: grid; gap: 8px; }
 .preview .notice { text-align: center; margin: 0; }
+
+/* 키워드 */
+.kw-list { display: grid; gap: 12px; max-width: 720px; }
+.kw-row { display: grid; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.kw-row .row { align-items: center; }
+.kw-row input, .kw-row textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 6px 10px; min-width: 0; box-sizing: border-box; }
+.kw-row input { flex: 1 1 160px; font-weight: 600; color: var(--kw); }
+.kw-row textarea { width: 100%; min-height: 60px; resize: vertical; line-height: 1.5; }
+.kw-row .n { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chip.kw[aria-pressed="true"] { border-color: var(--kw); color: var(--kw); }
+.kw-pop { position: fixed; z-index: 10; width: 220px; max-width: calc(100vw - 16px); box-sizing: border-box; display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; box-shadow: 0 6px 20px color-mix(in srgb, var(--fg) 18%, transparent); pointer-events: none; }
+.kw-pop b { color: var(--kw); font-size: 13px; }
+.kw-pop p { margin: 2px 0 0; font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* 끌어서 순서 바꾸기 */
+.sortable { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+.sortable img { -webkit-user-drag: none; }
+.sortable.dragging { opacity: .45; }
+.sortable.drop-target { outline: 2px dashed var(--accent); outline-offset: 3px; }
 
 /* 토스트 */
 .toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-size: 13px; max-width: calc(100% - 32px); }
@@ -141,6 +166,7 @@ button.card:hover { transform: translateY(-2px); }
     <nav class="tabs" role="tablist">
       <button id="tab-cards" type="button" role="tab" aria-selected="true" data-view="cards">공용 카드</button>
       <button id="tab-decks" type="button" role="tab" aria-selected="false" data-view="decks">덱</button>
+      <button id="tab-keywords" type="button" role="tab" aria-selected="false" data-view="keywords">키워드</button>
     </nav>
     <span class="spacer"></span>
     <span id="notice" class="notice"></span>
@@ -155,12 +181,14 @@ button.card:hover { transform: translateY(-2px); }
       <select id="sort" aria-label="정렬">
         <option value="name">이름순</option>
         <option value="sp">SP순</option>
+        <option value="manual">직접 정렬</option>
       </select>
     </div>
     <div id="card-grid" class="grid"></div>
   </section>
 
   <section id="view-decks" class="view" hidden></section>
+  <section id="view-keywords" class="view" hidden></section>
 </div>
 <div id="editor" hidden>
   <div class="scrim" id="editor-scrim"></div>
@@ -171,9 +199,15 @@ button.card:hover { transform: translateY(-2px); }
     </div>
     <div class="sheet-body">
       <form class="form" id="editor-form" novalidate>
+        <div class="face-bar">
+          <div class="seg" id="f-face"></div>
+          <button class="btn" type="button" id="f-up-remove">이 강화 빼기</button>
+        </div>
+        <div class="form" id="f-fields">
         <div class="row">
           <label class="field"><span>이름</span><input id="f-name" type="text" autocomplete="off"></label>
           <label class="field" style="flex:0 1 96px"><span>SP</span><input id="f-sp" type="number" min="0" step="1" inputmode="numeric"></label>
+          <label class="field" style="flex:0 1 96px"><span>코스트</span><input id="f-cost" type="number" min="0" step="1" inputmode="numeric"></label>
         </div>
         <div class="field"><span>분류</span><div class="seg" id="f-category"></div></div>
         <div class="field"><span>공격 종류</span><div class="seg" id="f-attack"></div></div>
@@ -185,7 +219,9 @@ button.card:hover { transform: translateY(-2px); }
             <button class="btn" type="button" id="f-illust-clear">그림 빼기</button>
           </div>
         </div>
+        <div class="field"><span>키워드</span><div class="chips" id="f-keywords"></div></div>
         <label class="field"><span>설명</span><textarea id="f-desc" maxlength="20000"></textarea></label>
+        </div>
         <ul class="errors" id="f-errors" hidden></ul>
       </form>
       <div class="preview">
@@ -204,12 +240,13 @@ button.card:hover { transform: translateY(-2px); }
   </aside>
 </div>
 <div id="toast" class="toast" hidden></div>
+<div id="kw-pop" class="kw-pop" hidden></div>
 
 <!-- @inline card_model.js -->
 <script>
 const M = window.CardModel;
 const state = {
-  cards: [], decks: [], loaded: false, view: "cards",
+  cards: [], decks: [], keywords: [], loaded: false, view: "cards",
   filter: { category: "all", query: "", sort: "name" },
   deckId: null, canWrite: false, writeAllowed: null,
 };
@@ -255,25 +292,55 @@ function miniGrid(area) {
 
 // 카드 한 장. onClick 이 있으면 버튼으로 만든다.
 function renderCard(card, { count, onClick } = {}) {
+  const kws = M.faceKeywords(card, state.keywords);
   const img = card.illustration
-    ? h("img", { src: "/_blob/" + card.illustration, alt: "", onerror: (e) => e.target.remove() })
+    ? h("img", { src: "/_blob/" + card.illustration, alt: "", draggable: "false", onerror: (e) => e.target.remove() })
     : null;
   const art = h("div", { class: "card-art" },
     img,
     h("span", { class: "card-sp", title: "SP " + card.sp }, card.sp),
     h("div", { class: "card-side" },
       h("span", { class: "card-badge", title: M.ATTACK_LABELS[card.attackType] }, M.ATTACK_BADGES[card.attackType]),
-      miniGrid(card.area)));
+      miniGrid(card.area),
+      card.upgrades?.length ? h("span", { class: "card-badge card-up", title: `강화 ${card.upgrades.length}단계` }, "+" + card.upgrades.length) : null));
   const body = [
     h("h3", { class: "card-name", title: card.name }, card.name || "이름 없음"),
     art,
-    h("p", { class: "card-desc" }, card.description),
+    h("div", { class: "card-text" },
+      kws.length ? h("div", { class: "card-kws" }, ...kws.map((k) => h("span", {}, k.name))) : null,
+      h("p", { class: "card-desc" }, card.description)),
+    h("span", { class: "card-cost", title: "덱 코스트" }, "코스트 " + card.cost),
     count ? h("span", { class: "card-count" }, "×" + count) : null,
   ];
   const cls = "card cat-" + card.category;
-  return onClick
+  const el = onClick
     ? h("button", { class: cls, type: "button", onclick: onClick, "aria-label": card.name + " 편집" }, body)
     : h("article", { class: cls }, body);
+  if (kws.length) {
+    const show = () => showKeywordPop(el, kws);
+    el.addEventListener("mouseenter", show);
+    el.addEventListener("focus", show);
+    el.addEventListener("mouseleave", hideKeywordPop);
+    el.addEventListener("blur", hideKeywordPop);
+  }
+  return el;
+}
+
+// 카드 오른쪽에 키워드 설명. 화면 오른쪽이 모자라면 왼쪽에 띄운다.
+function showKeywordPop(anchor, kws) {
+  const pop = $("#kw-pop");
+  pop.replaceChildren(...kws.map((k) => h("div", {}, h("b", {}, k.name), h("p", {}, k.description || "설명 없음"))));
+  pop.hidden = false;
+  const r = anchor.getBoundingClientRect();
+  const w = pop.offsetWidth, ht = pop.offsetHeight, gap = 8;
+  let left = r.right + gap;
+  if (left + w > innerWidth - gap) left = r.left - gap - w;
+  pop.style.left = Math.max(gap, left) + "px";
+  pop.style.top = Math.max(gap, Math.min(r.top, innerHeight - ht - gap)) + "px";
+}
+
+function hideKeywordPop() {
+  $("#kw-pop").hidden = true;
 }
 
 function renderChips() {
@@ -304,19 +371,121 @@ function renderCardGrid() {
     grid.replaceChildren(h("div", { class: "empty" }, "조건에 맞는 카드가 없어요"));
     return;
   }
-  grid.replaceChildren(...list.map((c) => renderCard(c, { onClick: () => openEditor(c) })));
+  const els = list.map((c) => renderCard(c, { onClick: () => openEditor(c) }));
+  grid.replaceChildren(...els);
+  const f = state.filter;
+  if (state.canWrite && db && f.sort === "manual" && f.category === "all" && !f.query.trim()) {
+    makeSortable(els, (from, to) => applyOrder("cards", list, from, to));
+  }
+}
+
+// 끌어서 순서 바꾸기. 마우스는 조금 끌면, 터치는 길게 누른 뒤 끌면 시작한다.
+let dragSuppressClick = false;
+let dragPending = false;
+document.addEventListener("click", (e) => {
+  if (!dragSuppressClick) return;
+  dragSuppressClick = false;
+  e.stopPropagation();
+  e.preventDefault();
+}, true);
+document.addEventListener("contextmenu", (e) => { if (dragPending) e.preventDefault(); }, true);
+
+function makeSortable(items, onMove) {
+  items.forEach((el, from) => {
+    el.classList.add("sortable");
+    el.addEventListener("pointerdown", (down) => {
+      if (down.button !== 0) return;
+      const touch = down.pointerType === "touch";
+      let dragging = false, target = null, timer = 0;
+      const start = () => {
+        dragging = true;
+        hideKeywordPop();
+        el.classList.add("dragging");
+        try { el.setPointerCapture(down.pointerId); } catch {}
+      };
+      const setTarget = (t) => {
+        if (target === t) return;
+        target?.classList.remove("drop-target");
+        target = t;
+        target?.classList.add("drop-target");
+      };
+      const move = (e) => {
+        if (e.pointerId !== down.pointerId) return;
+        const dist = Math.hypot(e.clientX - down.clientX, e.clientY - down.clientY);
+        if (!dragging) {
+          if (touch) { if (dist > 8) cleanup(); return; }
+          if (dist < 6) return;
+          start();
+        }
+        const hit = items.find((it) => {
+          const r = it.getBoundingClientRect();
+          return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        });
+        setTarget(hit && hit !== el ? hit : null);
+      };
+      // 길게 누른 뒤 끄는 동안 화면이 스크롤되지 않게 한다.
+      const blockScroll = (e) => { if (dragging) e.preventDefault(); };
+      const up = (e) => {
+        if (e.pointerId !== down.pointerId) return;
+        const to = dragging && target && e.type === "pointerup" ? items.indexOf(target) : -1;
+        if (dragging) {
+          dragSuppressClick = true;
+          setTimeout(() => { dragSuppressClick = false; }, 0);
+        }
+        cleanup();
+        if (to >= 0 && el.isConnected) onMove(from, to);
+      };
+      function cleanup() {
+        clearTimeout(timer);
+        dragPending = false;
+        setTarget(null);
+        el.classList.remove("dragging");
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
+        window.removeEventListener("touchmove", blockScroll);
+      }
+      if (touch) { dragPending = true; timer = setTimeout(start, 350); }
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", up);
+      window.addEventListener("touchmove", blockScroll, { passive: false });
+    });
+  });
+}
+
+const deckSort = M.byOrder((a, b) => a.createdAt - b.createdAt);
+
+// 화면에 먼저 반영하고 저장한다. 달라진 문서만 order 를 고친다.
+async function applyOrder(collection, list, from, to) {
+  const writes = M.reorderWrites(list, from, to);
+  if (!writes.length) return;
+  const items = collection === "cards" ? state.cards : state.decks;
+  for (const w of writes) {
+    const it = items.find((x) => x.id === w.id);
+    if (it) it.order = w.order;
+  }
+  state.decks.sort(deckSort);
+  render();
+  try {
+    for (const w of writes) await db.doc(collection + "/" + w.id).update({ order: w.order });
+  } catch (e) { writeFailed(e); }
 }
 
 function render() {
   for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.view === state.view));
   $("#view-cards").hidden = state.view !== "cards";
   $("#view-decks").hidden = state.view !== "decks";
+  $("#view-keywords").hidden = state.view !== "keywords";
   $("#new-card").hidden = !state.canWrite || state.view !== "cards";
+  hideKeywordPop();
   if (state.view === "cards") { renderChips(); renderCardGrid(); }
-  else renderDecks();
+  else if (state.view === "decks") renderDecks();
+  else renderKeywords();
 }
 
 // 편집 중인 초안. id 가 없으면 아직 저장 안 된 새 카드.
+// draft.face: 지금 보고 있는 면 ("base" 또는 강화 단계 index 0..4). 입력 칸은 이 면을 고친다.
 let draft = null;
 let deleteArmed = false;
 
@@ -324,8 +493,29 @@ function draftCard() {
   return { id: draft.id, ...M.normalizeCard(draft) };
 }
 
+// 입력 칸이 고치는 객체: 기본 면이면 draft, 강화 면이면 draft.upgrades[i].
+function face() {
+  return draft.face === "base" ? draft : draft.upgrades[draft.face];
+}
+
 function syncEditorPreview() {
-  $("#f-preview").replaceChildren(renderCard(draftCard()));
+  const card = draftCard();
+  $("#f-preview").replaceChildren(renderCard(draft.face === "base" ? card : card.upgrades[draft.face]));
+}
+
+function editableFace(f) {
+  return { ...f, area: [...f.area], keywords: [...f.keywords], sp: String(f.sp), cost: String(f.cost) };
+}
+
+function editableCard(card) {
+  return { ...editableFace(card), id: card.id ?? null, deckId: card.deckId, upgrades: card.upgrades.map(editableFace), face: "base" };
+}
+
+function setFace(name) {
+  draft.face = name;
+  fillEditorInputs();
+  renderEditorControls();
+  syncEditorPreview();
 }
 
 function renderSeg(box, values, labels, current, onPick) {
@@ -336,20 +526,44 @@ function renderSeg(box, values, labels, current, onPick) {
 }
 
 function renderEditorControls() {
-  renderSeg($("#f-category"), M.CATEGORIES, M.CATEGORY_LABELS, draft.category, (v) => { draft.category = v; });
-  renderSeg($("#f-attack"), M.ATTACK_TYPES, M.ATTACK_LABELS, draft.attackType, (v) => { draft.attackType = v; });
-  const on = new Set(draft.area.map(([x, y]) => x + "," + y));
+  const faces = [["base", "기본"], ...draft.upgrades.map((_, i) => [i, "강화 " + (i + 1)])];
+  const canAdd = state.canWrite && draft.upgrades.length < M.MAX_UPGRADES;
+  $("#f-face").replaceChildren(
+    ...faces.map(([v, label]) => h("button", {
+      type: "button", "aria-pressed": String(draft.face === v), onclick: () => setFace(v),
+    }, label)),
+    canAdd ? h("button", {
+      type: "button", title: `최대 ${M.MAX_UPGRADES}개`,
+      onclick: () => { draft.upgrades.push(editableFace(M.newUpgrade(draftCard()))); setFace(draft.upgrades.length - 1); },
+    }, "+ 강화 추가") : null);
+  $("#f-up-remove").hidden = !state.canWrite || draft.face === "base";
+  const f = face();
+  renderSeg($("#f-category"), M.CATEGORIES, M.CATEGORY_LABELS, f.category, (v) => { face().category = v; });
+  renderSeg($("#f-attack"), M.ATTACK_TYPES, M.ATTACK_LABELS, f.attackType, (v) => { face().attackType = v; });
+  const on = new Set(f.area.map(([x, y]) => x + "," + y));
   const cells = [];
   for (let y = -M.AREA_RADIUS; y <= M.AREA_RADIUS; y++) {
     for (let x = -M.AREA_RADIUS; x <= M.AREA_RADIUS; x++) {
       cells.push(h("button", {
         type: "button", class: x === 0 && y === 0 ? "origin" : null, disabled: !state.canWrite,
         "aria-pressed": String(on.has(x + "," + y)), "aria-label": `열 ${x}, 행 ${y}`,
-        onclick: () => { draft.area = M.toggleCell(draft.area, x, y); renderEditorControls(); syncEditorPreview(); },
+        onclick: () => { face().area = M.toggleCell(face().area, x, y); renderEditorControls(); syncEditorPreview(); },
       }));
     }
   }
   $("#f-area").replaceChildren(...cells);
+  const picked = new Set(f.keywords);
+  $("#f-keywords").replaceChildren(...(state.keywords.length
+    ? [...state.keywords].sort((a, b) => a.name.localeCompare(b.name, "ko")).map((k) => h("button", {
+        type: "button", class: "chip kw", "aria-pressed": String(picked.has(k.id)), disabled: !state.canWrite, title: k.description,
+        onclick: () => {
+          const cur = face();
+          cur.keywords = picked.has(k.id) ? cur.keywords.filter((id) => id !== k.id) : [...cur.keywords, k.id];
+          renderEditorControls();
+          syncEditorPreview();
+        },
+      }, k.name))
+    : [h("span", { class: "notice" }, "키워드 탭에서 먼저 키워드를 추가하세요")]));
   const saved = Boolean(draft.id);
   const w = state.canWrite;
   const targets = state.decks.filter((d) => d.id !== draft.deckId);
@@ -364,13 +578,15 @@ function renderEditorControls() {
   if (targets.some((d) => d.id === pickedDeck)) $("#f-deck").value = pickedDeck;
   renderEditorTitle();
   $("#f-illust-field").hidden = !assets;
-  $("#f-illust-clear").disabled = !draft.illustration;
+  $("#f-illust-clear").disabled = !f.illustration;
 }
 
 function fillEditorInputs() {
-  $("#f-name").value = draft.name;
-  $("#f-sp").value = draft.sp;
-  $("#f-desc").value = draft.description;
+  const f = face();
+  $("#f-name").value = f.name;
+  $("#f-sp").value = f.sp;
+  $("#f-cost").value = f.cost;
+  $("#f-desc").value = f.description;
   $("#f-illust").value = "";
 }
 
@@ -386,15 +602,13 @@ function renderEditorTitle() {
 
 // deckId: 새 카드를 만들 덱. 없으면 공용 카드.
 function openEditor(card, deckId = null) {
-  draft = card
-    ? { ...card, area: [...card.area], sp: String(card.sp) }
-    : { id: null, ...M.normalizeCard({ name: "", sp: 1, deckId }), sp: "1" };
+  draft = editableCard(card ?? M.normalizeCard({ name: "", sp: 1, deckId }));
   deleteArmed = false;
   $("#f-delete").classList.remove("armed");
   $("#f-delete").textContent = "삭제";
   fillEditorInputs();
   showErrors([]);
-  for (const id of ["#f-name", "#f-sp", "#f-desc"]) $(id).readOnly = !state.canWrite;
+  for (const id of ["#f-name", "#f-sp", "#f-cost", "#f-desc"]) $(id).readOnly = !state.canWrite;
   renderEditorControls();
   syncEditorPreview();
   $("#editor").hidden = false;
@@ -430,9 +644,14 @@ function writeFailed(e) {
   }
 }
 
-$("#f-name").addEventListener("input", (e) => { draft.name = e.target.value; syncEditorPreview(); });
-$("#f-sp").addEventListener("input", (e) => { draft.sp = e.target.value; syncEditorPreview(); });
-$("#f-desc").addEventListener("input", (e) => { draft.description = e.target.value; syncEditorPreview(); });
+$("#f-name").addEventListener("input", (e) => { face().name = e.target.value; syncEditorPreview(); });
+$("#f-sp").addEventListener("input", (e) => { face().sp = e.target.value; syncEditorPreview(); });
+$("#f-cost").addEventListener("input", (e) => { face().cost = e.target.value; syncEditorPreview(); });
+$("#f-desc").addEventListener("input", (e) => { face().description = e.target.value; syncEditorPreview(); });
+$("#f-up-remove").addEventListener("click", () => {
+  draft.upgrades.splice(draft.face, 1);
+  setFace(draft.face > 0 ? draft.face - 1 : draft.upgrades.length ? 0 : "base");
+});
 $("#editor-close").addEventListener("click", closeEditor);
 $("#editor-scrim").addEventListener("click", closeEditor);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && draft) closeEditor(); });
@@ -442,8 +661,8 @@ $("#f-illust").addEventListener("change", async (e) => {
   if (!file || !assets || !draft) return;
   try {
     const res = await assets.upload(file);
-    if (!draft) return;
-    draft.illustration = res.id;
+    if (!draft || !face()) return;
+    face().illustration = res.id;
     refreshUsage();
     renderEditorControls();
     syncEditorPreview();
@@ -455,7 +674,7 @@ $("#f-illust").addEventListener("change", async (e) => {
   }
 });
 $("#f-illust-clear").addEventListener("click", () => {
-  draft.illustration = null;
+  face().illustration = null;
   $("#f-illust").value = "";
   renderEditorControls();
   syncEditorPreview();
@@ -474,7 +693,7 @@ $("#f-save").addEventListener("click", async () => {
   saving.id = ref.id;
   $("#f-save").disabled = true;
   try {
-    await ref.set({ ...body, createdAt: prev?.createdAt ?? Date.now() });
+    await ref.set({ ...body, createdAt: prev?.createdAt ?? Date.now(), ...(typeof prev?.order === "number" ? { order: prev.order } : {}) });
     if (draft !== saving) return;
     toast("저장했어요");
     renderEditorControls();
@@ -489,7 +708,7 @@ $("#f-save").addEventListener("click", async () => {
 $("#f-dup").addEventListener("click", () => {
   const copy = { ...draftCard(), id: null, name: draft.name.trim() + " 사본" };
   openEditor(null, copy.deckId);
-  draft = { ...copy, sp: String(copy.sp) };
+  draft = editableCard(copy);
   fillEditorInputs();
   renderEditorControls();
   syncEditorPreview();
@@ -522,11 +741,13 @@ $("#f-delete").addEventListener("click", async () => {
     return;
   }
   const id = draft.id;
-  const illustration = draft.illustration;
+  const illustrations = M.cardAssets(draftCard());
   try {
     await db.doc("cards/" + id).delete();
-    if (illustration && assets && !M.isAssetShared(state.cards, illustration, id)) {
-      await assets.delete(illustration).catch((e) => console.warn("asset delete", e));
+    for (const a of illustrations) {
+      if (assets && !M.isAssetShared(state.cards, a, id)) {
+        await assets.delete(a).catch((e) => console.warn("asset delete", e));
+      }
     }
     closeEditor();
     toast("삭제했어요");
@@ -538,7 +759,9 @@ let deckDeleteArmed = null;
 async function saveDeck(deck, patch) {
   try {
     // update 는 중첩 객체를 병합하므로 덱은 항상 set 으로 통째로 쓴다.
-    await db.doc("decks/" + deck.id).set({ name: deck.name, createdAt: deck.createdAt, ...patch });
+    await db.doc("decks/" + deck.id).set({
+      name: deck.name, createdAt: deck.createdAt, ...(typeof deck.order === "number" ? { order: deck.order } : {}), ...patch,
+    });
   } catch (e) { writeFailed(e); }
 }
 
@@ -557,11 +780,13 @@ function renderDecks() {
   const deck = state.decks.find((d) => d.id === state.deckId);
   const ro = !state.canWrite || !db;
 
+  const deckBtns = state.decks.map((d) => h("button", {
+    type: "button", class: "item", "aria-current": String(d.id === state.deckId),
+    onclick: () => { state.deckId = d.id; deckDeleteArmed = null; renderDecks(); },
+  }, h("span", {}, d.name), h("span", { class: "n" }, M.cardsInDeck(state.cards, d.id).length + "장")));
+  if (!ro) makeSortable(deckBtns, (from, to) => applyOrder("decks", state.decks, from, to));
   const list = h("nav", { class: "deck-list", "aria-label": "덱 목록" },
-    ...state.decks.map((d) => h("button", {
-      type: "button", class: "item", "aria-current": String(d.id === state.deckId),
-      onclick: () => { state.deckId = d.id; deckDeleteArmed = null; renderDecks(); },
-    }, h("span", {}, d.name), h("span", { class: "n" }, M.cardsInDeck(state.cards, d.id).length + "장"))),
+    ...deckBtns,
     ro ? null : h("button", { type: "button", class: "btn", onclick: createDeck }, "새 덱"));
 
   if (!deck) {
@@ -606,6 +831,7 @@ function renderDecks() {
 
   const summary = h("div", { class: "summary" },
     h("div", { class: "total" }, h("b", {}, rows.length), h("span", {}, "카드 수")),
+    h("div", { class: "total" }, h("b", {}, M.averageCost(rows) ?? "–"), h("span", {}, "코스트 평균")),
     h("div", {},
       h("div", { class: "bars-label" }, "SP별 카드 수"),
       hist.length
@@ -613,8 +839,10 @@ function renderDecks() {
             h("span", {}, b.count), h("i", { style: `height:${Math.round((b.count / peak) * 40)}px` }), h("small", {}, "SP " + b.sp))))
         : h("div", { class: "notice" }, "카드가 없어요")));
 
+  const cardEls = rows.map((card) => renderCard(card, { onClick: () => openEditor(card) }));
+  if (!ro) makeSortable(cardEls, (from, to) => applyOrder("cards", rows, from, to));
   const grid = rows.length
-    ? h("div", { class: "grid" }, ...rows.map((card) => renderCard(card, { onClick: () => openEditor(card) })))
+    ? h("div", { class: "grid" }, ...cardEls)
     : h("div", { class: "empty" }, ro ? "이 덱은 비어 있어요." : "이 덱은 비어 있어요. ‘이 덱에 새 카드’로 카드를 만들어 보세요.");
 
   // 다른 사람의 저장으로 다시 그려질 때 입력 중인 덱 이름을 잃지 않게 한다.
@@ -629,6 +857,78 @@ function renderDecks() {
     nameInput.setSelectionRange(typing.selectionStart, typing.selectionEnd);
   }
 }
+
+let kwDeleteArmed = null;
+let kwFocusId = null;
+let kwRenderPending = false;
+
+async function saveKeyword(kw, patch) {
+  try {
+    await db.doc("keywords/" + kw.id).set({ name: kw.name, description: kw.description, createdAt: kw.createdAt, ...patch });
+  } catch (e) { writeFailed(e); }
+}
+
+async function createKeyword() {
+  try {
+    const ref = db.collection("keywords").doc();
+    kwFocusId = ref.id;
+    await ref.set({ name: "새 키워드", description: "", createdAt: Date.now() });
+  } catch (e) { kwFocusId = null; writeFailed(e); }
+}
+
+function renderKeywords() {
+  const root = $("#view-keywords");
+  // 입력 중에 다른 사람의 저장이 와도 글자를 잃지 않게, 포커스가 빠질 때 다시 그린다.
+  if (root.contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) {
+    kwRenderPending = true;
+    return;
+  }
+  kwRenderPending = false;
+  const ro = !state.canWrite || !db;
+  const head = h("div", { class: "toolbar" },
+    h("span", { class: "notice" }, "카드에 붙이면 설명 위에 표시되고, 카드에 마우스를 올리면 설명이 떠요."),
+    ro ? null : h("button", { type: "button", class: "btn primary", onclick: createKeyword }, "새 키워드"));
+  if (!state.keywords.length) {
+    root.replaceChildren(head, h("div", { class: "empty" }, h("strong", {}, "아직 키워드가 없어요"),
+      ro ? "편집 권한이 있는 사람이 키워드를 추가하면 여기에 보여요." : "‘새 키워드’로 출혈, 관통 같은 키워드를 만들어 보세요."));
+    return;
+  }
+  const rows = state.keywords.map((kw) => {
+    const used = M.keywordUsage(state.cards, kw.id);
+    const name = h("input", { type: "text", value: kw.name, "aria-label": "키워드 이름", readonly: ro, "data-kw": kw.id });
+    name.addEventListener("change", () => {
+      const v = name.value.trim();
+      if (M.validateKeyword({ name: v }).length) { name.value = kw.name; toast("키워드 이름을 입력하세요"); return; }
+      if (v !== kw.name) saveKeyword(kw, { name: v });
+    });
+    const desc = h("textarea", { "aria-label": kw.name + " 설명", placeholder: "설명", readonly: ro });
+    desc.value = kw.description;
+    desc.addEventListener("change", () => { if (desc.value !== kw.description) saveKeyword(kw, { description: desc.value }); });
+    const armed = kwDeleteArmed === kw.id;
+    const del = ro ? null : h("button", {
+      type: "button", class: "btn danger" + (armed ? " armed" : ""),
+      onclick: async () => {
+        if (!armed) { kwDeleteArmed = kw.id; renderKeywords(); return; }
+        kwDeleteArmed = null;
+        try {
+          await db.doc("keywords/" + kw.id).delete();
+          toast("키워드를 삭제했어요");
+        } catch (e) { writeFailed(e); }
+      },
+    }, armed ? (used ? `한 번 더 누르면 삭제 (카드 ${used}장에서 빠짐)` : "한 번 더 누르면 삭제") : "삭제");
+    return h("div", { class: "kw-row" }, h("div", { class: "row" }, name, h("span", { class: "n" }, `카드 ${used}장`), del), desc);
+  });
+  root.replaceChildren(head, h("div", { class: "kw-list" }, ...rows));
+  if (kwFocusId) {
+    const input = root.querySelector(`input[data-kw="${kwFocusId}"]`);
+    if (input) { kwFocusId = null; input.focus(); input.select(); }
+  }
+}
+
+$("#view-keywords").addEventListener("focusout", () => {
+  setTimeout(() => { if (kwRenderPending && state.view === "keywords") renderKeywords(); }, 0);
+});
+window.addEventListener("scroll", hideKeywordPop, true);
 
 for (const b of document.querySelectorAll(".tabs button")) {
   b.addEventListener("click", () => { state.view = b.dataset.view; render(); });
@@ -657,6 +957,10 @@ function onDbError(e) {
   console.warn("db", e);
 }
 
+function orderOf(data) {
+  return typeof data.order === "number" ? { order: data.order } : {};
+}
+
 async function boot() {
   render();
   if (!window.claude?.use) {
@@ -679,15 +983,22 @@ async function boot() {
   refreshUsage();
   if (!state.canWrite) $("#notice").textContent = "읽기 전용으로 보고 있어요.";
   db.collection("cards").onSnapshot((snap) => {
-    state.cards = snap.docs.map((d) => ({ id: d.id, ...M.normalizeCard(d.data()) }));
+    state.cards = snap.docs.map((d) => ({ id: d.id, ...M.normalizeCard(d.data()), ...orderOf(d.data()) }));
     state.loaded = true;
     render();
   }, onDbError);
   db.collection("decks").onSnapshot((snap) => {
     state.decks = snap.docs
-      .map((d) => ({ id: d.id, createdAt: d.data().createdAt || 0, ...M.normalizeDeck(d.data()) }))
+      .map((d) => ({ id: d.id, createdAt: d.data().createdAt || 0, ...M.normalizeDeck(d.data()), ...orderOf(d.data()) }))
+      .sort(deckSort);
+    render();
+  }, onDbError);
+  db.collection("keywords").onSnapshot((snap) => {
+    state.keywords = snap.docs
+      .map((d) => ({ id: d.id, createdAt: d.data().createdAt || 0, ...M.normalizeKeyword(d.data()) }))
       .sort((a, b) => a.createdAt - b.createdAt);
     render();
+    if (draft) { renderEditorControls(); syncEditorPreview(); }
   }, onDbError);
 }
 boot();
