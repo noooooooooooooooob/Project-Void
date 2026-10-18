@@ -95,6 +95,7 @@ button.card:hover { transform: translateY(-2px); }
 .deck-detail { display: grid; gap: 16px; min-width: 0; }
 .deck-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .deck-head input { font-family: var(--display); font-size: 20px; border: 1px solid transparent; background: none; border-radius: 6px; padding: 4px 8px; flex: 1 1 200px; min-width: 0; }
+.deck-head input#deck-name-en { font-family: inherit; font-size: 14px; }
 .deck-head input:not([readonly]):hover, .deck-head input:not([readonly]):focus { border-color: var(--line); background: var(--surface); }
 .summary { display: flex; flex-wrap: wrap; gap: 24px; align-items: end; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
 .total { display: grid; }
@@ -209,6 +210,7 @@ button.card:hover { transform: translateY(-2px); }
           <label class="field" style="flex:0 1 96px"><span>SP</span><input id="f-sp" type="number" min="0" step="1" inputmode="numeric"></label>
           <label class="field" style="flex:0 1 96px"><span>코스트</span><input id="f-cost" type="number" min="0" step="1" inputmode="numeric"></label>
         </div>
+        <label class="field"><span>영어 이름</span><input id="f-name-en" type="text" autocomplete="off"></label>
         <div class="field"><span>분류</span><div class="seg" id="f-category"></div></div>
         <div class="field"><span>공격 종류</span><div class="seg" id="f-attack"></div></div>
         <div class="field"><span>범위 (가운데가 기준 칸, 아무것도 안 고르면 단일)</span><div class="area-edit" id="f-area"></div></div>
@@ -221,6 +223,7 @@ button.card:hover { transform: translateY(-2px); }
         </div>
         <div class="field"><span>키워드</span><div class="chips" id="f-keywords"></div></div>
         <label class="field"><span>설명</span><textarea id="f-desc" maxlength="20000"></textarea></label>
+        <label class="field"><span>영어 설명</span><textarea id="f-desc-en" maxlength="20000"></textarea></label>
         </div>
         <ul class="errors" id="f-errors" hidden></ul>
       </form>
@@ -587,6 +590,8 @@ function fillEditorInputs() {
   $("#f-sp").value = f.sp;
   $("#f-cost").value = f.cost;
   $("#f-desc").value = f.description;
+  $("#f-name-en").value = f.nameEn ?? "";
+  $("#f-desc-en").value = f.descriptionEn ?? "";
   $("#f-illust").value = "";
 }
 
@@ -608,7 +613,7 @@ function openEditor(card, deckId = null) {
   $("#f-delete").textContent = "삭제";
   fillEditorInputs();
   showErrors([]);
-  for (const id of ["#f-name", "#f-sp", "#f-cost", "#f-desc"]) $(id).readOnly = !state.canWrite;
+  for (const id of ["#f-name", "#f-sp", "#f-cost", "#f-desc", "#f-name-en", "#f-desc-en"]) $(id).readOnly = !state.canWrite;
   renderEditorControls();
   syncEditorPreview();
   $("#editor").hidden = false;
@@ -648,6 +653,8 @@ $("#f-name").addEventListener("input", (e) => { face().name = e.target.value; sy
 $("#f-sp").addEventListener("input", (e) => { face().sp = e.target.value; syncEditorPreview(); });
 $("#f-cost").addEventListener("input", (e) => { face().cost = e.target.value; syncEditorPreview(); });
 $("#f-desc").addEventListener("input", (e) => { face().description = e.target.value; syncEditorPreview(); });
+$("#f-name-en").addEventListener("input", (e) => { face().nameEn = e.target.value; });
+$("#f-desc-en").addEventListener("input", (e) => { face().descriptionEn = e.target.value; });
 $("#f-up-remove").addEventListener("click", () => {
   draft.upgrades.splice(draft.face, 1);
   setFace(draft.face > 0 ? draft.face - 1 : draft.upgrades.length ? 0 : "base");
@@ -760,7 +767,7 @@ async function saveDeck(deck, patch) {
   try {
     // update 는 중첩 객체를 병합하므로 덱은 항상 set 으로 통째로 쓴다.
     await db.doc("decks/" + deck.id).set({
-      name: deck.name, createdAt: deck.createdAt, ...(typeof deck.order === "number" ? { order: deck.order } : {}), ...patch,
+      name: deck.name, nameEn: deck.nameEn ?? "", createdAt: deck.createdAt, ...(typeof deck.order === "number" ? { order: deck.order } : {}), ...patch,
     });
   } catch (e) { writeFailed(e); }
 }
@@ -768,7 +775,7 @@ async function saveDeck(deck, patch) {
 async function createDeck() {
   try {
     const ref = db.collection("decks").doc();
-    await ref.set({ name: "새 덱", createdAt: Date.now() });
+    await ref.set({ name: "새 덱", nameEn: "", createdAt: Date.now() });
     state.deckId = ref.id;
     renderDecks();
   } catch (e) { writeFailed(e); }
@@ -804,6 +811,12 @@ function renderDecks() {
   nameInput.addEventListener("change", () => {
     const name = nameInput.value.trim() || "이름 없는 덱";
     if (name !== deck.name) saveDeck(deck, { name });
+  });
+
+  const nameEnInput = h("input", { id: "deck-name-en", type: "text", value: deck.nameEn ?? "", placeholder: "영어 이름", "aria-label": "덱 영어 이름", readonly: ro });
+  nameEnInput.addEventListener("change", () => {
+    const nameEn = nameEnInput.value.trim();
+    if (nameEn !== (deck.nameEn ?? "")) saveDeck(deck, { nameEn });
   });
 
   const armed = deckDeleteArmed === deck.id;
@@ -846,15 +859,17 @@ function renderDecks() {
     : h("div", { class: "empty" }, ro ? "이 덱은 비어 있어요." : "이 덱은 비어 있어요. ‘이 덱에 새 카드’로 카드를 만들어 보세요.");
 
   // 다른 사람의 저장으로 다시 그려질 때 입력 중인 덱 이름을 잃지 않게 한다.
-  const typing = document.activeElement?.id === "deck-name" && document.activeElement.dataset.deck === deck.id
+  const typing = /^deck-name(-en)?$/.test(document.activeElement?.id ?? "") && document.activeElement.dataset.deck === deck.id
     ? document.activeElement : null;
   nameInput.dataset.deck = deck.id;
-  if (typing) nameInput.value = typing.value;
+  nameEnInput.dataset.deck = deck.id;
+  const typed = typing && (typing.id === "deck-name" ? nameInput : nameEnInput);
+  if (typing) typed.value = typing.value;
   root.replaceChildren(h("div", { class: "decks" }, list,
-    h("div", { class: "deck-detail" }, h("div", { class: "deck-head" }, nameInput, newBtn, delBtn), summary, grid)));
+    h("div", { class: "deck-detail" }, h("div", { class: "deck-head" }, nameInput, nameEnInput, newBtn, delBtn), summary, grid)));
   if (typing) {
-    nameInput.focus();
-    nameInput.setSelectionRange(typing.selectionStart, typing.selectionEnd);
+    typed.focus();
+    typed.setSelectionRange(typing.selectionStart, typing.selectionEnd);
   }
 }
 
@@ -864,7 +879,7 @@ let kwRenderPending = false;
 
 async function saveKeyword(kw, patch) {
   try {
-    await db.doc("keywords/" + kw.id).set({ name: kw.name, description: kw.description, createdAt: kw.createdAt, ...patch });
+    await db.doc("keywords/" + kw.id).set({ name: kw.name, nameEn: kw.nameEn ?? "", description: kw.description, descriptionEn: kw.descriptionEn ?? "", createdAt: kw.createdAt, ...patch });
   } catch (e) { writeFailed(e); }
 }
 
@@ -872,7 +887,7 @@ async function createKeyword() {
   try {
     const ref = db.collection("keywords").doc();
     kwFocusId = ref.id;
-    await ref.set({ name: "새 키워드", description: "", createdAt: Date.now() });
+    await ref.set({ name: "새 키워드", nameEn: "", description: "", descriptionEn: "", createdAt: Date.now() });
   } catch (e) { kwFocusId = null; writeFailed(e); }
 }
 
@@ -901,9 +916,17 @@ function renderKeywords() {
       if (M.validateKeyword({ name: v }).length) { name.value = kw.name; toast("키워드 이름을 입력하세요"); return; }
       if (v !== kw.name) saveKeyword(kw, { name: v });
     });
+    const nameEn = h("input", { type: "text", value: kw.nameEn ?? "", "aria-label": "키워드 영어 이름", placeholder: "영어 이름", readonly: ro });
+    nameEn.addEventListener("change", () => {
+      const v = nameEn.value.trim();
+      if (v !== (kw.nameEn ?? "")) saveKeyword(kw, { nameEn: v });
+    });
     const desc = h("textarea", { "aria-label": kw.name + " 설명", placeholder: "설명", readonly: ro });
     desc.value = kw.description;
     desc.addEventListener("change", () => { if (desc.value !== kw.description) saveKeyword(kw, { description: desc.value }); });
+    const descEn = h("textarea", { "aria-label": kw.name + " 영어 설명", placeholder: "영어 설명", readonly: ro });
+    descEn.value = kw.descriptionEn ?? "";
+    descEn.addEventListener("change", () => { if (descEn.value !== (kw.descriptionEn ?? "")) saveKeyword(kw, { descriptionEn: descEn.value }); });
     const armed = kwDeleteArmed === kw.id;
     const del = ro ? null : h("button", {
       type: "button", class: "btn danger" + (armed ? " armed" : ""),
@@ -916,7 +939,7 @@ function renderKeywords() {
         } catch (e) { writeFailed(e); }
       },
     }, armed ? (used ? `한 번 더 누르면 삭제 (카드 ${used}장에서 빠짐)` : "한 번 더 누르면 삭제") : "삭제");
-    return h("div", { class: "kw-row" }, h("div", { class: "row" }, name, h("span", { class: "n" }, `카드 ${used}장`), del), desc);
+    return h("div", { class: "kw-row" }, h("div", { class: "row" }, name, nameEn, h("span", { class: "n" }, `카드 ${used}장`), del), desc, descEn);
   });
   root.replaceChildren(head, h("div", { class: "kw-list" }, ...rows));
   if (kwFocusId) {
