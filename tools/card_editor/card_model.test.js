@@ -291,3 +291,37 @@ test("reorderWrites moves an item and returns only changed orders", () => {
   assert.deepEqual(M.reorderWrites(list, 3, 0), [{ id: "d", order: 0 }, { id: "a", order: 1 }, { id: "b", order: 2 }, { id: "c", order: 3 }]);
   assert.deepEqual(M.reorderWrites(list, 1, 1), []);
 });
+
+const exKws = [{ id: "k1", name: "화상", nameEn: "Burn", description: "d", descriptionEn: "e" }];
+const exDecks = [{ id: "d2", name: "포수", nameEn: "Gunner", order: 0 }, { id: "d1", name: "검사", nameEn: "", order: 1 }];
+const exCards = [
+  { id: "x", ...M.normalizeCard({ name: "나", deckId: "d1", illustration: "a1" }) },
+  { id: "y", ...M.normalizeCard({ name: "가", sp: 2, cost: 1, nameEn: "Ga", keywords: ["gone", "k1"], area: [[1, 0], [0, 0]],
+      illustration: "a1", upgrades: [{ name: "가 강", illustration: "a2" }] }) },
+  { id: "z", ...M.normalizeCard({ name: "다", deckId: "d2" }) },
+  { id: "o", ...M.normalizeCard({ name: "고아", deckId: "deleted", illustration: "a3" }) },
+];
+
+test("exportCards puts common cards first, then decks in tab order, skipping orphans", () => {
+  assert.deepEqual(M.exportCards(exCards, exDecks).map((c) => c.id), ["y", "z", "x"]);
+});
+
+test("exportAssets lists each used illustration once", () => {
+  assert.deepEqual(M.exportAssets(exCards, exDecks), ["a1", "a2"]);
+});
+
+test("buildExport writes the game JSON shape", () => {
+  const out = M.buildExport({ cards: exCards, decks: exDecks, keywords: exKws }, (id) => (id === "a2" ? null : `art/${id}.png`));
+  assert.deepEqual(Object.keys(out), ["keywords", "decks", "cards"]);
+  assert.deepEqual(out.keywords, [{ id: "k1", name: { ko: "화상", en: "Burn" }, description: { ko: "d", en: "e" } }]);
+  assert.deepEqual(out.decks, [{ id: "d2", name: { ko: "포수", en: "Gunner" } }, { id: "d1", name: { ko: "검사", en: "" } }]);
+  assert.deepEqual(out.cards[0], {
+    id: "y", deck: null, name: { ko: "가", en: "Ga" }, description: { ko: "", en: "" },
+    sp: 2, cost: 1, category: "attack", attackType: "melee", area: [[0, 0], [1, 0]], keywords: ["k1"], art: "art/a1.png",
+    upgrades: [{ name: { ko: "가 강", en: "" }, description: { ko: "", en: "" }, sp: 0, cost: 0, category: "attack",
+      attackType: "melee", area: [], keywords: [], art: null }],
+  });
+  assert.equal(out.cards[1].art, null);
+  assert.deepEqual(out.cards[2].upgrades, []);
+  assert.equal(out.cards[2].deck, "d1");
+});

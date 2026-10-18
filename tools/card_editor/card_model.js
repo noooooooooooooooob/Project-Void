@@ -233,11 +233,44 @@
     return "retry";
   }
 
+  // 게임용 export 는 면 하나를 { name, description } 두 언어 객체로 바꾸고, 그림은 artPath 로 경로를 받는다.
+  function exportFace(face, keywords, artPath) {
+    return {
+      name: { ko: face.name, en: face.nameEn },
+      description: { ko: face.description, en: face.descriptionEn },
+      sp: face.sp, cost: face.cost, category: face.category, attackType: face.attackType,
+      area: face.area,
+      keywords: faceKeywords(face, keywords).map((k) => k.id),
+      art: face.illustration ? (artPath(face.illustration) ?? null) : null,
+    };
+  }
+
+  // 공용 카드 → 덱 순서(화면 탭 순서, 호출자가 정렬해 넘김). 지워진 덱의 카드는 빠진다.
+  function exportCards(cards, decks) {
+    return [...cardsInDeck(cards, null), ...decks.flatMap((d) => cardsInDeck(cards, d.id))];
+  }
+
+  function exportAssets(cards, decks) {
+    return [...new Set(exportCards(cards, decks).flatMap(cardAssets))];
+  }
+
+  function buildExport({ cards, decks, keywords }, artPath) {
+    const faceOut = (f) => exportFace(f, keywords, artPath);
+    return {
+      keywords: keywords.map((k) => ({ id: k.id, name: { ko: k.name, en: k.nameEn }, description: { ko: k.description, en: k.descriptionEn } })),
+      decks: decks.map((d) => ({ id: d.id, name: { ko: d.name, en: d.nameEn } })),
+      cards: exportCards(cards, decks).map((c) => ({
+        id: c.id, deck: c.deckId ?? null, ...faceOut(c), upgrades: (c.upgrades || []).map(faceOut),
+      })),
+    };
+  }
+
   const api = {
     CATEGORIES, CATEGORY_LABELS, ATTACK_TYPES, ATTACK_LABELS, ATTACK_BADGES, AREA_RADIUS, MAX_UPGRADES,
     normalizeCard, newUpgrade, validateCard, cardAssets, normalizeArea, toggleCell, areaOrDefault,
     filterSort, normalizeDeck, cardsInDeck, spHistogram, averageCost, migrationWrites, isAssetShared, assetsFreedByDeckDelete, formatUsage,
     writeErrorKind, byOrder, reorderWrites, normalizeKeyword, validateKeyword, faceKeywords, keywordUsage,
+    exportCards, exportAssets, buildExport,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.CardModel = api;
