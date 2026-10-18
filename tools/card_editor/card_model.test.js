@@ -325,3 +325,39 @@ test("buildExport writes the game JSON shape", () => {
   assert.deepEqual(out.cards[2].upgrades, []);
   assert.equal(out.cards[2].deck, "d1");
 });
+
+function readZip(buf) {
+  const v = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const eocd = buf.length - 22;
+  assert.equal(v.getUint32(eocd, true), 0x06054b50);
+  const count = v.getUint16(eocd + 10, true);
+  let p = v.getUint32(eocd + 16, true);
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    assert.equal(v.getUint32(p, true), 0x02014b50);
+    const crc = v.getUint32(p + 16, true), size = v.getUint32(p + 20, true);
+    const nameLen = v.getUint16(p + 28, true), off = v.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(buf.subarray(p + 46, p + 46 + nameLen));
+    assert.equal(v.getUint32(off, true), 0x04034b50);
+    const dataAt = off + 30 + v.getUint16(off + 26, true) + v.getUint16(off + 28, true);
+    out.push({ name, crc, bytes: buf.subarray(dataAt, dataAt + size) });
+    p += 46 + nameLen;
+  }
+  return out;
+}
+
+test("makeZip stores files that read back with correct CRC32", () => {
+  const json = new TextEncoder().encode('{"a":"베기"}');
+  const zip = M.makeZip([{ name: "cards.json", bytes: json }, { name: "art/한글.png", bytes: new Uint8Array([1, 2, 3]) }]);
+  const files = readZip(zip);
+  assert.deepEqual(files.map((f) => f.name), ["cards.json", "art/한글.png"]);
+  assert.deepEqual([...files[1].bytes], [1, 2, 3]);
+  assert.equal(new TextDecoder().decode(files[0].bytes), '{"a":"베기"}');
+  assert.equal(files[1].crc, 0x55bc801d); // CRC32 of [1,2,3]
+});
+
+test("makeZip with no entries is an empty archive", () => {
+  const zip = M.makeZip([]);
+  assert.equal(zip.length, 22);
+  assert.deepEqual(readZip(zip), []);
+});
