@@ -172,6 +172,7 @@ button.card:hover { transform: translateY(-2px); }
     <span class="spacer"></span>
     <span id="notice" class="notice"></span>
     <span id="usage" class="notice usage" hidden></span>
+    <button id="export" type="button" class="btn" hidden>내보내기</button>
     <button id="new-card" type="button" class="btn primary" hidden>새 카드</button>
   </header>
 
@@ -255,6 +256,7 @@ const state = {
 };
 let db = null;
 let assets = null;
+let downloads = null;
 const $ = (sel) => document.querySelector(sel);
 
 function h(tag, attrs, ...kids) {
@@ -960,6 +962,45 @@ $("#search").addEventListener("input", (e) => { state.filter.query = e.target.va
 $("#sort").addEventListener("change", (e) => { state.filter.sort = e.target.value; renderCardGrid(); });
 $("#new-card").addEventListener("click", () => openEditor(null));
 
+const ART_EXT = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
+
+// 카드·그림을 zip 하나로 받는다. 그림 하나를 못 가져와도 계속 진행한다.
+async function exportZip() {
+  const btn = $("#export");
+  btn.disabled = true;
+  try {
+    const paths = new Map();
+    const files = [];
+    let missing = 0;
+    for (const id of M.exportAssets(state.cards, state.decks)) {
+      try {
+        const res = await fetch("/_blob/" + id);
+        if (!res.ok) throw new Error(String(res.status));
+        const type = (res.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+        const path = "art/" + id + "." + (ART_EXT[type] ?? "bin");
+        files.push({ name: path, bytes: new Uint8Array(await res.arrayBuffer()) });
+        paths.set(id, path);
+      } catch (e) {
+        console.warn("export art", id, e);
+        missing++;
+      }
+    }
+    const json = M.buildExport(state, (id) => paths.get(id) ?? null);
+    files.unshift({ name: "cards.json", bytes: new TextEncoder().encode(JSON.stringify(json, null, 2)) });
+    const zip = M.makeZip(files);
+    const result = await downloads.save({ filename: "project-void-cards.zip", data: new Blob([zip]) });
+    if (missing) toast("그림 " + missing + "개를 넣지 못했어요");
+    else if (result?.status === "saved") toast("내보냈어요");
+  } catch (e) {
+    if (e?.code === "declined") return;
+    console.warn("export", e);
+    toast(e?.code === "rate_limited" ? "잠시 후 다시 눌러 주세요" : "내보내지 못했어요");
+  } finally {
+    btn.disabled = false;
+  }
+}
+$("#export").addEventListener("click", exportZip);
+
 // 그림 저장 공간. 편집 권한이 있는 사람(assets 있음)에게만 보인다.
 async function refreshUsage() {
   if (!assets) return;
@@ -1003,6 +1044,8 @@ async function boot() {
   state.writeAllowed = user ? await user.can("data.write") : null;
   state.canWrite = state.writeAllowed !== false;
   assets = state.canWrite ? await claude.use("assets") : null;
+  downloads = await claude.use("downloads");
+  $("#export").hidden = !downloads;
   refreshUsage();
   if (!state.canWrite) $("#notice").textContent = "읽기 전용으로 보고 있어요.";
   db.collection("cards").onSnapshot((snap) => {

@@ -59,13 +59,67 @@
 - 그림 업로드 기능이 있어서 공개 링크로는 공유할 수 없습니다. 조직 안이나 초대한 사람만 볼 수 있습니다.
 - 누가 고치든 모두의 화면에 바로 반영됩니다. 같은 카드를 동시에 고치면 마지막에 저장한 내용이 남습니다.
 
+### 카드 내보내기
+
+위쪽 **내보내기** 버튼(새 카드 버튼 옆)을 누르면 `project-void-cards.zip`을 받습니다. 모든 탭에서 보이고 읽기 전용으로 보는 사람도 쓸 수 있습니다. 카드가 0장이어도 내보낼 수 있습니다.
+
+```
+project-void-cards.zip
+├─ cards.json
+└─ art/
+   └─ {그림 id}.{png|jpg|webp|gif|bin}
+```
+
+- 같은 그림을 여러 면이 쓰면 파일은 하나만 들어갑니다. 그림을 가져오지 못하면 그 면의 `art`는 `null`이 되고 "그림 n개를 넣지 못했어요"가 뜹니다.
+- 카드, 강화 면, 키워드, 덱에는 한국어 칸 아래에 **영어 칸**(영어 이름, 영어 설명)이 있습니다. 비워 두면 `""`로 나갑니다. 강화 이름은 빈 칸으로 시작하니 직접 채워 주세요.
+
+`cards.json` 형식:
+
+```json
+{
+  "keywords": [
+    { "id": "kw1", "name": { "ko": "화상", "en": "Burn" }, "description": { "ko": "…", "en": "…" } }
+  ],
+  "decks": [
+    { "id": "d1", "name": { "ko": "포수", "en": "Gunner" } }
+  ],
+  "cards": [
+    {
+      "id": "c1",
+      "deck": null,
+      "name": { "ko": "베기", "en": "Slash" },
+      "description": { "ko": "…", "en": "" },
+      "sp": 1,
+      "cost": 2,
+      "category": "attack",
+      "attackType": "melee",
+      "area": [[0, 0], [1, 0]],
+      "keywords": ["kw1"],
+      "art": "art/3f9a….png",
+      "upgrades": [
+        { "name": { "ko": "베기+", "en": "Slash+" }, "description": { "ko": "…", "en": "…" },
+          "sp": 1, "cost": 2, "category": "attack", "attackType": "melee",
+          "area": [[0, 0]], "keywords": [], "art": null }
+      ]
+    }
+  ]
+}
+```
+
+- 최상위는 `keywords`, `decks`, `cards`뿐입니다. 텍스트는 `{ "ko", "en" }`, 빈 값은 `""`.
+- `category`: `attack | skill | special`, `attackType`: `melee | ranged | ally | self`
+- `area`: 에디터 좌표 그대로 (x = 열, +가 뒤쪽 / y = 행, +가 아래, -2..2). 빈 배열이면 단일(기준 칸 하나). y, x 오름차순.
+- `deck`: 덱 id, 공용 카드는 `null`. `keywords`: 키워드 id 배열(카드에 붙인 순서, 지워진 키워드는 제외). `art`: zip 안 상대 경로 또는 `null`.
+- 순서: `decks`는 덱 탭 순서, `cards`는 공용 카드 다음 덱 탭 순서대로 각 덱의 카드, `keywords`는 만든 순서. 지워진 덱을 가리키는 카드는 넣지 않습니다.
+- 에디터 내부 값(`createdAt`, `order`)은 넣지 않습니다. JSON은 2칸 들여쓰기, UTF-8.
+
 ## 알려진 제한
 
 - 그림을 바꾸거나, 올리고 저장하지 않으면 이전 그림 파일이 저장 공간에 남습니다.
 - 다른 사람이 지운 카드를 편집 창에 열어 둔 채 저장하면 카드가 다시 생깁니다.
 - SP에 아주 큰 숫자를 넣으면 카드의 SP 원 밖으로 넘칩니다.
 - 덱 이름이 아주 길면 덱 목록 밖으로 넘칩니다.
-- 장수, 공용 카드를 덱에 넣기, 효과 수치, 키워드, 게임 `.tres` 가져오기·내보내기는 없습니다.
+- 장수, 공용 카드를 덱에 넣기, 효과 수치, Godot 가져오기 없음 (JSON 내보내기만).
 
 ## 개발
 
