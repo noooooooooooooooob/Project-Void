@@ -765,12 +765,14 @@ $("#f-delete").addEventListener("click", async () => {
 });
 let deckDeleteArmed = null;
 
-async function saveDeck(deck, patch) {
+// 덱은 평평한 필드(name, nameEn, createdAt, order)뿐이라 한 필드만 update 해도 안전하다.
+// 통째로 set 하면 포커스 중 낡은 deck 값이 방금 저장한 다른 필드를 덮어쓴다.
+async function saveDeckField(deck, field, value) {
+  const cur = state.decks.find((d) => d.id === deck.id) ?? deck;
+  const curVal = field === "nameEn" ? (cur.nameEn ?? "") : cur[field];
+  if (value === curVal) return;
   try {
-    // update 는 중첩 객체를 병합하므로 덱은 항상 set 으로 통째로 쓴다.
-    await db.doc("decks/" + deck.id).set({
-      name: deck.name, nameEn: deck.nameEn ?? "", createdAt: deck.createdAt, ...(typeof deck.order === "number" ? { order: deck.order } : {}), ...patch,
-    });
+    await db.doc("decks/" + deck.id).update({ [field]: value });
   } catch (e) { writeFailed(e); }
 }
 
@@ -812,13 +814,13 @@ function renderDecks() {
   const nameInput = h("input", { id: "deck-name", type: "text", value: deck.name, "aria-label": "덱 이름", readonly: ro });
   nameInput.addEventListener("change", () => {
     const name = nameInput.value.trim() || "이름 없는 덱";
-    if (name !== deck.name) saveDeck(deck, { name });
+    saveDeckField(deck, "name", name);
   });
 
   const nameEnInput = h("input", { id: "deck-name-en", type: "text", value: deck.nameEn ?? "", placeholder: "영어 이름", "aria-label": "덱 영어 이름", readonly: ro });
   nameEnInput.addEventListener("change", () => {
     const nameEn = nameEnInput.value.trim();
-    if (nameEn !== (deck.nameEn ?? "")) saveDeck(deck, { nameEn });
+    saveDeckField(deck, "nameEn", nameEn);
   });
 
   const armed = deckDeleteArmed === deck.id;
@@ -879,9 +881,13 @@ let kwDeleteArmed = null;
 let kwFocusId = null;
 let kwRenderPending = false;
 
-async function saveKeyword(kw, patch) {
+// 필드 하나만 update 한다. 입력칸을 옮겨 다니는 동안은 다시 그리지 않아 kw 가 낡을 수 있으므로,
+// 통째로 set 하면 방금 저장한 다른 필드가 지워진다. 비교도 최신 state.keywords 로 한다.
+async function saveKeywordField(kw, field, value) {
+  const cur = state.keywords.find((k) => k.id === kw.id) ?? kw;
+  if (value === (cur[field] ?? "")) return;
   try {
-    await db.doc("keywords/" + kw.id).set({ name: kw.name, nameEn: kw.nameEn ?? "", description: kw.description, descriptionEn: kw.descriptionEn ?? "", createdAt: kw.createdAt, ...patch });
+    await db.doc("keywords/" + kw.id).update({ [field]: value });
   } catch (e) { writeFailed(e); }
 }
 
@@ -915,20 +921,20 @@ function renderKeywords() {
     const name = h("input", { type: "text", value: kw.name, "aria-label": "키워드 이름", readonly: ro, "data-kw": kw.id });
     name.addEventListener("change", () => {
       const v = name.value.trim();
-      if (M.validateKeyword({ name: v }).length) { name.value = kw.name; toast("키워드 이름을 입력하세요"); return; }
-      if (v !== kw.name) saveKeyword(kw, { name: v });
+      if (M.validateKeyword({ name: v }).length) { name.value = (state.keywords.find((k) => k.id === kw.id) ?? kw).name; toast("키워드 이름을 입력하세요"); return; }
+      saveKeywordField(kw, "name", v);
     });
     const nameEn = h("input", { type: "text", value: kw.nameEn ?? "", "aria-label": "키워드 영어 이름", placeholder: "영어 이름", readonly: ro });
     nameEn.addEventListener("change", () => {
       const v = nameEn.value.trim();
-      if (v !== (kw.nameEn ?? "")) saveKeyword(kw, { nameEn: v });
+      saveKeywordField(kw, "nameEn", v);
     });
     const desc = h("textarea", { "aria-label": kw.name + " 설명", placeholder: "설명", readonly: ro });
     desc.value = kw.description;
-    desc.addEventListener("change", () => { if (desc.value !== kw.description) saveKeyword(kw, { description: desc.value }); });
+    desc.addEventListener("change", () => saveKeywordField(kw, "description", desc.value));
     const descEn = h("textarea", { "aria-label": kw.name + " 영어 설명", placeholder: "영어 설명", readonly: ro });
     descEn.value = kw.descriptionEn ?? "";
-    descEn.addEventListener("change", () => { if (descEn.value !== (kw.descriptionEn ?? "")) saveKeyword(kw, { descriptionEn: descEn.value }); });
+    descEn.addEventListener("change", () => saveKeywordField(kw, "descriptionEn", descEn.value));
     const armed = kwDeleteArmed === kw.id;
     const del = ro ? null : h("button", {
       type: "button", class: "btn danger" + (armed ? " armed" : ""),
@@ -962,12 +968,21 @@ $("#search").addEventListener("input", (e) => { state.filter.query = e.target.va
 $("#sort").addEventListener("change", (e) => { state.filter.sort = e.target.value; renderCardGrid(); });
 $("#new-card").addEventListener("click", () => openEditor(null));
 
+// 이 코드들은 다시 눌러도 소용없는 환경 문제라 버튼을 숨긴다. 모르는 코드도 unavailable 처럼 본다.
+const EXPORT_KEEP = new Set(["too_large", "bad_request", "rejected_extension", "extension_not_enabled", "transform_error", "request_unknown"]);
 const ART_EXT = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
 
 // 카드·그림을 zip 하나로 받는다. 그림 하나를 못 가져와도 계속 진행한다.
+const firstSnap = { cards: false, decks: false, keywords: false };
+let exporting = false;
+function syncExportBtn() {
+  $("#export").disabled = exporting || !(firstSnap.cards && firstSnap.decks && firstSnap.keywords);
+}
+
 async function exportZip() {
-  const btn = $("#export");
-  btn.disabled = true;
+  if (exporting || $("#export").disabled) return;
+  exporting = true;
+  syncExportBtn();
   try {
     const paths = new Map();
     const files = [];
@@ -994,9 +1009,14 @@ async function exportZip() {
   } catch (e) {
     if (e?.code === "declined") return;
     console.warn("export", e);
-    toast(e?.code === "rate_limited" ? "잠시 후 다시 눌러 주세요" : "내보내지 못했어요");
+    if (e?.code === "rate_limited") toast("잠시 후 다시 눌러 주세요");
+    else {
+      toast("내보내지 못했어요");
+      if (!EXPORT_KEEP.has(e?.code)) $("#export").hidden = true;
+    }
   } finally {
-    btn.disabled = false;
+    exporting = false;
+    syncExportBtn();
   }
 }
 $("#export").addEventListener("click", exportZip);
@@ -1046,23 +1066,30 @@ async function boot() {
   assets = state.canWrite ? await claude.use("assets") : null;
   downloads = await claude.use("downloads");
   $("#export").hidden = !downloads;
+  $("#export").disabled = true;
   refreshUsage();
   if (!state.canWrite) $("#notice").textContent = "읽기 전용으로 보고 있어요.";
   db.collection("cards").onSnapshot((snap) => {
     state.cards = snap.docs.map((d) => ({ id: d.id, ...M.normalizeCard(d.data()), ...orderOf(d.data()) }));
     state.loaded = true;
+    firstSnap.cards = true;
+    syncExportBtn();
     render();
   }, onDbError);
   db.collection("decks").onSnapshot((snap) => {
     state.decks = snap.docs
       .map((d) => ({ id: d.id, createdAt: d.data().createdAt || 0, ...M.normalizeDeck(d.data()), ...orderOf(d.data()) }))
       .sort(deckSort);
+    firstSnap.decks = true;
+    syncExportBtn();
     render();
   }, onDbError);
   db.collection("keywords").onSnapshot((snap) => {
     state.keywords = snap.docs
       .map((d) => ({ id: d.id, createdAt: d.data().createdAt || 0, ...M.normalizeKeyword(d.data()) }))
       .sort((a, b) => a.createdAt - b.createdAt);
+    firstSnap.keywords = true;
+    syncExportBtn();
     render();
     if (draft) { renderEditorControls(); syncEditorPreview(); }
   }, onDbError);

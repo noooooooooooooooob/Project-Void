@@ -83,7 +83,7 @@ test("normalizeCard keeps deckId", () => {
   assert.equal(M.normalizeCard({ name: "x", sp: 1, deckId: "" }).deckId, null);
 });
 
-test("normalizeDeck keeps only the name", () => {
+test("normalizeDeck keeps name and nameEn", () => {
   assert.deepEqual(M.normalizeDeck({ name: " ", entries: { a: 1 } }), { name: "이름 없는 덱", nameEn: "" });
   assert.deepEqual(M.normalizeDeck({ name: "사수" }), { name: "사수", nameEn: "" });
 });
@@ -354,6 +354,10 @@ test("makeZip stores files that read back with correct CRC32", () => {
   assert.deepEqual([...files[1].bytes], [1, 2, 3]);
   assert.equal(new TextDecoder().decode(files[0].bytes), '{"a":"베기"}');
   assert.equal(files[1].crc, 0x55bc801d); // CRC32 of [1,2,3]
+  const dv = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+  assert.equal(dv.getUint16(12, true), 0x0021); // local header date
+  const cd = dv.getUint32(zip.length - 22 + 16, true);
+  assert.equal(dv.getUint16(cd + 14, true), 0x0021); // central directory date
 });
 
 test("makeZip with no entries is an empty archive", () => {

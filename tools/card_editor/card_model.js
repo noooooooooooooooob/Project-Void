@@ -296,6 +296,7 @@
       v.setUint32(p, 0x04034b50, true);
       v.setUint16(p + 4, 20, true);
       v.setUint16(p + 6, 0x0800, true);
+      v.setUint16(p + 12, 0x0021, true); // 1980-01-01
       v.setUint32(p + 14, f.crc, true);
       v.setUint32(p + 18, f.bytes.length, true);
       v.setUint32(p + 22, f.bytes.length, true);
@@ -310,6 +311,7 @@
       v.setUint16(p + 4, 20, true);
       v.setUint16(p + 6, 20, true);
       v.setUint16(p + 8, 0x0800, true);
+      v.setUint16(p + 14, 0x0021, true);
       v.setUint32(p + 16, f.crc, true);
       v.setUint32(p + 20, f.bytes.length, true);
       v.setUint32(p + 24, f.bytes.length, true);
