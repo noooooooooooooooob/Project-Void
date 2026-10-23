@@ -1,180 +1,356 @@
-## 메인 씬의 뿌리. 지도 화면, 파티 화면, 전투 씬을 오가게 연결하고
-## 진행 상태(MapRunState)와 파티(PartyState)를 게임 내내 들고 있는다.
+## 메인 씬의 뿌리이자 게임 흐름 진행자.
+## 타이틀 → 메인 메뉴 → (새 게임) 프롤로그·튜토리얼 → 사무소 ⇄ 원정(의뢰) → 정화·에필로그.
+## 화면은 한 번에 하나만 띄우고(_show), 대화·선택·전투는 await 로 결과를 기다리는 순서대로 적는다.
 class_name GameRoot
-# Node: 화면에 직접 그리지 않고 자식 화면들만 관리한다.
 extends Node
 
-## 전투마다 새로 만드는 전투 씬.
+## 화면 하나가 끝났음을 알리는 내부 신호 (전투 결과 전달용).
+signal _battle_result(result: Dictionary)
+
 const BattleScene: PackedScene = preload("res://Scenes/battle_3d.tscn")
-## 보스를 깼을 때 지도에 띄우는 문구.
-const BOSS_CLEARED_TEXT: String = "챕터 클리어! 새 지도를 펼칩니다"
-## 졌을 때 지도에 띄우는 문구.
-const DEFEATED_TEXT: String = "패배... 파티를 정비하고 다시 도전하세요"
-## 도망쳤을 때 지도에 띄우는 문구.
-const FLED_TEXT: String = "전투에서 도망쳤습니다"
-## 시작할 때 가방에 넣어 주는 아이템 수.
-const STARTING_ITEM_COUNT: int = 3
+const UNIT_DIR: String = "res://Resources/content/units"
+const ROOM_DIR: String = "res://Resources/content/rooms"
+## 승리·패배 배너를 보여 주는 시간.
+const BANNER_HOLD: float = 1.1
 
-## 지도 진행 상태 (지금 지도, 깬 노드).
-var run_state: MapRunState
-## 파티·가방·장착 상태.
-var party: PartyState
-## 지도 화면.
-var map_view: MapView
-## 캐릭터 정보·인벤토리 화면.
-var party_view: PartyView
-## 게임 전체가 함께 쓰는 난수 생성기.
-var _rng: RandomNumberGenerator
-## 보상으로 뽑을 수 있는 아이템 전부.
-var _item_pool: Array[ItemData] = []
-## 진행 중인 전투 씬. 전투 중이 아니면 null.
-var _battle: BattleRoot
+## 튜토리얼 안내.
+const TUTORIAL_TIPS_1: Array[String] = [
+	"전투는 속도가 빠른 순서로 한 명씩 차례를 가집니다. 위쪽 막대에서 순서를 볼 수 있습니다.",
+	"내 차례가 되면 카드 4장을 뽑습니다. 카드를 끌어 적에게 놓거나, 눌러서 고른 뒤 적을 누르면 사용합니다. 카드마다 SP 가 들고, SP 는 차례마다 다시 찹니다.",
+	"근접 카드는 같은 줄(행)의 가장 앞에 있는 적만 칠 수 있습니다. 줄이 다르면 '이동' 버튼을 켜고 칸을 눌러 움직이세요. 이동은 SP 대신 이동력을 씁니다.",
+	"할 일을 다 했으면 '차례 종료'. 적을 모두 쓰러뜨리면 승리합니다.",
+]
+const TUTORIAL_TIPS_2: Array[String] = [
+	"유닛 머리 위의 보라색 줄이 흐트러짐 게이지입니다. 맞을 때마다 줄어들고, 방어도로 막아도 줄어듭니다.",
+	"게이지가 0 이 되면 적은 '기절', 아군은 '탈진'해서 다음 차례를 쉽니다. 균열 찌르기·방패 치기처럼 흐트러짐을 크게 깎는 카드를 노리세요.",
+	"백준의 치유·보호막은 아군을 눌러서 씁니다.",
+]
+
+var game: GameState
+var _rng := RandomNumberGenerator.new()
+var _screen: Node
 
 
-## 상태를 만들고 지도·파티 화면을 붙인다.
 func _ready() -> void:
-	# 난수 생성기를 만든다.
-	_rng = RandomNumberGenerator.new()
-	# 실행할 때마다 다른 시드로 시작한다.
 	_rng.randomize()
-	# 첫 지도와 진행 상태를 만든다.
-	run_state = MapRunState.new(_rng)
-
-	# 시작 파티를 만든다.
-	party = PartyState.new(EncounterGenerator.build_ally_roster(_rng))
-	# 보상 아이템 목록을 불러온다.
-	_item_pool = ItemPool.load_all()
-	# 시작 아이템을 가방에 넣는다.
-	for i in STARTING_ITEM_COUNT:
-		party.add_item(ItemPool.roll(_rng, _item_pool))
-
-	# 지도 화면을 만든다.
-	map_view = MapView.new(run_state.graph)
-	# 붙인다.
-	add_child(map_view)
-	# 노드를 누르면 전투를 시작한다.
-	map_view.node_selected.connect(_on_node_selected)
-	# 파티 버튼을 누르면 파티 화면을 연다.
-	map_view.party_requested.connect(_on_party_requested)
-	# 노드 색(잠김·열림·깸)을 진행 상태에 맞춘다.
-	map_view.sync_from_state(run_state)
-
-	# 지도 위에 겹쳐 그려지도록 지도보다 나중에 붙인다.
-	party_view = PartyView.new()
-	# 처음에는 숨긴다.
-	party_view.hide()
-	# 붙인다.
-	add_child(party_view)
-	# 파티 상태와 연결한다.
-	party_view.bind(party)
-	# 닫기를 누르면 지도로 돌아간다.
-	party_view.closed.connect(_on_party_closed)
+	_show_title()
 
 
-## 지도에서 노드를 눌렀다.
-func _on_node_selected(node_id: int) -> void:
-	# 이미 전투 중이거나 들어갈 수 없는 노드면 무시한다.
-	if _battle != null or not run_state.is_selectable(node_id):
+# ---------------- 화면 전환 ----------------
+
+func _show(screen: Node) -> void:
+	if _screen != null and is_instance_valid(_screen):
+		_screen.queue_free()
+	_screen = screen
+	if screen != null:
+		add_child(screen)
+
+
+func _show_title() -> void:
+	var title := TitleScreen.new()
+	_show(title)
+	await title.started
+	_show_main_menu()
+
+
+func _show_main_menu() -> void:
+	var menu := MainMenu.new()
+	_show(menu)
+	menu.new_game.connect(_new_game, CONNECT_ONE_SHOT)
+	menu.continue_game.connect(_continue_game, CONNECT_ONE_SHOT)
+	menu.quit_game.connect(func() -> void: get_tree().quit())
+
+
+func _continue_game() -> void:
+	game = GameState.load_from_disk()
+	if game == null:
+		_new_game()
 		return
-	# 전투를 시작한다.
-	_start_battle(node_id)
+	_show_office()
 
 
-## 지도에서 파티 버튼을 눌렀다.
-func _on_party_requested() -> void:
-	# 지도를 숨긴다.
-	map_view.hide()
-	# 파티 화면을 보인다.
-	party_view.show()
+func _show_office() -> void:
+	var office := OfficeScreen.new(game)
+	_show(office)
+	office.request_chosen.connect(_on_request_chosen, CONNECT_ONE_SHOT)
+	office.party_requested.connect(func() -> void:
+		await _open_party()
+		if is_instance_valid(office):
+			office.refresh())
+	office.main_menu_requested.connect(func() -> void:
+		game.save_to_disk()
+		_show_main_menu(), CONNECT_ONE_SHOT)
 
 
-## 파티 화면에서 닫기를 눌렀다.
-func _on_party_closed() -> void:
-	# 파티 화면을 숨긴다.
-	party_view.hide()
-	# 지도를 다시 보인다.
-	map_view.show()
+func _on_request_chosen(request_id: String) -> void:
+	await _run_expedition(request_id)
+	game.save_to_disk()
+	_show_office()
 
 
-## 그 노드의 전투 씬을 만들어 띄운다.
-func _start_battle(node_id: int) -> void:
-	# 전투 씬을 만든다.
-	_battle = BattleScene.instantiate()
-	# 장비를 바꿨을 수 있으니 아군은 전투 직전의 파티 상태로 만든다.
-	_battle.encounter = run_state.encounter_for(node_id, party.build_battle_roster())
-	# 전투가 끝나면 결과를 처리한다 (어느 노드였는지 함께 넘긴다).
-	_battle.battle_finished.connect(_on_battle_finished.bind(node_id))
-	# 도망치면 지도로 돌아간다.
-	_battle.battle_fled.connect(_on_battle_fled)
-	# 지난 결과 문구를 지운다.
-	map_view.hide_result()
-	# 지도를 숨긴다.
-	map_view.hide()
-	# 전투 씬을 붙인다.
-	add_child(_battle)
+# ---------------- 공용 도우미 ----------------
+
+## 대본 하나를 보여 주고 끝날 때까지 기다린다. ex 가 있으면 원정 효과(회복 등)도 처리한다.
+func _play_story(script_id: String, ex: Expedition = null) -> String:
+	var runner: DialogueRunner = DialogueRunner.from_script(script_id, game.flags)
+	runner.effect_handler = _apply_effect.bind(ex)
+	var view := DialogueView.new()
+	_show(view)
+	view.play(runner)
+	return await view.finished
 
 
-## 도망쳤다: 보상도 진행도 변화도 없이 지도로 돌아온다 (패배와 달리 "졌다" 가 아니다).
-func _on_battle_fled() -> void:
-	# 전투 중이 아니면 무시한다 (중복 신호 방어).
-	if _battle == null:
+## 가운데 선택 창을 띄우고 고른 번호를 돌려준다.
+func _ask(title: String, body: String, options: Array, background: Texture2D = null, accent: Color = UiTheme.LAVENDER) -> int:
+	var dialog := ChoiceDialog.new(title, body, options, background, accent)
+	add_child(dialog)
+	var index: int = await dialog.chosen
+	dialog.queue_free()
+	return index
+
+
+## 전투를 띄우고 결과를 기다린다: {"won", "fled", "hp"}.
+func _battle(encounter: EncounterData, allow_flee: bool, tips: Array[String] = []) -> Dictionary:
+	var battle: BattleRoot = BattleScene.instantiate()
+	battle.encounter = encounter
+	battle.allow_flee = allow_flee
+	battle.tips = tips
+	battle.battle_finished.connect(func(won: bool) -> void: _battle_result.emit({"won": won, "fled": false}), CONNECT_ONE_SHOT)
+	battle.battle_fled.connect(func() -> void: _battle_result.emit({"won": false, "fled": true}), CONNECT_ONE_SHOT)
+	_show(battle)
+	var result: Dictionary = await _battle_result
+	result["hp"] = battle.ally_hp()
+	if not result["fled"]:
+		await get_tree().create_timer(BANNER_HOLD).timeout
+	return result
+
+
+## 사원 명부·창고를 겹쳐 띄우고 닫을 때까지 기다린다.
+func _open_party() -> void:
+	var view := PartyView.new()
+	view.theme = UiTheme.get_theme()
+	add_child(view)
+	view.bind(game.party)
+	await view.closed
+	view.queue_free()
+
+
+## 대본의 @effect 처리. 알림 문구를 돌려준다.
+func _apply_effect(effect: Dictionary, ex: Expedition) -> String:
+	var args: Array = effect.get("args", [])
+	var first: String = args[0] if args.size() > 0 else ""
+	match effect["type"]:
+		"gold":
+			var amount: int = int(first)
+			if ex != null:
+				ex.add_gold(amount)
+			else:
+				game.add_gold(amount)
+			return "자금 +%d" % amount
+		"item":
+			var item: ItemData = ItemPool.roll(_rng, ItemPool.load_all()) if first == "random" or first.is_empty() else load("res://Resources/items/%s.tres" % first)
+			if item == null:
+				return ""
+			game.party.add_item(item)
+			return "장비 획득: %s  (%s)" % [item.display_name, item.summary()]
+		"heal":
+			if ex != null:
+				ex.heal_party(float(first) / 100.0)
+			return "파티 체력 %s%% 회복" % first
+		"damage":
+			if ex != null:
+				ex.heal_party(-float(first) / 100.0)
+			return "파티 체력 -%s%%" % first
+		"card":
+			return _random_card_gift()
+		"lifespan":
+			game.spend_lifespan(-int(first))
+			return "소장 수명 %+d년" % int(first)
+		"join":
+			if game.add_member(first):
+				return "%s 이(가) 사무소에 합류했다" % StoryCast.display_name(first)
+			return ""
+		"journal":
+			var parts: PackedStringArray = " ".join(args).split("|", true, 1)
+			game.add_journal(parts[0], parts[1] if parts.size() > 1 else "")
+			return "일지 기록: %s" % parts[0]
+	push_error("unknown effect: %s" % effect)
+	return ""
+
+
+func _random_card_gift() -> String:
+	var member: int = _rng.randi_range(0, game.party.member_count() - 1)
+	var pool: Array = ChapterData.REWARD_CARDS.get(String(game.party.member_data(member).id), [])
+	if pool.is_empty():
+		return ""
+	var card: CardData = load("res://Resources/content/cards/%s.tres" % pool[_rng.randi_range(0, pool.size() - 1)])
+	game.add_card(member, card)
+	return "%s 의 덱에 「%s」 추가" % [game.party.member_data(member).display_name, card.display_name]
+
+
+# ---------------- 새 게임: 프롤로그 · 튜토리얼 ----------------
+
+func _new_game() -> void:
+	game = GameState.new()
+	game.add_member("hangyeol")
+	await _play_story("prologue")
+	await _tutorial_battle(["rat", "rat"], "factory", TUTORIAL_TIPS_1)
+	await _play_story("tutorial_mid")
+	await _tutorial_battle(["husk", "rat"], "factory", TUTORIAL_TIPS_2)
+	await _play_story("tutorial_deeper")
+	# 이길 수 없는 연출 전투: 결과와 상관없이 이야기가 이어진다.
+	var hand_tips: Array[String] = ["...저건 이길 수 있는 상대가 아니다."]
+	await _battle(_tutorial_encounter(["hand"], "twilight"), false, hand_tips)
+	await _play_story("tutorial_escape")
+	game.chapter = 1
+	game.save_to_disk()
+	_show_office()
+
+
+## 선배들과 함께하는 튜토리얼 전투. 지면 다시 싸운다.
+func _tutorial_battle(enemies: Array, room: String, tips: Array[String]) -> void:
+	var first: bool = true
+	while true:
+		var result: Dictionary = await _battle(_tutorial_encounter(enemies, room), false, tips if first else ([] as Array[String]))
+		if result["won"]:
+			return
+		first = false
+		await _ask("쓰러졌다", "선배들이 일으켜 세워 준다. 다시 해 보자.", ["다시 싸운다"])
+
+
+func _tutorial_encounter(enemies: Array, room: String) -> EncounterData:
+	var allies: Array[UnitPlacement] = []
+	for entry in [["doyun", Vector2i(0, 1)], ["hangyeol", Vector2i(0, 0)], ["baekjun", Vector2i(1, 1)], ["mira", Vector2i(1, 2)]]:
+		var placement := UnitPlacement.new()
+		placement.unit_data = load("%s/%s.tres" % [UNIT_DIR, entry[0]])
+		placement.cell = entry[1]
+		allies.append(placement)
+	var foes: Array[UnitPlacement] = []
+	for i in enemies.size():
+		var placement := UnitPlacement.new()
+		placement.unit_data = load("%s/%s.tres" % [UNIT_DIR, enemies[i]])
+		placement.cell = Expedition.ENEMY_CELLS[i]
+		foes.append(placement)
+	var encounter: EncounterData = EncounterGenerator.assemble_encounter(allies, foes)
+	encounter.room = load("%s/%s.tres" % [ROOM_DIR, room])
+	return encounter
+
+
+# ---------------- 원정 ----------------
+
+func _run_expedition(request_id: String) -> void:
+	var request: Dictionary = ChapterData.get_request(request_id)
+	var story: bool = request.get("story", false)
+	if request_id == "ch1":
+		await _play_story("ch1_briefing")
+	var ex := Expedition.new(request, game, _rng)
+	var intros: Dictionary = {}
+	while not ex.finished:
+		if ex.needs_void_choice():
+			if story:
+				await _play_story("ch1_void_choice", ex)
+			var deeper: int = await _ask("공허 속의 공허", "황혼층으로 내려가면 남은 구역의 적이 강해지지만(체력·공격 ×1.15) 자금 보상이 1.5 배가 되고 장비를 더 자주 얻습니다.", ["원래 길로 간다", "황혼층으로 내려간다"], UiTheme.bg("twilight"), UiTheme.DANGER)
+			ex.choose_deep(deeper == 1)
+		if story and ex.step == 0 and not intros.has(ex.floor_index):
+			intros[ex.floor_index] = true
+			var intro: String = _floor_intro(ex)
+			if not intro.is_empty():
+				await _play_story(intro, ex)
+		var view := ExpeditionView.new(ex)
+		_show(view)
+		view.party_requested.connect(func() -> void:
+			await _open_party()
+			if is_instance_valid(view):
+				view.refresh())
+		var index: int = await view.node_chosen
+		var node: Dictionary = ex.pick(index)
+		match node["type"]:
+			ChapterData.BATTLE, ChapterData.ELITE, ChapterData.BOSS:
+				await _expedition_battle(ex, node, story)
+			ChapterData.EVENT:
+				await _play_story("events/%s" % node["event"], ex)
+				ex.resolve_simple()
+			ChapterData.REST:
+				ex.resolve_rest()
+				await _ask("휴식", "물기 없는 구석을 찾아 숨을 고르고 상처를 감쌌다.\n모두 최대 체력의 %d%% 를 회복했다." % roundi(Expedition.REST_HEAL * 100), ["계속"], UiTheme.bg("void"))
+			ChapterData.SUPPLY:
+				var items: Array[ItemData] = ex.supply_choices()
+				var supply := SupplyView.new(items)
+				_show(supply)
+				var pick: int = await supply.done
+				if pick >= 0:
+					game.party.add_item(items[pick])
+				ex.resolve_simple()
+	await _finish_expedition(ex, story)
+
+
+func _floor_intro(ex: Expedition) -> String:
+	match ex.floor_index:
+		0:
+			return "ch1_floor1"
+		1:
+			return "ch1_floor2"
+		2:
+			return "ch1_floor3"
+		3:
+			return "ch1_floor4_deep" if ex.deep else "ch1_floor4"
+	return ""
+
+
+func _expedition_battle(ex: Expedition, node: Dictionary, story: bool) -> void:
+	if node["type"] == ChapterData.BOSS and story:
+		await _play_story("ch1_boss", ex)
+	var result: Dictionary = await _battle(ex.encounter_for(node), true)
+	if result["fled"]:
+		# 도망치면 같은 문 앞으로 돌아온다 (진행 없음).
 		return
-	# 전투 씬을 지운다.
-	_battle.queue_free()
-	# 전투 중이 아니라고 표시한다.
-	_battle = null
-	# 도망 문구를 띄운다.
-	map_view.show_result(FLED_TEXT)
-	# 노드 색을 맞춘다.
-	map_view.sync_from_state(run_state)
-	# 지도를 보인다.
-	map_view.show()
-
-
-## 전투가 끝났다. 이겼으면 진행도와 보상을 반영하고 지도로 돌아온다.
-func _on_battle_finished(ally_won: bool, node_id: int) -> void:
-	# 전투 중이 아니면 무시한다 (중복 신호 방어).
-	if _battle == null:
+	if result["won"]:
+		var reward: Dictionary = ex.battle_reward(node)
+		ex.add_gold(reward["gold"])
+		if reward["item"] != null:
+			game.party.add_item(reward["item"])
+		var title: String = "핵의 수호자 격파" if node["type"] == ChapterData.BOSS else "전투 승리"
+		var view := RewardView.new(reward, game, title)
+		_show(view)
+		var choice: int = await view.done
+		if choice >= 0:
+			var picked: Dictionary = reward["cards"][choice]
+			game.add_card(picked["member"], picked["card"])
+		ex.resolve_battle_win(node, result["hp"])
 		return
-	# 전투 씬을 지운다.
-	_battle.queue_free()
-	# 전투 중이 아니라고 표시한다.
-	_battle = null
-
-	# 결과 반영 전의 지도. 보스를 깨서 지도가 바뀌었는지 비교하는 데 쓴다.
-	var previous_graph: MapGraph = run_state.graph
-	# 이겼을 때.
-	if ally_won:
-		# 보스 노드였는지 미리 기억한다 (resolve_win 이 지도를 바꿀 수 있어서).
-		var was_boss: bool = node_id == run_state.graph.boss_id
-		# 진행도를 반영한다.
-		run_state.resolve_win(node_id)
-		# 보상 아이템을 하나 뽑는다.
-		var loot: ItemData = ItemPool.roll(_rng, _item_pool)
-		# 가방에 넣는다.
-		party.add_item(loot)
-		# 승리 문구를 띄운다.
-		map_view.show_result(_victory_text(was_boss, loot))
-	# 졌을 때.
+	# 전멸.
+	var options: Array = [{"text": "되살아난다", "desc": "소장 수명 -1년, 전원 체력 회복", "disabled": game.lifespan <= 0}, {"text": "철수한다", "desc": "원정을 포기하고 사무소로"}]
+	var pick: int = await _ask("의식이 가라앉는다…", "검은 기름이 발목까지 차오른다.\n남은 소장 수명: %d년" % game.lifespan, options, UiTheme.bg("void"), UiTheme.DANGER)
+	if pick == 0:
+		game.spend_lifespan(1)
+		ex.revive()
 	else:
-		# 패배 문구를 띄운다 (진행도·파티는 그대로).
-		map_view.show_result(DEFEATED_TEXT)
-
-	# 보스를 깨면 run_state 가 새 그래프를 만든다 — 화면도 그 그래프로 다시 짜야 한다.
-	if run_state.graph != previous_graph:
-		map_view.rebuild(run_state.graph)
-	# 노드 색을 맞춘다.
-	map_view.sync_from_state(run_state)
-	# 지도를 보인다.
-	map_view.show()
+		ex.retreat()
 
 
-## 승리 문구. 보스면 챕터 클리어 문구, 아니면 "승리!" 에 얻은 아이템 이름을 붙인다.
-func _victory_text(was_boss: bool, loot: ItemData) -> String:
-	# 첫 줄을 고른다.
-	var text: String = BOSS_CLEARED_TEXT if was_boss else "승리!"
-	# 얻은 아이템이 있으면 다음 줄에 붙인다.
-	if loot != null:
-		text += "\n획득: %s" % loot.display_name
-	# 완성된 문구를 돌려준다.
-	return text
+func _finish_expedition(ex: Expedition, story: bool) -> void:
+	if ex.outcome == "clear" and story:
+		await _play_story("ch1_purify", ex)
+		var gods: Array = [
+			{"text": "북부의 신", "desc": "증기와 질서 · 자금 +150"},
+			{"text": "동부의 신", "desc": "기와 생명 · 장비 1개"},
+			{"text": "서부의 신", "desc": "힘과 투쟁 · 카드 1장"},
+		]
+		var god: int = await _ask("정화", "핵을 땅에 내려놓고, 신의 이름을 부른다.\n어느 신의 힘을 빌릴까?", gods, UiTheme.bg("core_room"), UiTheme.TEAL)
+		var bonus: String = ""
+		match god:
+			0:
+				game.add_gold(150)
+				bonus = "자금 +150"
+			1:
+				bonus = _apply_effect({"type": "item", "args": ["random"]}, null)
+			2:
+				bonus = _random_card_gift()
+		await _ask("정화 완료", "청록빛이 하늘로 솟구치고, 균열이 안쪽으로 접혀 사라졌다.\n%s" % bonus, ["사무소로"], UiTheme.bg("core_room"), UiTheme.TEAL)
+		await _play_story("ch1_epilogue")
+		game.chapter = maxi(game.chapter, 2)
+		return
+	if ex.outcome == "clear":
+		await _ask("의뢰 완료", "잔재를 모두 치웠다.\n이번 원정에서 번 자금: %d" % ex.gold_earned, ["사무소로"], UiTheme.bg("sewer_gate"))
+		return
+	await _ask("철수", "핵을 두고 물러났다. 다음에 다시 도전할 수 있다.\n이번 원정에서 번 자금: %d" % ex.gold_earned, ["사무소로"], UiTheme.bg("sewer_gate"))

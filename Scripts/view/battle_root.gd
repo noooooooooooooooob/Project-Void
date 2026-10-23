@@ -32,6 +32,10 @@ const FLEE_MENU_LAYER: int = 20
 
 ## 이 씬에서 치를 전투 구성 (인스펙터에서 skirmish.tres 등을 넣는다).
 @export var encounter: EncounterData
+## Esc 로 도망칠 수 있는지 (튜토리얼·연출 전투는 false).
+@export var allow_flee: bool = true
+## 전투가 시작될 때 차례로 보여 줄 안내 문구 (튜토리얼).
+var tips: Array[String] = []
 
 ## 전투 규칙 상태.
 var _state: BattleState
@@ -150,6 +154,9 @@ func _ready() -> void:
 
 	# 전투를 시작한다 (첫 아군 차례까지 진행하고 그 연출을 재생).
 	_run(_state.start_battle)
+	# 안내 문구가 있으면 화면 위쪽에 띄운다.
+	if not tips.is_empty():
+		_show_tips()
 
 
 # 규칙은 action 안에서 동기로 끝나고, 화면은 기록된 이벤트를 재생한 뒤 실제 상태로 한 번 더 맞춘다.
@@ -179,6 +186,8 @@ func _run(action: Callable) -> void:
 
 ## Esc 를 누르면 메뉴를 열고 닫는다. 전투가 이미 끝났으면 무시한다.
 func _unhandled_input(event: InputEvent) -> void:
+	if not allow_flee:
+		return
 	if not event.is_action_pressed("ui_cancel"):
 		return
 	if _state == null or _state.finished:
@@ -549,3 +558,51 @@ func _frame_camera() -> void:
 	var view := Transform3D(Basis.IDENTITY, camera_position).looking_at(target, Vector3.UP)
 	# 연출이 이 구도 위에 오프셋을 더한다.
 	_camera_fx.set_base(view.origin, view.basis)
+
+
+## 아군의 남은 체력 (배치 순서). 전투가 끝난 뒤 원정이 이어받는다.
+func ally_hp() -> Array:
+	var out: Array = []
+	for unit in _state.units:
+		if unit.is_ally():
+			out.append(unit.hp)
+	return out
+
+
+## 튜토리얼 안내 패널: 위쪽 가운데에 한 장씩 보여 주고 "다음"으로 넘긴다. 전투 진행은 막지 않는다.
+func _show_tips() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = FLEE_MENU_LAYER - 1
+	add_child(layer)
+	var panel := PanelContainer.new()
+	panel.theme = UiTheme.get_theme()
+	panel.add_theme_stylebox_override("panel", UiTheme.box(Color(0.1, 0.08, 0.15, 0.93), UiTheme.GOLD, 2, 10, 22))
+	panel.anchor_left = 0.5
+	panel.anchor_right = 0.5
+	panel.offset_left = -430
+	panel.offset_right = 430
+	panel.offset_top = 70
+	layer.add_child(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 10)
+	panel.add_child(col)
+	var head := UiTheme.label("", 16, UiTheme.GOLD)
+	col.add_child(head)
+	var body := UiTheme.body("", 21)
+	body.custom_minimum_size = Vector2(800, 0)
+	col.add_child(body)
+	var next := UiTheme.button("다음", Vector2(140, 44))
+	next.size_flags_horizontal = Control.SIZE_SHRINK_END
+	col.add_child(next)
+	var index: Array[int] = [0]
+	var show_page := func() -> void:
+		head.text = "안내  %d / %d" % [index[0] + 1, tips.size()]
+		body.text = tips[index[0]]
+		next.text = "닫기" if index[0] == tips.size() - 1 else "다음"
+	show_page.call()
+	next.pressed.connect(func() -> void:
+		index[0] += 1
+		if index[0] >= tips.size():
+			layer.queue_free()
+		else:
+			show_page.call())

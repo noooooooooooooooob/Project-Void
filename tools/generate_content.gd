@@ -81,7 +81,7 @@ const ENEMIES: Dictionary = {
 	"husk": {"name": "잠든 자", "sprite": "husk", "hp": 30, "speed": 7, "attack": 9, "defense": 10, "move": 1, "stagger": 16, "move_chance": 0.15, "attack_card": "husk_swipe", "defend_card": "husk_guard"},
 	"brute": {"name": "검은 기름 거인", "sprite": "brute", "hp": 64, "speed": 6, "attack": 11, "defense": 12, "move": 1, "stagger": 30, "move_chance": 0.0, "attack_card": "brute_slam", "defend_card": "brute_guard", "rest_card": "brute_rest"},
 	"crown": {"name": "하수도의 왕관", "sprite": "crown", "hp": 140, "speed": 8, "attack": 12, "defense": 14, "move": 0, "stagger": 45, "move_chance": 0.0, "attack_card": "crown_flood", "defend_card": "crown_guard", "rest_card": "crown_mend"},
-	"hand": {"name": "황혼의 손", "sprite": "hand", "hp": 999, "speed": 99, "attack": 10, "defense": 10, "move": 0, "stagger": 999, "move_chance": 0.0, "attack_card": "hand_crush"},
+	"hand": {"name": "황혼의 손", "sprite": "hand", "hp": 999, "speed": 99, "attack": 16, "defense": 10, "move": 0, "stagger": 999, "move_chance": 0.0, "attack_card": "hand_crush"},
 }
 
 ## 전투방: id → 배경 그림 이름과 어둡기.

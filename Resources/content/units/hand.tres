@@ -15,6 +15,7 @@ id = &"hand"
 display_name = "황혼의 손"
 max_hp = 999
 speed = 99
+attack = 16
 crit_chance = 0
 move = 0
 stagger = 999

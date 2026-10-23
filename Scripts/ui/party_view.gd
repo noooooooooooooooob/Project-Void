@@ -1,5 +1,5 @@
 ## 캐릭터 정보와 인벤토리 화면. PartyState 를 읽어 보여 주고, 장착·해제를 PartyState 에 요청한다.
-## 씬 파일 없이 코드로 화면을 짠다 (MapView 와 같은 방식).
+## 씬 파일 없이 코드로 화면을 짠다.
 class_name PartyView
 # Control: 화면 전체를 덮는 UI 노드.
 extends Control

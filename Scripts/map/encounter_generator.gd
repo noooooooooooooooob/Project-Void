@@ -27,7 +27,7 @@ const REGULAR_ENEMY_MAX: int = 3
 ## 보스 전투의 적 수.
 const BOSS_ENEMY_COUNT: int = 4
 ## 생성한 모든 전투가 쓰는 방. 방이 늘어나면 여기서 고르게 바꾼다.
-const DEFAULT_ROOM_PATH: String = "res://Resources/rooms/warehouse.tres"
+const DEFAULT_ROOM_PATH: String = "res://Resources/content/rooms/sewer.tres"
 
 
 ## 시작 파티를 만든다. 아군마다 카드 폴더에서 무작위로 STARTER_DECK_SIZE 장을 뽑아 덱을 채운다.
