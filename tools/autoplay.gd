@@ -62,11 +62,16 @@ func _process(_delta: float) -> bool:
 		_finish_battle(screen as BattleRoot)
 	elif screen is ExpeditionView:
 		var ex: Expedition = (screen as ExpeditionView)._ex
-		_note("Expedition F%d step%d %s" % [ex.floor_index + 1, ex.step, ex.options.map(func(o: Dictionary) -> String: return o["type"])])
-		(screen as ExpeditionView).node_chosen.emit(0)
+		var ids: Array[int] = ex.selectable_ids()
+		_note("Map Z%d at %d -> %s" % [ex.floor_index + 1, ex.current_id, ids.map(func(id: int) -> String: return ex.node(id)["type"])])
+		(screen as ExpeditionView).node_chosen.emit(ids[0])
 	elif screen is RewardView:
 		_note("Reward")
 		(screen as RewardView).done.emit(0)
+	elif screen is ShopView:
+		_note("Shop")
+		(screen as ShopView).buy_button(0).pressed.emit()
+		(screen as ShopView).done.emit()
 	elif screen is SupplyView:
 		_note("Supply")
 		(screen as SupplyView).done.emit(0)

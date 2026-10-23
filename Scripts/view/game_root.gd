@@ -251,7 +251,7 @@ func _run_expedition(request_id: String) -> void:
 				await _play_story("ch1_void_choice", ex)
 			var deeper: int = await _ask("공허 속의 공허", "황혼층으로 내려가면 남은 구역의 적이 강해지지만(체력·공격 ×1.15) 자금 보상이 1.5 배가 되고 장비를 더 자주 얻습니다.", ["원래 길로 간다", "황혼층으로 내려간다"], UiTheme.bg("twilight"), UiTheme.DANGER)
 			ex.choose_deep(deeper == 1)
-		if story and ex.step == 0 and not intros.has(ex.floor_index):
+		if story and ex.current_id < 0 and not intros.has(ex.floor_index):
 			intros[ex.floor_index] = true
 			var intro: String = _floor_intro(ex)
 			if not intro.is_empty():
@@ -262,16 +262,18 @@ func _run_expedition(request_id: String) -> void:
 			await _open_party()
 			if is_instance_valid(view):
 				view.refresh())
-		var index: int = await view.node_chosen
-		var node: Dictionary = ex.pick(index)
+		var node_id: int = await view.node_chosen
+		var node: Dictionary = ex.pick(node_id)
+		if node.is_empty():
+			continue
 		match node["type"]:
 			ChapterData.BATTLE, ChapterData.ELITE, ChapterData.BOSS:
 				await _expedition_battle(ex, node, story)
 			ChapterData.EVENT:
 				await _play_story("events/%s" % node["event"], ex)
-				ex.resolve_simple()
+				ex.resolve_simple(node)
 			ChapterData.REST:
-				ex.resolve_rest()
+				ex.resolve_rest(node)
 				await _ask("휴식", "물기 없는 구석을 찾아 숨을 고르고 상처를 감쌌다.\n모두 최대 체력의 %d%% 를 회복했다." % roundi(Expedition.REST_HEAL * 100), ["계속"], UiTheme.bg("void"))
 			ChapterData.SUPPLY:
 				var items: Array[ItemData] = ex.supply_choices()
@@ -280,7 +282,12 @@ func _run_expedition(request_id: String) -> void:
 				var pick: int = await supply.done
 				if pick >= 0:
 					game.party.add_item(items[pick])
-				ex.resolve_simple()
+				ex.resolve_simple(node)
+			ChapterData.SHOP:
+				var shop := ShopView.new(ex, ex.shop_stock())
+				_show(shop)
+				await shop.done
+				ex.resolve_simple(node)
 	await _finish_expedition(ex, story)
 
 

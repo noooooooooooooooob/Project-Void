@@ -44,9 +44,9 @@ func _initialize() -> void:
 						deaths_at[key] = int(deaths_at.get(key, 0)) + 1
 						alive = false
 				"rest":
-					ex.resolve_rest()
+					ex.resolve_rest(node)
 				_:
-					ex.resolve_simple()
+					ex.resolve_simple(node)
 		floor_reached.append(ex.floor_index + (1 if ex.finished else 0))
 		if ex.outcome == "clear":
 			clears += 1
@@ -57,17 +57,17 @@ func _initialize() -> void:
 	quit()
 
 
-## 전투를 우선 고르고, 체력이 낮으면 휴식을 고른다.
+## 체력이 낮으면 휴식, 아니면 전투, 그 밖엔 첫 노드를 고른다.
 func _pick(ex: Expedition) -> Dictionary:
+	var ids: Array[int] = ex.selectable_ids()
 	var low: bool = ex.hp_ratio(0) < 0.5 or ex.hp_ratio(1) < 0.5
-	for i in ex.options.size():
-		if low and ex.options[i]["type"] == "rest":
-			ex.options = [ex.options[i]]
-			return ex.options[0]
-	for i in ex.options.size():
-		if ex.options[i]["type"] == "battle":
-			return ex.options[i]
-	return ex.options[0]
+	for id in ids:
+		if low and ex.node(id)["type"] == "rest":
+			return ex.pick(id)
+	for id in ids:
+		if ex.node(id)["type"] == "battle":
+			return ex.pick(id)
+	return ex.pick(ids[0])
 
 
 func _battle(encounter: EncounterData, seed_value: int) -> Dictionary:

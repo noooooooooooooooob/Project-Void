@@ -1,15 +1,23 @@
-# 원정(Expedition)·게임 상태(GameState) 테스트: 층·노드 진행, 체력 이어짐, 보상, 황혼층, 저장·불러오기.
+# 원정(Expedition)·게임 상태(GameState) 테스트: 3줄 노드 지도, 연결·선택 규칙, 구역 진행, 체력 이어짐, 보상, 상점, 황혼층, 저장·불러오기.
 extends TestCase
+
+const SEEDS: Array[int] = [1, 7, 42, 99]
 
 
 func run() -> Array[Dictionary]:
 	_test_game_state_members_and_decks()
-	_test_first_step_always_offers_a_battle()
-	_test_floor_exit_and_progression()
+	for s in SEEDS:
+		_test_map_shape(s)
+		_test_paths_never_cross(s)
+		_test_every_node_reaches_the_exit(s)
+	_test_first_column_has_battles()
+	_test_only_connected_nodes_are_selectable()
+	_test_walking_to_the_exit_moves_to_the_next_zone()
 	_test_battle_hp_carries_over_and_fallen_rise_with_one()
 	_test_encounter_uses_carried_hp_and_enemy_cells()
 	_test_rest_heals_and_never_exceeds_max()
-	_test_void_choice_after_floor_three()
+	_test_shop_stock_and_spending()
+	_test_void_choice_after_zone_three()
 	_test_deep_layer_scales_enemies()
 	_test_rewards_offer_member_cards()
 	_test_save_round_trip()
@@ -33,6 +41,22 @@ func _expedition(seed_value: int = 1) -> Expedition:
 	return Expedition.new(ChapterData.CHAPTER1, _game(), _rng(seed_value))
 
 
+## 고를 수 있는 첫 노드를 마친다 (전투면 승리 처리).
+func _step(ex: Expedition) -> Dictionary:
+	var n: Dictionary = ex.pick(ex.selectable_ids()[0])
+	if n.has("enemies"):
+		ex.resolve_battle_win(n, [30, 25])
+	else:
+		ex.resolve_simple(n)
+	return n
+
+
+func _clear_zone(ex: Expedition) -> void:
+	var zone: int = ex.floor_index
+	while ex.floor_index == zone and not ex.finished:
+		_step(ex)
+
+
 func _test_game_state_members_and_decks() -> void:
 	var game: GameState = _game()
 	check_eq("two members", game.party.member_count(), 2)
@@ -45,31 +69,97 @@ func _test_game_state_members_and_decks() -> void:
 	check("hongyeon has her passives", game.party.member_data(1).passives.has(BattleState.BLOOD_ARMOR))
 
 
-func _test_first_step_always_offers_a_battle() -> void:
-	for s in 15:
+func _test_map_shape(s: int) -> void:
+	var ex: Expedition = _expedition(s)
+	var cols: int = ex.column_count()
+	check_eq("seed %d: columns × 3 lanes + exit" % s, ex.nodes.size(), cols * Expedition.LANES + 1)
+	var exit: Dictionary = ex.node(ex.exit_id())
+	check("seed %d: last node is the exit" % s, exit["exit"])
+	check_eq("seed %d: exit sits after the last column" % s, exit["col"], cols)
+	var shops: int = 0
+	for n in ex.nodes:
+		if n["type"] == ChapterData.SHOP:
+			shops += 1
+	check_eq("seed %d: one shop per zone" % s, shops, 1)
+	for lane in Expedition.LANES:
+		check("seed %d: last column lane %d leads to the exit" % [s, lane], (ex.node((cols - 1) * Expedition.LANES + lane)["next"] as Array) == [ex.exit_id()])
+
+
+func _test_paths_never_cross(s: int) -> void:
+	var ex: Expedition = _expedition(s)
+	for c in range(ex.column_count() - 1):
+		for lane in range(Expedition.LANES - 1):
+			var down: bool = (ex.node(c * 3 + lane)["next"] as Array).has((c + 1) * 3 + lane + 1)
+			var up: bool = (ex.node(c * 3 + lane + 1)["next"] as Array).has((c + 1) * 3 + lane)
+			check("seed %d: col %d lanes %d/%d don't cross" % [s, c, lane, lane + 1], not (down and up))
+		for lane in Expedition.LANES:
+			for next_id in ex.node(c * 3 + lane)["next"]:
+				var next: Dictionary = ex.node(next_id)
+				check("seed %d: edges go one column right and at most one lane" % s, next["col"] == c + 1 and absi(int(next["lane"]) - lane) <= 1)
+
+
+func _test_every_node_reaches_the_exit(s: int) -> void:
+	var ex: Expedition = _expedition(s)
+	for n in ex.nodes:
+		if n["exit"]:
+			continue
+		var frontier: Array = [n["id"]]
+		var reached: bool = false
+		while not frontier.is_empty():
+			var id: int = frontier.pop_back()
+			if id == ex.exit_id():
+				reached = true
+				break
+			frontier.append_array(ex.node(id)["next"])
+		check("seed %d: node %d can reach the exit" % [s, n["id"]], reached)
+
+
+func _test_first_column_has_battles() -> void:
+	for s in 12:
 		var ex: Expedition = _expedition(s)
-		var types: Array = []
-		for o in ex.options:
-			types.append(o["type"])
-		check("seed %d: first doors include a battle" % s, types.has("battle"))
-		check("seed %d: 2~3 doors" % s, ex.options.size() >= 2 and ex.options.size() <= 3)
+		var battles: int = 0
+		for lane in Expedition.LANES:
+			if ex.node(lane)["type"] == ChapterData.BATTLE:
+				battles += 1
+		check_eq("seed %d: first column has two battles" % s, battles, 2)
 
 
-func _test_floor_exit_and_progression() -> void:
+func _test_only_connected_nodes_are_selectable() -> void:
+	var ex: Expedition = _expedition(3)
+	check_eq("at the zone start all three first-column nodes are open", ex.selectable_ids(), [0, 1, 2])
+	check("a second-column node is not open yet", not ex.is_selectable(3))
+	check("picking a closed node returns nothing", ex.pick(4).is_empty())
+	var first: Dictionary = ex.pick(1)
+	if first.has("enemies"):
+		ex.resolve_battle_win(first, [30, 25])
+	else:
+		ex.resolve_simple(first)
+	check_eq("current node moved", ex.current_id, 1)
+	var expected: Array[int] = []
+	for id in ex.node(1)["next"]:
+		expected.append(id)
+	expected.sort()
+	check_eq("only the connected next nodes are open", ex.selectable_ids(), expected)
+	check("the visited node can't be picked again", not ex.is_selectable(1))
+
+
+func _test_walking_to_the_exit_moves_to_the_next_zone() -> void:
 	var ex: Expedition = _expedition()
-	for i in ex.steps_per_floor():
-		ex.resolve_simple()
-	check("after the steps comes the exit", ex.at_exit())
-	check_eq("exit is a single battle node", ex.options.size(), 1)
-	check_eq("floor 1 exit is a plain battle", ex.options[0]["type"], "battle")
-	ex.resolve_battle_win(ex.options[0], [30, 25])
-	check_eq("now on floor 2", ex.floor_index, 1)
-	check_eq("back to step 0", ex.step, 0)
+	var visited_types: Array = []
+	while ex.floor_index == 0:
+		if ex.at_exit():
+			check_eq("only the exit is open at the end", ex.selectable_ids(), [ex.exit_id()])
+		visited_types.append(_step(ex)["type"])
+	check_eq("one node per column plus the exit", visited_types.size(), ex.column_count() + 1)
+	check_eq("now in zone 2", ex.floor_index, 1)
+	check_eq("the new zone starts fresh", ex.current_id, -1)
+	check("a new map was rolled", ex.visited.is_empty())
 
 
 func _test_battle_hp_carries_over_and_fallen_rise_with_one() -> void:
 	var ex: Expedition = _expedition()
-	ex.resolve_battle_win(ex.options[0], [20, 0])
+	var n: Dictionary = ex.pick(ex.selectable_ids()[0])
+	ex.resolve_battle_win(n, [20, 0])
 	check_eq("hp carries over", ex.hp[0], 20)
 	check_eq("a fallen member gets up with 1 hp", ex.hp[1], 1)
 
@@ -77,8 +167,7 @@ func _test_battle_hp_carries_over_and_fallen_rise_with_one() -> void:
 func _test_encounter_uses_carried_hp_and_enemy_cells() -> void:
 	var ex: Expedition = _expedition()
 	ex.hp[0] = 12
-	var node: Dictionary = {"type": "battle", "enemies": ["rat", "hound"]}
-	var encounter: EncounterData = ex.encounter_for(node)
+	var encounter: EncounterData = ex.encounter_for({"type": "battle", "enemies": ["rat", "hound"]})
 	check_eq("ally starts with carried hp", encounter.ally_units[0].start_hp, 12)
 	check_eq("two enemies", encounter.enemy_units.size(), 2)
 	check_eq("first enemy stands front centre", encounter.enemy_units[0].cell, Vector2i(0, 1))
@@ -91,21 +180,32 @@ func _test_rest_heals_and_never_exceeds_max() -> void:
 	var ex: Expedition = _expedition()
 	var max_hp: int = ex.game.party.stats(0)["max_hp"]
 	ex.hp[0] = 1
-	ex.resolve_rest()
+	ex.heal_party(Expedition.REST_HEAL)
 	check_eq("rest heals 35%", ex.hp[0], 1 + roundi(max_hp * Expedition.REST_HEAL))
 	ex.hp[0] = max_hp
 	ex.heal_party(0.5)
 	check_eq("never above max", ex.hp[0], max_hp)
 
 
-func _test_void_choice_after_floor_three() -> void:
+func _test_shop_stock_and_spending() -> void:
+	var ex: Expedition = _expedition()
+	var stock: Dictionary = ex.shop_stock()
+	check_eq("three items", stock["items"].size(), 3)
+	check_eq("three cards", stock["cards"].size(), 3)
+	check("cards have a price", stock["cards"][0]["price"] > 0)
+	ex.game.gold = 50
+	check("can't buy above the purse", not ex.spend(60))
+	check_eq("gold untouched", ex.game.gold, 50)
+	check("can buy within the purse", ex.spend(30))
+	check_eq("gold spent", ex.game.gold, 20)
+
+
+func _test_void_choice_after_zone_three() -> void:
 	var ex: Expedition = _expedition()
 	for f in 3:
-		check("no void choice before floor %d is cleared" % (f + 1), not ex.needs_void_choice())
-		for i in ex.steps_per_floor():
-			ex.resolve_simple()
-		ex.resolve_battle_win(ex.options[0], [30, 25])
-	check("void choice after floor 3", ex.needs_void_choice())
+		check("no void choice before zone %d is cleared" % (f + 1), not ex.needs_void_choice())
+		_clear_zone(ex)
+	check("void choice after zone 3", ex.needs_void_choice())
 	ex.choose_deep(true)
 	check("choice is made once", not ex.needs_void_choice())
 	check("went deeper", ex.deep)

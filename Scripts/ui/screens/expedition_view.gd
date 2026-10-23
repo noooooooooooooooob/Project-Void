@@ -1,27 +1,40 @@
-## 원정 지도: 지금 층과 단계, 고를 수 있는 문(노드)들, 파티 체력, 번 자금. 문을 누르면 node_chosen.
+## 원정 지도: 왼쪽에서 오른쪽으로 진행하는 3줄 노드 지도. 노드는 선으로 이어지고, 지금 위치와 이어진 노드만 고를 수 있다.
+## 노드에 마우스를 올리면 아래 정보 패널에 내용(적 구성 등)을 보여 준다. 고르면 node_chosen(id).
 class_name ExpeditionView
 extends Control
 
-signal node_chosen(index: int)
+signal node_chosen(node_id: int)
 signal party_requested
 
 const TYPE_COLORS: Dictionary = {
-	"battle": Color(0.85, 0.5, 0.5),
-	"elite": Color(1.0, 0.55, 0.3),
-	"boss": Color(1.0, 0.3, 0.35),
-	"event": Color(0.6, 0.75, 1.0),
+	"battle": Color(0.88, 0.48, 0.48),
+	"elite": Color(1.0, 0.58, 0.28),
+	"boss": Color(1.0, 0.28, 0.35),
+	"event": Color(0.58, 0.72, 1.0),
 	"rest": Color(0.5, 0.9, 0.6),
 	"supply": Color(0.95, 0.8, 0.45),
+	"shop": Color(0.85, 0.6, 1.0),
 }
-const TYPE_ICONS: Dictionary = {"battle": "⚔", "elite": "☠", "boss": "♛", "event": "?", "rest": "☾", "supply": "◆"}
+const TYPE_ICONS: Dictionary = {"battle": "⚔", "elite": "☠", "boss": "♛", "event": "?", "rest": "☾", "supply": "◆", "shop": "$"}
+## 지도 영역 (화면 좌표).
+const MAP_LEFT: float = 230.0
+const MAP_RIGHT: float = 1690.0
+const LANE_Y: Array[float] = [330.0, 520.0, 710.0]
+const NODE_SIZE: float = 100.0
+const EXIT_SIZE: float = 136.0
 
 var _ex: Expedition
 var _bg: Control
 var _header: Label
 var _sub: Label
-var _doors: HBoxContainer
+var _floors: HBoxContainer
+var _lines: Control
+var _node_layer: Control
+var _buttons: Dictionary = {}
 var _party: VBoxContainer
-var _progress: HBoxContainer
+var _info_title: Label
+var _info_body: Label
+var _time: float = 0.0
 
 
 func _init(ex: Expedition) -> void:
@@ -31,112 +44,201 @@ func _init(ex: Expedition) -> void:
 func _ready() -> void:
 	theme = UiTheme.get_theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_bg = UiTheme.backdrop(UiTheme.bg("twilight" if _ex.deep else "void"), 0.35)
+	_bg = UiTheme.backdrop(UiTheme.bg("void"), 0.5)
 	add_child(_bg)
-	# 위쪽 머리글.
+	# 머리글.
 	var top := VBoxContainer.new()
-	top.position = Vector2(60, 40)
+	top.position = Vector2(60, 36)
 	add_child(top)
 	_header = UiTheme.title_label("", 44)
 	top.add_child(_header)
 	_sub = UiTheme.label("", 20, UiTheme.TEXT_DIM)
 	top.add_child(_sub)
-	_progress = HBoxContainer.new()
-	_progress.add_theme_constant_override("separation", 10)
-	top.add_child(_progress)
-	# 가운데 문들.
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(center)
-	_doors = HBoxContainer.new()
-	_doors.add_theme_constant_override("separation", 36)
-	center.add_child(_doors)
+	_floors = HBoxContainer.new()
+	_floors.add_theme_constant_override("separation", 8)
+	top.add_child(_floors)
+	# 지도.
+	_lines = Control.new()
+	_lines.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lines.draw.connect(_draw_lines)
+	add_child(_lines)
+	_node_layer = Control.new()
+	_node_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_node_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_node_layer)
 	# 왼쪽 아래 파티.
 	var party_panel := PanelContainer.new()
 	party_panel.anchor_top = 1.0
 	party_panel.anchor_bottom = 1.0
 	party_panel.offset_left = 40
-	party_panel.offset_top = -230
+	party_panel.offset_top = -210
 	party_panel.offset_right = 480
-	party_panel.offset_bottom = -40
+	party_panel.offset_bottom = -36
 	add_child(party_panel)
 	_party = VBoxContainer.new()
 	_party.add_theme_constant_override("separation", 10)
 	party_panel.add_child(_party)
+	# 가운데 아래 노드 정보.
+	var info := PanelContainer.new()
+	info.anchor_top = 1.0
+	info.anchor_bottom = 1.0
+	info.offset_left = 520
+	info.offset_right = 1300
+	info.offset_top = -210
+	info.offset_bottom = -36
+	add_child(info)
+	var info_col := VBoxContainer.new()
+	info.add_child(info_col)
+	_info_title = UiTheme.title_label("", 28)
+	info_col.add_child(_info_title)
+	_info_body = UiTheme.body("", 19, UiTheme.TEXT)
+	info_col.add_child(_info_body)
 	# 오른쪽 아래 버튼.
-	var party_button := UiTheme.button("사원 명부 · 장비", Vector2(240, 56))
+	var party_button := UiTheme.button("사원 명부 · 장비", Vector2(260, 60))
 	party_button.anchor_left = 1.0
 	party_button.anchor_right = 1.0
 	party_button.anchor_top = 1.0
 	party_button.anchor_bottom = 1.0
-	party_button.offset_left = -290
+	party_button.offset_left = -310
 	party_button.offset_right = -50
 	party_button.offset_top = -100
-	party_button.offset_bottom = -44
+	party_button.offset_bottom = -40
 	party_button.pressed.connect(func() -> void: party_requested.emit())
 	add_child(party_button)
 	refresh()
 
 
+func _process(delta: float) -> void:
+	_time += delta
+	# 고를 수 있는 노드는 숨 쉬듯 커졌다 작아진다.
+	var pulse: float = 1.0 + 0.06 * sin(_time * 4.0)
+	for id in _buttons:
+		var b: Button = _buttons[id]
+		b.scale = Vector2(pulse, pulse) if _ex.is_selectable(id) else Vector2.ONE
+
+
 func refresh() -> void:
 	(_bg.get_child(0) as TextureRect).texture = UiTheme.bg("twilight" if _ex.deep else "void")
-	var layer: String = "황혼층" if _ex.deep else "공허"
 	_header.text = "%d구역 · %s" % [_ex.floor_index + 1, _ex.floor_name()]
-	_sub.text = "%s  ·  %s  ·  이번 원정 자금 +%d  ·  보유 %d" % [_ex.request["title"], layer, _ex.gold_earned, _ex.game.gold]
-	_clear(_progress)
-	for i in _ex.steps_per_floor() + 1:
-		var dot := UiTheme.label("●" if i < _ex.step else ("◉" if i == _ex.step else "○"), 22, UiTheme.LAVENDER if i <= _ex.step else UiTheme.TEXT_DIM)
-		_progress.add_child(dot)
-	var exit_label := UiTheme.label("  출구" if not _ex.at_exit() else "  출구 ◀", 18, UiTheme.TEXT_DIM)
-	_progress.add_child(exit_label)
-	_clear(_doors)
-	for i in _ex.options.size():
-		_doors.add_child(_door(_ex.options[i], i))
+	_sub.text = "%s  ·  %s  ·  이번 원정 자금 +%d  ·  보유 %d" % [_ex.request["title"], "황혼층" if _ex.deep else "공허", _ex.gold_earned, _ex.game.gold]
+	_clear(_floors)
+	for f in _ex.floor_count():
+		var mark: String = "■" if f < _ex.floor_index else ("▣" if f == _ex.floor_index else "□")
+		_floors.add_child(UiTheme.label("%s %d구역" % [mark, f + 1], 18, UiTheme.LAVENDER if f <= _ex.floor_index else UiTheme.TEXT_DIM))
+	_build_nodes()
+	_lines.queue_redraw()
 	_clear(_party)
 	for i in _ex.game.party.member_count():
 		_party.add_child(_member_row(i))
+	_show_info(-1)
 
 
-func _door(node: Dictionary, index: int) -> Control:
-	var t: String = node["type"]
-	var info: Dictionary = ChapterData.NODE_INFO[t]
-	var color: Color = TYPE_COLORS.get(t, UiTheme.LAVENDER)
-	var button := Button.new()
-	button.custom_minimum_size = Vector2(300, 400)
-	button.add_theme_stylebox_override("normal", UiTheme.box(Color(0.1, 0.08, 0.14, 0.92), color.darkened(0.3), 3, 12))
-	button.add_theme_stylebox_override("hover", UiTheme.box(Color(0.18, 0.14, 0.24, 0.97), color, 4, 12))
-	button.add_theme_stylebox_override("pressed", UiTheme.box(Color(0.25, 0.2, 0.33, 1.0), color, 4, 12))
-	button.pressed.connect(func() -> void: node_chosen.emit(index))
-	var col := VBoxContainer.new()
-	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	col.offset_left = 24
-	col.offset_right = -24
-	col.offset_top = 30
-	col.offset_bottom = -24
-	col.add_theme_constant_override("separation", 14)
-	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_child(col)
-	var icon := UiTheme.label(TYPE_ICONS.get(t, "•"), 72, color)
-	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(icon)
-	var title_text := UiTheme.title_label(info["name"], 34, color)
-	title_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(title_text)
-	var desc := UiTheme.body(info["desc"], 18, UiTheme.TEXT_DIM)
-	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(desc)
-	if node.has("enemies"):
+## 노드 중심의 화면 좌표.
+func node_position(id: int) -> Vector2:
+	var n: Dictionary = _ex.node(id)
+	var cols: int = _ex.column_count()
+	var x: float = MAP_LEFT + (MAP_RIGHT - MAP_LEFT) * float(n["col"]) / float(cols)
+	return Vector2(x, LANE_Y[n["lane"]])
+
+
+func button_for(id: int) -> Button:
+	return _buttons.get(id)
+
+
+func _build_nodes() -> void:
+	_clear(_node_layer)
+	_buttons.clear()
+	for n in _ex.nodes:
+		var id: int = n["id"]
+		var t: String = n["type"]
+		var color: Color = TYPE_COLORS.get(t, UiTheme.LAVENDER)
+		var size: float = EXIT_SIZE if n["exit"] else NODE_SIZE
+		var selectable: bool = _ex.is_selectable(id)
+		var visited: bool = _ex.visited.has(id)
+		var current: bool = id == _ex.current_id
+		var b := Button.new()
+		b.text = TYPE_ICONS.get(t, "•")
+		b.add_theme_font_size_override("font_size", 46 if n["exit"] else 38)
+		b.custom_minimum_size = Vector2(size, size)
+		b.size = Vector2(size, size)
+		b.position = node_position(id) - Vector2(size, size) / 2.0
+		b.pivot_offset = Vector2(size, size) / 2.0
+		var radius: int = int(size / 2.0)
+		var fill: Color = Color(0.1, 0.08, 0.14, 0.95)
+		var border: Color = color.darkened(0.45)
+		var width: int = 3
+		if visited:
+			fill = color.darkened(0.6)
+			border = UiTheme.GOLD.darkened(0.2)
+		if selectable:
+			border = color
+			width = 5
+		if current:
+			border = UiTheme.GOLD
+			width = 6
+		b.add_theme_stylebox_override("normal", UiTheme.box(fill, border, width, radius, 0))
+		b.add_theme_stylebox_override("hover", UiTheme.box(fill.lightened(0.15), color.lightened(0.3), width + 1, radius, 0))
+		b.add_theme_stylebox_override("pressed", UiTheme.box(fill.lightened(0.25), UiTheme.GOLD, width + 1, radius, 0))
+		b.add_theme_stylebox_override("disabled", UiTheme.box(fill, border, width, radius, 0))
+		b.add_theme_color_override("font_color", color)
+		b.add_theme_color_override("font_disabled_color", color.darkened(0.25) if (visited or current) else color.darkened(0.5))
+		b.disabled = not selectable
+		if not selectable and not visited and not current:
+			b.modulate = Color(1, 1, 1, 0.55)
+		b.pressed.connect(func() -> void: node_chosen.emit(id))
+		b.mouse_entered.connect(_show_info.bind(id))
+		b.mouse_exited.connect(_show_info.bind(-1))
+		_node_layer.add_child(b)
+		_buttons[id] = b
+		if n["exit"]:
+			var tag := UiTheme.label("출구 · %s" % ChapterData.NODE_INFO[t]["name"], 18, color)
+			tag.position = node_position(id) + Vector2(-60, size / 2.0 + 6)
+			_node_layer.add_child(tag)
+
+
+func _draw_lines() -> void:
+	for n in _ex.nodes:
+		var from: Vector2 = node_position(n["id"])
+		for next_id in n["next"]:
+			var to: Vector2 = node_position(next_id)
+			var walked: bool = _ex.visited.has(n["id"]) and _ex.visited.has(next_id)
+			var open: bool = n["id"] == _ex.current_id and _ex.is_selectable(next_id)
+			var color := Color(0.55, 0.5, 0.65, 0.35)
+			var width: float = 3.0
+			if walked:
+				color = UiTheme.GOLD
+				width = 6.0
+			elif open:
+				color = UiTheme.LAVENDER
+				width = 5.0
+			_lines.draw_line(from, to, color, width, true)
+	# 구역 시작점에서 첫 열로.
+	if _ex.current_id < 0:
+		for id in _ex.selectable_ids():
+			var to: Vector2 = node_position(id)
+			_lines.draw_line(Vector2(MAP_LEFT - 140, LANE_Y[1]), to, UiTheme.LAVENDER, 4.0, true)
+		_lines.draw_circle(Vector2(MAP_LEFT - 140, LANE_Y[1]), 14.0, UiTheme.GOLD)
+
+
+func _show_info(id: int) -> void:
+	if id < 0:
+		_info_title.text = "갈 곳을 고르세요"
+		_info_body.text = "빛나는 노드만 고를 수 있습니다. 노드는 선으로 이어진 다음 칸으로만 나아갑니다."
+		return
+	var n: Dictionary = _ex.node(id)
+	var info: Dictionary = ChapterData.NODE_INFO[n["type"]]
+	_info_title.text = info["name"] + ("  (구역 출구)" if n["exit"] else "")
+	var lines: PackedStringArray = [info["desc"]]
+	if n.has("enemies"):
 		var names: PackedStringArray = []
-		for id in node["enemies"]:
-			var data: UnitData = load("res://Resources/content/units/%s.tres" % id)
+		for enemy_id in n["enemies"]:
+			var data: UnitData = load("res://Resources/content/units/%s.tres" % enemy_id)
 			names.append(data.display_name)
-		var foes := UiTheme.body("\n".join(names), 18, UiTheme.TEXT)
-		foes.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		col.add_child(foes)
-	for c in col.get_children():
-		(c as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return button
+		lines.append("적: " + ", ".join(names))
+	if not _ex.is_selectable(id) and not _ex.visited.has(id):
+		lines.append("(지금은 갈 수 없음)")
+	_info_body.text = "\n".join(lines)
 
 
 func _member_row(index: int) -> Control:

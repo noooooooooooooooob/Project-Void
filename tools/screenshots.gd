@@ -31,6 +31,8 @@ func _initialize() -> void:
 		func() -> Node: return _named("dialogue", _dialogue(), 60),
 		func() -> Node: return _named("office", OfficeScreen.new(_game), 20),
 		func() -> Node: return _named("expedition", ExpeditionView.new(_ex), 20),
+		func() -> Node: return _named("expedition_mid", _mid_map(), 20),
+		func() -> Node: return _named("shop", ShopView.new(_ex, _ex.shop_stock()), 20),
 		func() -> Node: return _named("battle", _battle(), 240),
 		func() -> Node: return _named("reward", RewardView.new(_ex.battle_reward({"type": "elite"}), _game), 20),
 		func() -> Node: return _named("party", _party(), 20),
@@ -54,6 +56,17 @@ func _dialogue() -> Node:
 		view._text.visible_characters = -1
 		view._typing = false)
 	return view
+
+
+## 두 칸 진행한 지도 (지나온 길과 열린 길이 보이게).
+func _mid_map() -> Node:
+	for k in 2:
+		var n: Dictionary = _ex.pick(_ex.selectable_ids()[0])
+		if n.has("enemies"):
+			_ex.resolve_battle_win(n, [28, 22])
+		else:
+			_ex.resolve_simple(n)
+	return ExpeditionView.new(_ex)
 
 
 func _battle() -> Node:

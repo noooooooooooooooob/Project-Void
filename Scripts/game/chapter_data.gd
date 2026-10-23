@@ -15,7 +15,8 @@ const CHAPTER1: Dictionary = {
 	"room": "sewer",
 	"deep_room": "twilight",
 	"boss_room": "core",
-	"steps_per_floor": 3,
+	## 출구 앞 지도 열 수 (열마다 3줄).
+	"columns": 4,
 	## 층마다 일반 전투 적 무리 후보.
 	"pools": [
 		[["rat", "rat"], ["rat", "leech"], ["hound"], ["rat", "rat", "rat"]],
@@ -45,7 +46,7 @@ const REPEAT1: Dictionary = {
 	"room": "sewer",
 	"deep_room": "twilight",
 	"boss_room": "sewer",
-	"steps_per_floor": 2,
+	"columns": 3,
 	"pools": [
 		[["rat", "rat"], ["hound", "rat"], ["leech", "leech"], ["husk"]],
 		[["husk", "rat"], ["hound", "hound"], ["husk", "leech"], ["brute"]],
@@ -70,6 +71,7 @@ const BOSS: String = "boss"
 const EVENT: String = "event"
 const REST: String = "rest"
 const SUPPLY: String = "supply"
+const SHOP: String = "shop"
 
 ## 노드 종류의 화면 이름과 설명.
 const NODE_INFO: Dictionary = {
@@ -79,6 +81,7 @@ const NODE_INFO: Dictionary = {
 	"event": {"name": "사건", "desc": "무슨 일이 일어날지 모른다."},
 	"rest": {"name": "휴식", "desc": "숨을 고르고 상처를 돌본다."},
 	"supply": {"name": "보급", "desc": "쓸 만한 장비를 하나 고른다."},
+	"shop": {"name": "상점", "desc": "공허 상인. 자금으로 장비·카드·치료를 산다."},
 }
 
 
