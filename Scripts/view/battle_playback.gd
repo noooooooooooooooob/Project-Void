@@ -6,6 +6,12 @@ class_name BattlePlayback
 extends Node
 
 ## play() 가 모든 이벤트를 재생하고 끝났을 때.
+## 흐트러짐 글자 색.
+const STAGGER_COLOR := Color(0.78, 0.55, 1.0)
+## 상태(혈갑 등) 글자 색.
+const STATUS_COLOR := Color(1.0, 0.35, 0.4)
+## 무너짐·쉼 글자가 보이는 시간.
+const STATUS_POP_TIME: float = 0.45
 signal finished
 # 코루틴 호출 결과를 배열에 담아 나중에 await 하는 방식은 GDScript 정적 분석에 걸린다.
 # 그 대신 신호 + 남은 수 세기로 "여럿을 동시에 시작하고 모두 끝나길 기다리기"를 구현한다.
@@ -147,6 +153,18 @@ func play(events: Array[BattleEvent]) -> void:
 			# 이동.
 			BattleEvent.Kind.UNIT_MOVED:
 				await _unit_moved(event)
+			# 무너짐 (기절·탈진).
+			BattleEvent.Kind.STAGGERED:
+				await _staggered(event)
+			# 흐트러짐만 깎임.
+			BattleEvent.Kind.STAGGER_DAMAGED:
+				await _stagger_damaged(event)
+			# 무너진 유닛이 차례를 쉼.
+			BattleEvent.Kind.TURN_SKIPPED:
+				await _turn_skipped(event)
+			# 상태 스택 변화.
+			BattleEvent.Kind.STATUS_CHANGED:
+				await _status_changed(event)
 		# 다음 이벤트로.
 		i += 1
 	# 남은 푸시를 푼다.
@@ -377,6 +395,8 @@ func _damaged(event: BattleEvent) -> void:
 	var view: UnitView = board.view_for(event.unit)
 	# 체력·방어도 표시.
 	view.set_stats(event.hp, event.unit.data.max_hp, event.block)
+	# 흐트러짐 표시.
+	view.set_stagger(event.stagger, event.unit.data.stagger, event.broken)
 	# 로그.
 	hud.append_log("%s 에게 %d 피해%s" % [event.unit.data.display_name, event.amount, " (치명)" if event.critical else ""])
 	# 테스트 모드면 여기까지만.
@@ -453,6 +473,51 @@ func _died(event: BattleEvent) -> void:
 		audio.play(audio.sounds.for_impact(_impact_type, 0, true))
 	# 넘어지며 사라진다.
 	await view.fade_out()
+
+
+## 무너짐 연출: 게이지를 비우고 "기절!"(적)·"탈진!"(아군)을 띄운다.
+func _staggered(event: BattleEvent) -> void:
+	var view: UnitView = board.view_for(event.unit)
+	view.set_stagger(0, event.unit.data.stagger, true)
+	if instant:
+		return
+	view.pop_text("탈진!" if event.unit.is_ally() else "기절!", STAGGER_COLOR, UnitView.DAMAGE_POP_PUNCH)
+	if _has_camera():
+		camera_fx.shake(BattleCamera.shake_for_damage(8, false))
+	await _wait(STATUS_POP_TIME)
+
+
+## 흐트러짐만 깎인 연출.
+func _stagger_damaged(event: BattleEvent) -> void:
+	var view: UnitView = board.view_for(event.unit)
+	view.set_stagger(event.stagger, event.unit.data.stagger, event.broken)
+	if instant or event.amount <= 0:
+		return
+	view.pop_text("흐트러짐 -%d" % event.amount, STAGGER_COLOR)
+	await _wait(STAT_POP_TIME)
+
+
+## 차례를 쉬고 게이지를 되찾는 연출.
+func _turn_skipped(event: BattleEvent) -> void:
+	var view: UnitView = board.view_for(event.unit)
+	view.set_stagger(event.stagger, event.unit.data.stagger, false)
+	hud.append_log("%s 은(는) 움직이지 못한다" % event.unit.data.display_name)
+	if instant:
+		return
+	view.pop_text("…", STAGGER_COLOR)
+	await _wait(STATUS_POP_TIME)
+
+
+## 상태 스택 변화 연출 (예: 혈갑 +1).
+func _status_changed(event: BattleEvent) -> void:
+	var view: UnitView = board.view_for(event.unit)
+	var before: int = view.status_value(event.status_id)
+	view.set_status(event.status_id, event.status_value)
+	if instant:
+		return
+	var delta: int = event.status_value - before
+	view.pop_text("%s %+d" % [CardText.status_name(event.status_id), delta], STATUS_COLOR)
+	await _wait(STAT_POP_TIME)
 
 
 ## seconds 초 동안 기다린다. 테스트 모드이거나 0 이하면 바로 돌아간다.

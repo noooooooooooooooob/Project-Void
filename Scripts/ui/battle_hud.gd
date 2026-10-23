@@ -344,8 +344,8 @@ func _refresh_sp(actor: Unit) -> void:
 	var max_sp: int = (actor.data as AllyData).max_sp
 	# 남은 SP 는 ●, 쓴 SP 는 ○ 로 표시한다.
 	var pips: String = "●".repeat(actor.sp) + "○".repeat(maxi(max_sp - actor.sp, 0))
-	# "SP / ●●○ / 2 / 3" 세 줄로 쓴다.
-	_sp_label.text = "SP\n%s\n%d / %d" % [pips, actor.sp, max_sp]
+	# "SP / ●●○ / 2 / 3 / 이동 2/2" 로 쓴다.
+	_sp_label.text = "SP\n%s\n%d / %d\n이동 %d / %d" % [pips, actor.sp, max_sp, actor.move_points, actor.data.move]
 
 
 ## 손패를 비운다. sp 는 이후 들어올 카드의 흐림 판정 기준.

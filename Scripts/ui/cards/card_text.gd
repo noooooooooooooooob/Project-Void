@@ -9,6 +9,11 @@ const KIND_NAMES: Dictionary = {
 	CardEffect.Kind.DAMAGE: "피해",
 	CardEffect.Kind.BLOCK: "방어도",
 	CardEffect.Kind.HEAL: "회복",
+	CardEffect.Kind.STAGGER: "흐트러짐",
+}
+## 상태 id 의 화면 이름.
+const STATUS_NAMES: Dictionary = {
+	&"blood_armor": "혈갑",
 }
 ## 공격 종류 → 배지 글자.
 const BADGES: Dictionary = {
@@ -30,9 +35,22 @@ static func describe(card: CardData, stats: UnitData = null) -> String:
 		# 자신 효과인데 카드가 자신 카드가 아니면 "자신 " 을 붙인다.
 		var prefix: String = "자신 " if effect.target == CardEffect.Target.SELF and card.attack_type != CardData.AttackType.SELF else ""
 		# 조각을 만든다.
-		parts.append("%s%s %s" % [prefix, KIND_NAMES[effect.kind], value])
+		match effect.kind:
+			CardEffect.Kind.GAIN_STATUS:
+				parts.append("%s%s +%d" % [prefix, status_name(effect.status), effect.value])
+			CardEffect.Kind.HP_COST:
+				parts.append("체력 %d 소모" % effect.value)
+			CardEffect.Kind.BURST:
+				parts.append("%s 전부 소모, 스택당 피해 %s" % [status_name(effect.status), value])
+			_:
+				parts.append("%s%s %s" % [prefix, KIND_NAMES[effect.kind], value])
 	# 가운뎃점으로 잇는다.
 	return " · ".join(parts)
+
+
+## 상태 id 의 화면 이름. 모르는 id 면 id 그대로.
+static func status_name(status_id: StringName) -> String:
+	return STATUS_NAMES.get(status_id, String(status_id))
 
 
 ## 공격 종류 배지 글자 (근·원·아·자).

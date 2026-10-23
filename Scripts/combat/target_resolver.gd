@@ -139,6 +139,29 @@ func movable_cells(unit: Unit, all_units: Array[Unit]) -> Array[Vector2i]:
 	return cells
 
 
+## 이동력 max_steps 안에서 갈 수 있는 칸과 그 칸까지의 걸음 수 (칸 -> 걸음 수). 시작 칸은 넣지 않는다.
+## 같은 편 유닛이 선 칸은 지나갈 수도 멈출 수도 없다 (상하좌우 한 칸씩 걷는다).
+func reachable_cells(unit: Unit, all_units: Array[Unit], max_steps: int) -> Dictionary:
+	var grid: Vector2i = grid_for(unit.team)
+	var distance: Dictionary = {unit.cell: 0}
+	var frontier: Array[Vector2i] = [unit.cell]
+	while not frontier.is_empty():
+		var current: Vector2i = frontier.pop_front()
+		var steps: int = distance[current]
+		if steps >= max_steps:
+			continue
+		for direction in MOVE_DIRECTIONS:
+			var next: Vector2i = current + direction
+			if next.x < 0 or next.y < 0 or next.x >= grid.x or next.y >= grid.y:
+				continue
+			if distance.has(next) or _occupied(unit.team, next, all_units):
+				continue
+			distance[next] = steps + 1
+			frontier.append(next)
+	distance.erase(unit.cell)
+	return distance
+
+
 ## 그 편의 그 칸에 살아 있는 유닛이 있으면 true. 쓰러진 유닛은 칸을 막지 않는다.
 func _occupied(team: Unit.Team, cell: Vector2i, all_units: Array[Unit]) -> bool:
 	# 모든 유닛을 확인한다.

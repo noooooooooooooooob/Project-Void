@@ -38,11 +38,29 @@ signal hand_discarded(unit: Unit, cards: Array[CardData], discard_count: int)
 enum Phase { STANDBY, DRAW, ACTION, BEFORE_END, AFTER_END }
 ## 차례의 한 단계가 시작됐다. 단계 값을 바꾼 직후, 그 단계의 처리보다 먼저 나간다.
 signal phase_started(unit: Unit, phase: Phase)
-## 유닛이 한 칸 이동했다.
+## 유닛이 이동했다 (여러 칸을 한 번에 갈 수도 있다).
 signal unit_moved(unit: Unit, from_cell: Vector2i, to_cell: Vector2i)
+## 흐트러짐 게이지가 0 이 되어 유닛이 무너졌다 (적은 기절, 아군은 탈진). 다음 차례를 쉰다.
+signal unit_staggered(unit: Unit)
+## 흐트러짐 게이지만 깎였다 (피해 없이 흐트러짐 효과만 받았을 때). amount 는 깎인 양.
+signal stagger_damaged(unit: Unit, amount: int)
+## 무너진 유닛이 차례를 쉬었다. 흐트러짐 게이지는 다시 가득 찬다.
+signal turn_skipped(unit: Unit)
+## 상태 스택이 바뀌었다. value 는 바뀐 뒤의 스택.
+signal status_changed(unit: Unit, status_id: StringName, value: int)
 
 ## 아군 차례가 시작될 때마다 뽑는 카드 수.
 const DRAW_PER_TURN: int = 4
+## 상태·패시브 id: 혈갑. 패시브 혈갑을 가진 유닛은 차례가 시작될 때 혈갑 스택만큼 방어도를 얻는다.
+const BLOOD_ARMOR: StringName = &"blood_armor"
+## 패시브 id: 피의 갈망. 체력을 잃을 때마다 혈갑 +1, 적을 쓰러뜨리면 혈갑 +BLOOD_THIRST_KILL_STACKS.
+const BLOOD_THIRST: StringName = &"blood_thirst"
+## 혈갑 스택 최대치.
+const BLOOD_ARMOR_MAX: int = 10
+## 피의 갈망: 적을 쓰러뜨렸을 때 얻는 혈갑.
+const BLOOD_THIRST_KILL_STACKS: int = 2
+## 그 밖의 상태 스택 최대치.
+const STATUS_MAX: int = 99
 
 ## 전장의 모든 유닛 (아군 먼저, 그다음 적군 순서로 들어 있다). 쓰러진 유닛도 남아 있다.
 var units: Array[Unit] = []
@@ -135,10 +153,15 @@ func write_log(text: String) -> void:
 
 
 ## 유닛에게 피해를 주고 알린다. 쓰러지면 쓰러짐도 알린다.
-## 카드 공격과 적 공격 모두 이 함수를 거친다.
-func apply_damage(target: Unit, amount: int, critical: bool = false) -> void:
+## 카드 공격과 적 공격 모두 이 함수를 거친다. source 는 공격한 유닛 (패시브 처리용, 없으면 null).
+## 흐트러짐 게이지는 방어도로 막은 양까지 포함한 피해량만큼 깎인다.
+func apply_damage(target: Unit, amount: int, critical: bool = false, source: Unit = null) -> void:
+	# 맞기 전 체력 (체력을 잃었는지 판정용).
+	var hp_before: int = target.hp
 	# 방어도 → 체력 순서로 피해를 적용한다.
 	target.take_damage(amount)
+	# 흐트러짐 게이지를 깎는다 (피해 신호에 깎인 값이 함께 기록되도록 먼저).
+	var broke: bool = _reduce_stagger(target, amount)
 	# 피해 신호를 낸다.
 	unit_damaged.emit(target, amount, critical)
 	# 이번 피해로 체력이 0 이 됐는지 확인한다.
@@ -147,6 +170,90 @@ func apply_damage(target: Unit, amount: int, critical: bool = false) -> void:
 		unit_died.emit(target)
 		# 로그에 남긴다.
 		write_log("%s 쓰러짐" % target.data.display_name)
+		# 피의 갈망: 적을 쓰러뜨리면 혈갑을 얻는다.
+		if source != null and source.is_alive() and source.team != target.team and source.has_passive(BLOOD_THIRST):
+			add_status(source, BLOOD_ARMOR, BLOOD_THIRST_KILL_STACKS)
+		return
+	# 피의 갈망: 체력을 잃었으면 혈갑 +1.
+	if target.hp < hp_before and target.has_passive(BLOOD_THIRST):
+		add_status(target, BLOOD_ARMOR, 1)
+	# 게이지가 이번에 0 이 됐으면 무너짐을 알린다.
+	if broke:
+		_announce_break(target)
+
+
+## 흐트러짐 게이지만 깎는다 (피해 없음).
+func apply_stagger_damage(target: Unit, amount: int) -> void:
+	# 쓰러졌거나 이미 무너진 유닛은 더 깎이지 않는다.
+	if not target.is_alive() or target.broken:
+		return
+	# 깎기 전 값.
+	var before: int = target.stagger
+	# 깎는다.
+	var broke: bool = _reduce_stagger(target, amount)
+	# 깎인 양을 알린다.
+	stagger_damaged.emit(target, before - target.stagger)
+	# 0 이 됐으면 무너짐을 알린다.
+	if broke:
+		_announce_break(target)
+
+
+## 체력을 amount 만큼 잃는다 (방어도·흐트러짐 무시, 1 아래로는 내려가지 않는다). 카드의 대가로 쓴다.
+func apply_hp_cost(target: Unit, amount: int) -> void:
+	# 실제로 잃는 양 (체력 1 은 남긴다).
+	var lose: int = mini(amount, target.hp - 1)
+	# 잃을 게 없으면 아무 일도 없다.
+	if lose <= 0:
+		return
+	# 체력을 깎는다.
+	target.hp -= lose
+	# 피해처럼 알린다 (화면은 같은 연출을 쓴다).
+	unit_damaged.emit(target, lose, false)
+	# 피의 갈망: 체력을 잃었으니 혈갑 +1.
+	if target.has_passive(BLOOD_THIRST):
+		add_status(target, BLOOD_ARMOR, 1)
+
+
+## 상태 스택을 delta 만큼 더한다 (최대치·0 에서 잘린다). 실제로 바뀌었으면 알린다.
+func add_status(target: Unit, status_id: StringName, delta: int) -> void:
+	# 지금 스택.
+	var before: int = target.status(status_id)
+	# 바뀐 뒤 스택.
+	var after: int = clampi(before + delta, 0, status_cap(status_id))
+	# 그대로면 알리지 않는다.
+	if after == before:
+		return
+	# 바꾼다.
+	target.set_status(status_id, after)
+	# 알린다.
+	status_changed.emit(target, status_id, after)
+
+
+## 상태 스택 최대치.
+static func status_cap(status_id: StringName) -> int:
+	return BLOOD_ARMOR_MAX if status_id == BLOOD_ARMOR else STATUS_MAX
+
+
+## 흐트러짐 게이지를 깎는다. 이번에 0 이 되어 무너졌으면 true.
+func _reduce_stagger(target: Unit, amount: int) -> bool:
+	# 쓰러졌거나 이미 무너졌으면 더 깎지 않는다.
+	if not target.is_alive() or target.broken or amount <= 0:
+		return false
+	# 깎는다.
+	target.stagger = maxi(0, target.stagger - amount)
+	# 0 이 됐으면 무너진다.
+	if target.stagger == 0:
+		target.broken = true
+		return true
+	return false
+
+
+## 무너짐을 신호와 로그로 알린다.
+func _announce_break(target: Unit) -> void:
+	# 신호.
+	unit_staggered.emit(target)
+	# 적은 기절, 아군은 탈진.
+	write_log("%s %s" % [target.data.display_name, "탈진" if target.is_ally() else "기절"])
 
 
 ## 유닛을 회복시키고 실제로 오른 양을 알린다.
@@ -251,6 +358,13 @@ func resolve_card(actor: Unit, card: CardData, anchor: Unit) -> void:
 		# 0 이면 적용하지 않는다.
 		if amount <= 0:
 			continue
+		# 폭발: 사용자의 상태 스택을 한 번만 모두 소모하고, 스택 수를 곱한 피해를 준다. 스택이 없으면 아무 일도 없다.
+		if effect.kind == CardEffect.Kind.BURST:
+			var stacks: int = actor.status(effect.status)
+			if stacks <= 0:
+				continue
+			add_status(actor, effect.status, -stacks)
+			amount *= stacks
 		# 대상 목록: 자신이면 사용자, 아니면 기준 유닛의 범위.
 		var targets: Array[Unit] = []
 		if effect.target == CardEffect.Target.SELF:
@@ -260,19 +374,28 @@ func resolve_card(actor: Unit, card: CardData, anchor: Unit) -> void:
 		# 대상마다 종류에 맞게 적용한다.
 		for target in targets:
 			match effect.kind:
-				# 피해: 맞는 유닛마다 치명 판정.
-				CardEffect.Kind.DAMAGE:
+				# 피해·폭발: 맞는 유닛마다 치명 판정.
+				CardEffect.Kind.DAMAGE, CardEffect.Kind.BURST:
 					var critical: bool = CardMath.rolls_crit(stats, crit_rng)
-					apply_damage(target, CardMath.critical_amount(amount, stats) if critical else amount, critical)
+					apply_damage(target, CardMath.critical_amount(amount, stats) if critical else amount, critical, actor)
 				# 방어도.
 				CardEffect.Kind.BLOCK:
 					apply_block(target, amount)
 				# 회복.
 				CardEffect.Kind.HEAL:
 					apply_heal(target, amount)
+				# 상태 스택 획득.
+				CardEffect.Kind.GAIN_STATUS:
+					add_status(target, effect.status, amount)
+				# 체력 소모.
+				CardEffect.Kind.HP_COST:
+					apply_hp_cost(target, amount)
+				# 흐트러짐만.
+				CardEffect.Kind.STAGGER:
+					apply_stagger_damage(target, amount)
 
 
-## 지금 차례인 아군이 SP 1 을 써서 to_cell 로 한 칸 이동한다.
+## 지금 차례인 아군이 이동력을 써서 to_cell 로 이동한다. 걸음 수(상하좌우 한 칸 = 1)만큼 이동력이 준다.
 ## 규칙에 맞지 않으면 아무것도 바꾸지 않고 false 를 돌려준다. 성공하면 true.
 func move_unit(to_cell: Vector2i) -> bool:
 	# 끝난 전투에서는 이동할 수 없다.
@@ -283,14 +406,16 @@ func move_unit(to_cell: Vector2i) -> bool:
 	# 차례 유닛이 없거나, 적이거나, 쓰러졌으면 이동할 수 없다.
 	if actor == null or not actor.is_ally() or not actor.is_alive():
 		return false
-	# SP 가 없으면 이동할 수 없다.
-	if actor.sp < 1:
+	# 이동력이 없으면 이동할 수 없다.
+	if actor.move_points < 1:
 		return false
-	# 상하좌우 빈 칸이 아니면 이동할 수 없다.
-	if not resolver.movable_cells(actor, units).has(to_cell):
+	# 남은 이동력으로 갈 수 있는 칸과 걸음 수.
+	var reach: Dictionary = resolver.reachable_cells(actor, units, actor.move_points)
+	# 닿지 않는 칸이면 이동할 수 없다.
+	if not reach.has(to_cell):
 		return false
-	# SP 1 을 쓴다.
-	actor.sp -= 1
+	# 걸음 수만큼 이동력을 쓴다.
+	actor.move_points -= int(reach[to_cell])
 	# 옮기고 알린다.
 	apply_move(actor, to_cell)
 	# 성공.
@@ -384,6 +509,10 @@ func _run_until_player_input() -> void:
 		# 라운드 도중에 쓰러진 유닛은 건너뛴다.
 		if not actor.is_alive():
 			continue
+		# 무너진(기절·탈진) 유닛은 이번 차례를 쉬고 게이지를 되찾는다.
+		if actor.broken:
+			_skip_turn(actor)
+			continue
 
 		# 스탠바이 → 차례 시작 알림 → 드로우.
 		_start_phases(actor)
@@ -419,16 +548,41 @@ func _start_phases(actor: Unit) -> void:
 	_enter_phase(actor, Phase.STANDBY)
 	# 방어도는 자기 차례가 시작될 때 사라진다 (한 바퀴 동안만 유지).
 	actor.block = 0
+	# 이동력을 채운다.
+	actor.move_points = actor.data.move
 	# 아군이면 SP 를 최대치로 채운다.
 	if actor.is_ally():
 		actor.sp = (actor.data as AllyData).max_sp
 	# 초기화된 값이 기록되도록 스탠바이 처리 뒤에 차례 시작을 알린다.
 	turn_started.emit(actor)
+	# 혈갑 패시브: 혈갑 스택만큼 방어도를 얻는다.
+	if actor.has_passive(BLOOD_ARMOR) and actor.status(BLOOD_ARMOR) > 0:
+		apply_block(actor, actor.status(BLOOD_ARMOR))
 	# 드로우 단계.
 	_enter_phase(actor, Phase.DRAW)
 	# 아군만 카드를 뽑는다 (적은 덱이 없어 단계만 지나간다).
 	if actor.is_ally():
 		_draw_cards(actor, DRAW_PER_TURN)
+
+
+## 무너진 유닛의 차례: 스탠바이만 지나고 행동 없이 쉰 뒤, 흐트러짐 게이지를 가득 채운다.
+func _skip_turn(actor: Unit) -> void:
+	# 스탠바이 단계.
+	_enter_phase(actor, Phase.STANDBY)
+	# 방어도는 평소처럼 사라진다.
+	actor.block = 0
+	# 쉬는 차례에는 움직일 수 없다.
+	actor.move_points = 0
+	# 차례 시작을 알린다 (행동 순서 표시용).
+	turn_started.emit(actor)
+	# 무너짐에서 회복한다.
+	actor.broken = false
+	actor.stagger = actor.data.stagger
+	# 쉬었다고 알린다.
+	turn_skipped.emit(actor)
+	write_log("%s 차례를 쉰다" % actor.data.display_name)
+	# 종료 단계.
+	_end_phases(actor)
 
 
 ## 종료 전 → 종료 후 단계를 진행한다. 아군은 종료 후 단계에서 손패를 버린다.

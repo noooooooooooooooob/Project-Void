@@ -1,4 +1,4 @@
-# BattleState.move_unit(아군 이동) 테스트: 성공 시 SP·칸·신호·로그, 각종 거절, SP 가 남는 동안 연속 이동, 이동 후 근접 기준 행.
+# BattleState.move_unit(아군 이동) 테스트: 이동력(기본 2)을 걸음 수만큼 쓰고 SP 는 쓰지 않는다. 각종 거절, 이동력이 남는 동안 연속 이동, 한 번에 여러 칸, 이동 후 근접 기준 행.
 extends TestCase
 
 # 전투 상태 스크립트.
@@ -16,13 +16,19 @@ const EncounterScript := preload("res://Scripts/combat/data/encounter_data.gd")
 # 실행기가 부르는 진입점.
 func run() -> Array[Dictionary]:
 	# 성공한 이동의 결과.
-	_test_move_spends_sp_and_moves()
+	_test_move_spends_move_points_not_sp()
 	# 규칙에 맞지 않는 칸 거절.
 	_test_rejects_invalid_cells()
 	# 아군 차례가 아니면 거절.
 	_test_rejects_outside_an_ally_turn()
-	# SP 가 남는 동안 연속 이동.
-	_test_moves_while_sp_lasts()
+	# 이동력이 남는 동안 연속 이동.
+	_test_moves_while_move_points_last()
+	# 한 번에 여러 칸 (걸음 수만큼 소모).
+	_test_moves_several_cells_at_once()
+	# 같은 편이 막은 길은 돌아가야 한다.
+	_test_paths_go_around_allies()
+	# 차례가 시작되면 이동력이 다시 찬다.
+	_test_move_points_refill_each_turn()
 	# 이동하면 근접 기준이 새 행을 따른다.
 	_test_melee_anchor_follows_the_new_row()
 	# 결과를 돌려준다.
@@ -106,8 +112,8 @@ func _unit(state: BattleState, id: StringName) -> Unit:
 	return null
 
 
-# (1,1) 에서 뒤(2,1)로 이동: true, 새 칸, SP 3→2, 이동 신호의 두 칸, 로그 "a 이동".
-func _test_move_spends_sp_and_moves() -> void:
+# (1,1) 에서 뒤(2,1)로 이동: true, 새 칸, 이동력 2→1, SP 는 그대로 3, 이동 신호의 두 칸, 로그 "a 이동".
+func _test_move_spends_move_points_not_sp() -> void:
 	# a 가 (1,1) 인 전투.
 	var state: BattleState = _started_state(Vector2i(1, 1))
 	# a 유닛.
@@ -120,40 +126,44 @@ func _test_move_spends_sp_and_moves() -> void:
 	var logs: Array = []
 	# 로그를 기록한다.
 	state.log_message.connect(func(text: String) -> void: logs.append(text))
+	# 시작 이동력은 기본값 2.
+	check_eq("turn starts with full move points", a.move_points, 2)
 	# 이동 성공.
 	check("move accepted", state.move_unit(Vector2i(2, 1)))
 	# 새 칸.
 	check_eq("unit stands on the new cell", a.cell, Vector2i(2, 1))
-	# SP 2.
-	check_eq("one sp spent", a.sp, 2)
+	# 이동력 1.
+	check_eq("one move point spent", a.move_points, 1)
+	# SP 는 그대로.
+	check_eq("sp is not spent on moving", a.sp, 3)
 	# 신호 인자.
 	check_eq("move signal carries both cells", moved, [[&"a", Vector2i(1, 1), Vector2i(2, 1)]])
 	# 로그.
 	check_eq("move logged", logs, ["a 이동"])
 
 
-# (0,1) 에서 대각선·두 칸·점유 칸·격자 밖은 거절되고 칸·SP 가 그대로이며, SP 0 이면 빈 칸도 거절되는지.
+# (0,1) 에서 이동력보다 먼 칸·점유 칸·격자 밖은 거절되고, 이동력 0 이면 빈 칸도 거절되는지.
 func _test_rejects_invalid_cells() -> void:
 	# a 가 (0,1) 인 전투 (b 가 위 칸 (0,0) 에 있다).
 	var state: BattleState = _started_state(Vector2i(0, 1))
 	# a 유닛.
 	var a: Unit = _unit(state, &"a")
-	# 대각선.
-	check("diagonal rejected", not state.move_unit(Vector2i(1, 2)))
-	# 두 칸.
-	check("two cells rejected", not state.move_unit(Vector2i(2, 1)))
+	# 세 걸음 떨어진 칸 (이동력 2 로는 닿지 않음).
+	check("too far rejected", not state.move_unit(Vector2i(2, 2)))
 	# b 가 선 칸.
 	check("occupied cell rejected", not state.move_unit(Vector2i(0, 0)))
 	# 격자 밖.
 	check("outside the grid rejected", not state.move_unit(Vector2i(-1, 1)))
+	# 제자리.
+	check("own cell rejected", not state.move_unit(Vector2i(0, 1)))
 	# 칸 그대로.
 	check_eq("cell unchanged", a.cell, Vector2i(0, 1))
-	# SP 그대로.
-	check_eq("sp unchanged", a.sp, 3)
-	# SP 를 다 썼다고 가정한다.
-	a.sp = 0
+	# 이동력 그대로.
+	check_eq("move points unchanged", a.move_points, 2)
+	# 이동력을 다 썼다고 가정한다.
+	a.move_points = 0
 	# 비어 있는 아래 칸도 거절.
-	check("no sp rejected", not state.move_unit(Vector2i(0, 2)))
+	check("no move points rejected", not state.move_unit(Vector2i(0, 2)))
 
 
 # 끝난 전투와 적 차례에서는 이동이 거절되는지.
@@ -174,20 +184,65 @@ func _test_rejects_outside_an_ally_turn() -> void:
 	check("enemy turn rejects moves", not enemy_turn.move_unit(Vector2i(0, 2)))
 
 
-# SP 3 으로 세 번 이동한 뒤 네 번째는 거절되는지.
-func _test_moves_while_sp_lasts() -> void:
+# 이동력 2 로 한 칸씩 두 번 이동한 뒤 세 번째는 거절되는지.
+func _test_moves_while_move_points_last() -> void:
 	# a 가 (0,1) 인 전투.
 	var state: BattleState = _started_state(Vector2i(0, 1))
 	# a 유닛.
 	var a: Unit = _unit(state, &"a")
-	# (1,1) → (2,1) → (2,2) → (2,1) 순서로 시도한다.
-	var accepted: Array = [state.move_unit(Vector2i(1, 1)), state.move_unit(Vector2i(2, 1)), state.move_unit(Vector2i(2, 2)), state.move_unit(Vector2i(2, 1))]
-	# 세 번 성공, 네 번째 실패.
-	check_eq("three moves then out of sp", accepted, [true, true, true, false])
-	# SP 0.
-	check_eq("sp used up", a.sp, 0)
-	# 세 번째 칸에 멈췄다.
-	check_eq("stopped on the third cell", a.cell, Vector2i(2, 2))
+	# (1,1) → (2,1) → (2,2) 순서로 시도한다.
+	var accepted: Array = [state.move_unit(Vector2i(1, 1)), state.move_unit(Vector2i(2, 1)), state.move_unit(Vector2i(2, 2))]
+	# 두 번 성공, 세 번째 실패.
+	check_eq("two moves then out of move points", accepted, [true, true, false])
+	# 이동력 0.
+	check_eq("move points used up", a.move_points, 0)
+	# 두 번째 칸에 멈췄다.
+	check_eq("stopped on the second cell", a.cell, Vector2i(2, 1))
+
+
+# 두 걸음 떨어진 칸으로 한 번에 이동하면 이동력 2 를 쓰고, 신호는 한 번만 나간다.
+func _test_moves_several_cells_at_once() -> void:
+	# a 가 (0,1) 인 전투.
+	var state: BattleState = _started_state(Vector2i(0, 1))
+	# a 유닛.
+	var a: Unit = _unit(state, &"a")
+	# 이동 신호 수.
+	var moves: Array[int] = [0]
+	state.unit_moved.connect(func(_unit: Unit, _from: Vector2i, _to: Vector2i) -> void: moves[0] += 1)
+	# 대각선 칸 (두 걸음).
+	check("a two-step diagonal cell is reachable", state.move_unit(Vector2i(1, 2)))
+	# 이동력 0.
+	check_eq("two move points spent", a.move_points, 0)
+	# 신호 한 번.
+	check_eq("one move signal", moves[0], 1)
+
+
+# 같은 편이 선 칸은 지나갈 수 없다: b 가 (1,0) 을 막으면 (0,0)→(2,0) 은 돌아가야 해서 이동력 2 로는 닿지 않는다.
+func _test_paths_go_around_allies() -> void:
+	# a 가 (0,1) 인 전투에서 b 를 (1,1) 로 옮겨 길을 막는다.
+	var state: BattleState = _started_state(Vector2i(0, 1))
+	var b: Unit = _unit(state, &"b")
+	b.cell = Vector2i(1, 1)
+	# (2,1) 로 가려면 (1,1) 을 지나야 하는데 막혔고, 돌아가면 네 걸음이다.
+	check("cannot walk through an ally", not state.move_unit(Vector2i(2, 1)))
+	# 막히지 않은 (0,2) 는 된다.
+	check("an open neighbour is fine", state.move_unit(Vector2i(0, 2)))
+
+
+# 다음 차례가 시작되면 이동력이 data.move 로 다시 찬다.
+func _test_move_points_refill_each_turn() -> void:
+	# a 가 (0,1) 인 전투.
+	var state: BattleState = _started_state(Vector2i(0, 1))
+	var a: Unit = _unit(state, &"a")
+	# 다 쓴다.
+	state.move_unit(Vector2i(1, 2))
+	check_eq("spent", a.move_points, 0)
+	# a → b → e → (다음 라운드) a 까지 진행한다.
+	state.end_turn()
+	state.end_turn()
+	# 다시 a 차례.
+	check("a is acting again", state.current_unit() == a)
+	check_eq("move points refilled", a.move_points, a.data.move)
 
 
 # 근접 기준 유닛은 이동한 뒤의 행을 따른다: 같은 행이면 그대로, 다른 행으로 가면 없다.

@@ -396,17 +396,20 @@ func _try_move(cell: Vector2i) -> void:
 
 
 ## 지금 차례 유닛이 갈 수 있는 칸. "지금 이동할 수 있는가"의 유일한 판정이라 힌트·버튼·클릭이 모두 이 결과를 쓴다.
-## 잠겨 있거나, 전투가 끝났거나, 아군 차례가 아니거나, 쓰러졌거나, SP 가 없으면 빈 배열.
+## 잠겨 있거나, 전투가 끝났거나, 아군 차례가 아니거나, 쓰러졌거나, 이동력이 없으면 빈 배열.
 func _movable_cells_now() -> Array[Vector2i]:
 	# 갈 칸이 없을 때 돌려줄 빈 배열 (돌려주는 타입이 정해져 있어 따로 만든다).
 	var none: Array[Vector2i] = []
 	# 지금 차례인 유닛.
 	var actor: Unit = _state.current_unit()
 	# 하나라도 어긋나면 이동할 수 없다.
-	if _busy or _state.finished or actor == null or not actor.is_ally() or not actor.is_alive() or actor.sp < 1:
+	if _busy or _state.finished or actor == null or not actor.is_ally() or not actor.is_alive() or actor.move_points < 1:
 		return none
-	# 규칙에게 갈 칸을 묻는다.
-	return _state.resolver.movable_cells(actor, _state.units)
+	# 남은 이동력으로 닿는 칸들을 규칙에게 묻는다.
+	var cells: Array[Vector2i] = []
+	for cell in _state.resolver.reachable_cells(actor, _state.units, actor.move_points):
+		cells.append(cell)
+	return cells
 
 
 # 이 함수는 화면만 바꾼다: _move_mode 를 여기서 끄지 않으므로 연출 중(_busy)에도 모드가 그대로 살아 있다.

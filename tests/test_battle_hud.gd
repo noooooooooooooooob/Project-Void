@@ -203,7 +203,7 @@ func _test_sync_builds_hand_and_piles() -> void:
 	# big 은 흐림.
 	check_eq("unaffordable card dimmed", _view_named(views, "big").modulate, CardView.UNAFFORDABLE_MODULATE)
 	# SP 글자.
-	check_eq("sp panel text", hud.sp_text(), "SP\n●●●\n3 / 3")
+	check_eq("sp panel text", hud.sp_text(), "SP\n●●●\n3 / 3\n이동 2 / 2")
 	# 덱 더미 이름.
 	check_eq("deck pile names the ally", hud.deck_pile().owner_text(), "a")
 	# 덱 0.
@@ -349,7 +349,7 @@ func _test_ally_turn_then_draw_keeps_cards_affordable() -> void:
 	# 아군 차례 시작을 보여 준다.
 	hud.show_turn(_turn_event(state, ally, 0))
 	# SP 글자.
-	check_eq("sp shown at turn start", hud.sp_text(), "SP\n●●●\n3 / 3")
+	check_eq("sp shown at turn start", hud.sp_text(), "SP\n●●●\n3 / 3\n이동 2 / 2")
 
 	# 손패의 카드마다 드로우 이벤트를 만들어 보여 준다.
 	for card in ally.hand:

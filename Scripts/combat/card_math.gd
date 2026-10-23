@@ -12,6 +12,9 @@ static func base_stat(kind: CardEffect.Kind, stats: UnitData) -> int:
 
 ## 효과 하나의 수치 = 내림(기준 스탯 × % / 100). % 가 0 이하면 0, 그 외에는 최소 1.
 static func amount(effect: CardEffect, stats: UnitData) -> int:
+	# 상태 획득·체력 소모는 스탯과 무관한 고정값이다.
+	if effect.kind == CardEffect.Kind.GAIN_STATUS or effect.kind == CardEffect.Kind.HP_COST:
+		return maxi(effect.value, 0)
 	# 0% 이하는 적용하지 않는다.
 	if effect.percent <= 0:
 		return 0

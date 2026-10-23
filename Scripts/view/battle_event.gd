@@ -8,7 +8,7 @@ extends RefCounted
 
 ## 기록 종류. BattleState 의 신호 하나에 종류 하나가 대응한다 (화면에 쓰지 않는 phase_started 는 기록하지 않아 종류가 없다).
 ## (새 종류는 뒤에만 추가한다 — 중간에 넣으면 기존 숫자 값이 밀린다.)
-enum Kind { TURN_STARTED, CARD_PLAYED, ENEMY_ACTED, DAMAGED, HEALED, BLOCK_GAINED, DIED, LOG, BATTLE_ENDED, CARD_DRAWN, DECK_RESHUFFLED, HAND_DISCARDED, UNIT_MOVED }
+enum Kind { TURN_STARTED, CARD_PLAYED, ENEMY_ACTED, DAMAGED, HEALED, BLOCK_GAINED, DIED, LOG, BATTLE_ENDED, CARD_DRAWN, DECK_RESHUFFLED, HAND_DISCARDED, UNIT_MOVED, STAGGERED, STAGGER_DAMAGED, TURN_SKIPPED, STATUS_CHANGED }
 
 ## 이 기록의 종류.
 var kind: Kind
@@ -56,6 +56,16 @@ var to_cell: Vector2i = Vector2i.ZERO
 var cell: Vector2i = Vector2i.ZERO
 ## 치명타 피해였는지 (DAMAGED).
 var critical: bool = false
+
+
+## 기록 시점의 흐트러짐 게이지 (피해·흐트러짐 기록용).
+var stagger: int = 0
+## 기록 시점에 무너져 있었는지.
+var broken: bool = false
+## 바뀐 상태 id (STATUS_CHANGED).
+var status_id: StringName = &""
+## 바뀐 뒤 상태 스택 (STATUS_CHANGED).
+var status_value: int = 0
 
 
 ## 종류를 정해 빈 기록을 만든다. 나머지 필드는 만든 쪽이 채운다.

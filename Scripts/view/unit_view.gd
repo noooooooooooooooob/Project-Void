@@ -32,6 +32,11 @@ const OVERHEAD_Y: float = 2.0
 const HP_BAR_WIDTH: float = 0.9
 ## 체력 바 높이.
 const HP_BAR_HEIGHT: float = 0.1
+## 흐트러짐 바 높이.
+const STAGGER_BAR_HEIGHT: float = 0.05
+## 흐트러짐 바 색 (무너지면 빨갛게).
+const STAGGER_COLOR := Color(0.7, 0.45, 1.0)
+const STAGGER_BROKEN_COLOR := Color(1.0, 0.3, 0.3)
 ## 클릭 광선이 맞히는 충돌 레이어 값 (비트 값 2 = 2번 레이어). 타일도 같은 레이어를 쓴다.
 const PICK_LAYER_BIT: int = 2
 ## 돌진할 때 앞으로 나가는 거리.
@@ -119,6 +124,15 @@ var _hp: int = 0
 var _max_hp: int = 1
 ## 표시 중인 방어도.
 var _block: int = 0
+## 흐트러짐 게이지 표시값.
+var _stagger: int = 0
+var _max_stagger: int = 1
+var _broken: bool = false
+## 상태 스택 표시값 (상태 id -> 스택).
+var _statuses: Dictionary = {}
+## 흐트러짐 바.
+var stagger_back: MeshInstance3D
+var stagger_fill: MeshInstance3D
 ## 아군 1, 적 −1 (적은 왼쪽을 본다. 기울기 방향을 거울상으로 만든다).
 var _facing: float = 1.0
 ## 연출 중이면 true. 그동안은 대기 동작을 멈춘다 (연출이 자세를 잡는다).
@@ -212,12 +226,19 @@ func setup(p_unit: Unit, texture: Texture2D) -> void:
 	hp_fill.position = Vector3(0.0, OVERHEAD_Y, 0.0)
 	# 자식으로 붙인다.
 	add_child(hp_fill)
+	# --- 흐트러짐 바 (체력 바 바로 아래, 얇게) ---
+	stagger_back = _make_bar(Color(0.1, 0.1, 0.1, 0.85), 0, STAGGER_BAR_HEIGHT)
+	stagger_back.position = Vector3(0.0, OVERHEAD_Y - 0.085, 0.0)
+	add_child(stagger_back)
+	stagger_fill = _make_bar(STAGGER_COLOR, 1, STAGGER_BAR_HEIGHT)
+	stagger_fill.position = Vector3(0.0, OVERHEAD_Y - 0.085, 0.0)
+	add_child(stagger_fill)
 
 	# --- 수치 글자 ---
 	# 체력/방어도 숫자 글자를 만든다 (내용은 _refresh_stats 가 채움).
 	stat_label = _make_label("", 28)
 	# 체력 바 바로 아래에 놓는다.
-	stat_label.position = Vector3(0.0, OVERHEAD_Y - 0.18, 0.0)
+	stat_label.position = Vector3(0.0, OVERHEAD_Y - 0.24, 0.0)
 	# 자식으로 붙인다.
 	add_child(stat_label)
 
@@ -244,6 +265,10 @@ func setup(p_unit: Unit, texture: Texture2D) -> void:
 	add_child(pick_body)
 
 	# 규칙 유닛의 현재 값으로 표시를 채운다.
+	_stagger = unit.stagger
+	_max_stagger = maxi(unit.data.stagger, 1)
+	_broken = unit.broken
+	_statuses = unit.statuses.duplicate()
 	set_stats(unit.hp, unit.data.max_hp, unit.block)
 
 
@@ -351,6 +376,33 @@ func set_hp(hp: int, max_hp: int) -> void:
 	_max_hp = maxi(max_hp, 1)
 	# 화면을 갱신한다.
 	_refresh_stats()
+
+
+## 흐트러짐 표시를 바꾼다.
+func set_stagger(value: int, max_value: int, broken: bool) -> void:
+	_stagger = value
+	_max_stagger = maxi(max_value, 1)
+	_broken = broken
+	_refresh_stats()
+
+
+## 상태 스택 표시를 바꾼다 (0 이면 지운다).
+func set_status(status_id: StringName, value: int) -> void:
+	if value <= 0:
+		_statuses.erase(status_id)
+	else:
+		_statuses[status_id] = value
+	_refresh_stats()
+
+
+## 지금 표시 중인 상태 스택.
+func status_value(status_id: StringName) -> int:
+	return int(_statuses.get(status_id, 0))
+
+
+## 지금 표시 중인 흐트러짐 (테스트용).
+func stagger_shown() -> int:
+	return _stagger
 
 
 ## 방어도 표시만 바꾼다.
@@ -605,6 +657,19 @@ func _refresh_stats() -> void:
 	# 방어도가 있으면 뒤에 "방N" 을 붙인다.
 	if _block > 0:
 		stat_label.text += "  방%d" % _block
+	# 상태 스택 (예: 혈갑3).
+	for status_id in _statuses:
+		stat_label.text += "  %s%d" % [CardText.status_name(status_id), _statuses[status_id]]
+	# 무너졌으면 표시한다.
+	if _broken:
+		stat_label.text += "  [%s]" % ("탈진" if unit != null and unit.is_ally() else "기절")
+	# 흐트러짐 바.
+	if stagger_fill != null:
+		var stagger_ratio: float = clampf(float(_stagger) / float(_max_stagger), 0.0, 1.0)
+		(stagger_fill.mesh as QuadMesh).size = Vector2(HP_BAR_WIDTH * stagger_ratio, STAGGER_BAR_HEIGHT)
+		stagger_fill.position.x = -HP_BAR_WIDTH * (1.0 - stagger_ratio) / 2.0
+		stagger_fill.visible = stagger_ratio > 0.0
+		(stagger_fill.material_override as StandardMaterial3D).albedo_color = STAGGER_BROKEN_COLOR if _broken else STAGGER_COLOR
 	# 체력 비율 (0~1 로 제한).
 	var ratio: float = clampf(float(_hp) / float(_max_hp), 0.0, 1.0)
 	# 채움 막대의 폭을 비율만큼 줄인다.
@@ -641,13 +706,13 @@ func _make_label(text: String, font_size: int) -> Label3D:
 
 
 ## 체력 바용 사각형 메시를 만든다. priority 가 클수록 나중에(위에) 그려진다.
-func _make_bar(color: Color, priority: int) -> MeshInstance3D:
+func _make_bar(color: Color, priority: int, height: float = HP_BAR_HEIGHT) -> MeshInstance3D:
 	# 메시 노드를 만든다.
 	var bar := MeshInstance3D.new()
 	# 평평한 사각형 메시.
 	var quad := QuadMesh.new()
 	# 막대 크기.
-	quad.size = Vector2(HP_BAR_WIDTH, HP_BAR_HEIGHT)
+	quad.size = Vector2(HP_BAR_WIDTH, height)
 	# 메시를 넣는다.
 	bar.mesh = quad
 	# 재질을 만든다.

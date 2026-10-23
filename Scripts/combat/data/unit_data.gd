@@ -24,6 +24,12 @@ extends Resource
 @export var crit_damage: int = 175
 ## 어그로. 값만 저장한다 — 적 대상 고르기 규칙은 나중에 정한다.
 @export var aggro: int = 100
+## 이동력. 자기 차례 동안 이 칸 수만큼 움직일 수 있다 (상하좌우 한 칸 = 1).
+@export var move: int = 2
+## 흐트러짐 게이지 최대치. 받은 공격 피해만큼(방어도로 막아도) 깎이고, 0 이 되면 적은 기절·아군은 탈진해 다음 차례를 쉰다.
+@export var stagger: int = 15
+## 패시브 능력 id 목록 (예: &"blood_armor", &"blood_thirst"). 처리는 BattleState 가 한다.
+@export var passives: Array[StringName] = []
 ## 2.5D 화면에서 유닛을 그릴 그림. 비어 있으면 Board3D 가 임시 실루엣 그림(placeholder_unit.png)을 쓴다.
 @export var sprite: Texture2D
 ## 64px 프레임을 가로로 이어 붙인 대기 애니메이션 띠 (프레임 수 = 너비 ÷ 높이). 비어 있으면 sprite 한 장 + 코드 숨쉬기.

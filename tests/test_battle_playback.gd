@@ -378,8 +378,8 @@ func _test_move_event_moves_the_view() -> void:
 	check("view moved to the new cell", board.view_for(ally).position.is_equal_approx(board.layout.cell_position(Unit.Team.ALLY, Vector2i(1, 1))))
 	# 새 칸 강조.
 	check_eq("new cell highlighted", board.tile_state(Unit.Team.ALLY, Vector2i(1, 1)), Board3D.TileState.CURRENT)
-	# SP 2 표시.
-	check_eq("sp panel shows the spent sp", hud.sp_text(), "SP\n●●○\n2 / 3")
+	# 이동은 SP 대신 이동력을 쓴다.
+	check_eq("sp panel shows the remaining move points", hud.sp_text(), "SP\n●●●\n3 / 3\n이동 1 / 2")
 	# 로그.
 	check("move logged", hud.log_text().contains("a 이동"))
 	# 정리.

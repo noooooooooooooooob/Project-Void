@@ -42,6 +42,11 @@ func _init(state: BattleState) -> void:
 	state.hand_discarded.connect(_on_hand_discarded)
 	# 이동 신호 → 기록.
 	state.unit_moved.connect(_on_unit_moved)
+	# 흐트러짐·차례 쉼·상태 변화.
+	state.unit_staggered.connect(_on_unit_staggered)
+	state.stagger_damaged.connect(_on_stagger_damaged)
+	state.turn_skipped.connect(_on_turn_skipped)
+	state.status_changed.connect(_on_status_changed)
 
 
 ## 쌓인 기록을 모두 꺼내고 목록을 비운다.
@@ -134,6 +139,9 @@ func _on_unit_damaged(unit: Unit, amount: int, critical: bool) -> void:
 	event.hp = unit.hp
 	# 맞은 직후 방어도.
 	event.block = unit.block
+	# 맞은 직후 흐트러짐 게이지와 무너짐 여부.
+	event.stagger = unit.stagger
+	event.broken = unit.broken
 	# 목록에 추가한다.
 	_events.append(event)
 
@@ -257,4 +265,41 @@ func _on_unit_moved(unit: Unit, from_cell: Vector2i, to_cell: Vector2i) -> void:
 	# 새 칸.
 	event.to_cell = to_cell
 	# 목록에 추가한다.
+	_events.append(event)
+
+
+## 무너짐: 게이지가 0 이 되어 다음 차례를 쉰다.
+func _on_unit_staggered(unit: Unit) -> void:
+	var event := BattleEvent.new(BattleEvent.Kind.STAGGERED)
+	event.unit = unit
+	event.stagger = unit.stagger
+	event.broken = true
+	_events.append(event)
+
+
+## 흐트러짐만 깎임.
+func _on_stagger_damaged(unit: Unit, amount: int) -> void:
+	var event := BattleEvent.new(BattleEvent.Kind.STAGGER_DAMAGED)
+	event.unit = unit
+	event.amount = amount
+	event.stagger = unit.stagger
+	event.broken = unit.broken
+	_events.append(event)
+
+
+## 무너진 유닛이 차례를 쉬고 게이지를 되찾음.
+func _on_turn_skipped(unit: Unit) -> void:
+	var event := BattleEvent.new(BattleEvent.Kind.TURN_SKIPPED)
+	event.unit = unit
+	event.stagger = unit.stagger
+	event.broken = false
+	_events.append(event)
+
+
+## 상태 스택 변화.
+func _on_status_changed(unit: Unit, status_id: StringName, value: int) -> void:
+	var event := BattleEvent.new(BattleEvent.Kind.STATUS_CHANGED)
+	event.unit = unit
+	event.status_id = status_id
+	event.status_value = value
 	_events.append(event)

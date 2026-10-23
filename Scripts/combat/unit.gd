@@ -22,6 +22,14 @@ var hp: int
 var block: int = 0
 ## 현재 SP (아군만 사용). 카드를 쓸 때 줄어든다.
 var sp: int = 0
+## 이번 차례에 남은 이동력. 차례가 시작될 때 data.move 로 채워지고, 한 칸 움직일 때마다 1 씩 준다.
+var move_points: int = 0
+## 현재 흐트러짐 게이지. 받은 공격 피해만큼 줄고 0 이 되면 broken 이 된다.
+var stagger: int = 0
+## 흐트러짐이 0 이 되어 다음 차례를 쉬어야 하면 true (적은 기절, 아군은 탈진). 그 차례를 쉬고 나면 게이지가 다시 찬다.
+var broken: bool = false
+## 상태 스택 (상태 id -> 스택 수). 예: &"blood_armor"(혈갑). 전투가 끝나면 유닛과 함께 사라진다.
+var statuses: Dictionary = {}
 
 ## 덱: 아직 뽑지 않은 카드. 배열 앞쪽부터 뽑는다.
 var deck: Array[CardData] = []
@@ -45,6 +53,10 @@ func _init(p_unit_id: int, p_data: UnitData, p_team: Team, p_cell: Vector2i) -> 
 	cell = p_cell
 	# 체력은 최대 체력으로 시작한다.
 	hp = p_data.max_hp
+	# 흐트러짐 게이지는 가득 찬 상태로 시작한다.
+	stagger = p_data.stagger
+	# 이동력도 가득 찬 상태로 시작한다 (차례가 시작될 때 다시 채워진다).
+	move_points = p_data.move
 
 	# 아군 데이터라면 SP 와 덱을 준비한다 (적은 카드를 쓰지 않는다).
 	if p_data is AllyData:
@@ -54,6 +66,24 @@ func _init(p_unit_id: int, p_data: UnitData, p_team: Team, p_cell: Vector2i) -> 
 		sp = ally.max_sp
 		# 덱을 복사한다 — 리소스의 배열을 직접 섞으면 원본 .tres 데이터가 바뀌기 때문이다.
 		deck = ally.deck.duplicate()
+
+
+## 상태 스택 수. 없으면 0.
+func status(status_id: StringName) -> int:
+	return int(statuses.get(status_id, 0))
+
+
+## 상태 스택을 value 로 정한다. 0 이하면 지운다.
+func set_status(status_id: StringName, value: int) -> void:
+	if value <= 0:
+		statuses.erase(status_id)
+	else:
+		statuses[status_id] = value
+
+
+## 이 패시브를 가졌으면 true.
+func has_passive(passive_id: StringName) -> bool:
+	return data.passives.has(passive_id)
 
 
 ## 살아 있으면 true.
