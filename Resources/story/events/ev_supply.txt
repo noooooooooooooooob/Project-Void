@@ -1,0 +1,13 @@
+// 사건: 버려진 보급 상자
+@bg void
+> 다른 사무소의 문장이 찍힌 보급 상자가 엎어져 있다. 주인은 보이지 않는다.
+* 상자를 연다 -> open
+* 상자 주변부터 살핀다 -> check
+@label open
+> 안에는 쓸 만한 장비가 남아 있었다.
+@effect item random
+@end
+@label check
+> 상자 밑에 공허 자원 주머니가 깔려 있었다. 그리고 그 옆엔, 찢어진 사무소 휘장.
+@effect gold 45
+@end

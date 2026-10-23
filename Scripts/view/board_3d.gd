@@ -490,6 +490,8 @@ func _build_side(team: Unit.Team, grid: Vector2i) -> void:
 			var material := StandardMaterial3D.new()
 			# 방의 칸 그림이 있으면 입힌다.
 			material.albedo_texture = _tile_textures.get(team)
+			# 픽셀 아트 칸은 흐리게 보간하지 않는다.
+			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
 			# BoxMesh 는 면마다 UV 를 3×2 아틀라스로 나눠 쓴다. 3×2 로 늘려 윗면에 그림 한 장이 온전히 들어가게 한다.
 			material.uv1_scale = Vector3(3.0, 2.0, 1.0)
 			tile.material_override = material

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="AllyData" format=3]
+
+[ext_resource type="Texture2D" path="res://Art/gen/units/mira_attack.png" id="1_iopb1"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_25jjp"]
+[ext_resource type="Resource" path="res://Resources/content/cards/snipe.tres" id="3_w4hg4"]
+[ext_resource type="Resource" path="res://Resources/content/cards/quick_shot.tres" id="4_fr8ii"]
+[ext_resource type="Resource" path="res://Resources/content/cards/volley.tres" id="5_cxww5"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/mira_hit.png" id="6_4s2wf"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/mira_idle.png" id="7_eqcxs"]
+[ext_resource type="Script" path="res://Scripts/combat/data/ally_data.gd" id="8_pslem"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/mira.png" id="9_aw8mk"]
+
+[resource]
+script = ExtResource("8_pslem")
+deck = Array[ExtResource("2_25jjp")]([ExtResource("3_w4hg4"), ExtResource("3_w4hg4"), ExtResource("4_fr8ii"), ExtResource("4_fr8ii"), ExtResource("4_fr8ii"), ExtResource("5_cxww5")])
+id = &"mira"
+display_name = "서미라"
+max_hp = 26
+speed = 15
+attack = 11
+defense = 7
+crit_chance = 15
+stagger = 16
+sprite = ExtResource("9_aw8mk")
+idle_sheet = ExtResource("7_eqcxs")
+attack_sheet = ExtResource("1_iopb1")
+hit_sheet = ExtResource("6_4s2wf")

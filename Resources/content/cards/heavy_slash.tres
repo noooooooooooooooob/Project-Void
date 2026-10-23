@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_oummo"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_j47vd"]
+
+[sub_resource type="Resource" id="Resource_voigc"]
+script = ExtResource("1_oummo")
+percent = 120
+
+[resource]
+script = ExtResource("2_j47vd")
+id = &"heavy_slash"
+display_name = "강타"
+sp_cost = 2
+effects = Array[ExtResource("1_oummo")]([SubResource("Resource_voigc")])

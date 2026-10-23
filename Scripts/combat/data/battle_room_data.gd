@@ -6,6 +6,10 @@ class_name BattleRoomData
 # Resource: .tres 로 저장해 여러 인카운터가 같은 방을 쓴다.
 extends Resource
 
+## 화면 뒤에 까는 배경 그림 (픽셀 아트 한 장). 있으면 바닥·벽·소품 대신 이 그림을 화면 가득 깐다.
+@export var backdrop: Texture2D
+## 배경 그림 위에 덧칠하는 어둡기 (0 이면 원본, 1 이면 검정). 유닛이 배경에 묻히지 않게.
+@export_range(0.0, 1.0) var backdrop_dim: float = 0.25
 ## 바닥 반복 텍스처.
 @export var ground_texture: Texture2D
 ## 뒷벽·옆벽 반복 텍스처.

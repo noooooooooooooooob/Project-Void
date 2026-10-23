@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_danee"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_qegk4"]
+
+[sub_resource type="Resource" id="Resource_lcc1j"]
+script = ExtResource("1_danee")
+percent = 50
+
+[sub_resource type="Resource" id="Resource_j2h8u"]
+script = ExtResource("1_danee")
+kind = 6
+percent = 80
+
+[resource]
+script = ExtResource("2_qegk4")
+id = &"shield_bash"
+display_name = "방패 치기"
+effects = Array[ExtResource("1_danee")]([SubResource("Resource_lcc1j"), SubResource("Resource_j2h8u")])

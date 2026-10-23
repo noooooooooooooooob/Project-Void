@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Resource" path="res://Resources/content/cards/crown_flood.tres" id="1_rvuna"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/crown_attack.png" id="2_xdbd2"]
+[ext_resource type="Resource" path="res://Resources/content/cards/crown_guard.tres" id="3_twkmf"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/crown_hit.png" id="4_nsnmq"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/crown_idle.png" id="5_fufs8"]
+[ext_resource type="Resource" path="res://Resources/content/cards/crown_mend.tres" id="6_kjsxf"]
+[ext_resource type="Script" path="res://Scripts/combat/data/enemy_data.gd" id="7_r6fky"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/crown.png" id="8_fuylj"]
+
+[resource]
+script = ExtResource("7_r6fky")
+move_chance = 0.0
+attack_card = ExtResource("1_rvuna")
+defend_card = ExtResource("3_twkmf")
+rest_card = ExtResource("6_kjsxf")
+id = &"crown"
+display_name = "하수도의 왕관"
+max_hp = 140
+speed = 8
+attack = 12
+defense = 14
+crit_chance = 0
+move = 0
+stagger = 45
+sprite = ExtResource("8_fuylj")
+idle_sheet = ExtResource("5_fufs8")
+attack_sheet = ExtResource("2_xdbd2")
+hit_sheet = ExtResource("4_nsnmq")

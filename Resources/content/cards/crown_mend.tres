@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_n75y7"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_10dfy"]
+
+[sub_resource type="Resource" id="Resource_5mtyb"]
+script = ExtResource("1_n75y7")
+kind = 2
+percent = 60
+target = 1
+
+[resource]
+script = ExtResource("2_10dfy")
+id = &"crown_mend"
+display_name = "핵의 맥동"
+sp_cost = 0
+attack_type = 3
+category = 1
+effects = Array[ExtResource("1_n75y7")]([SubResource("Resource_5mtyb")])

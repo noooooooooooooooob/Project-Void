@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_fjaf5"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_8vmow"]
+
+[sub_resource type="Resource" id="Resource_uqfpg"]
+script = ExtResource("1_fjaf5")
+kind = 1
+percent = 45
+target = 1
+
+[resource]
+script = ExtResource("2_8vmow")
+id = &"void_step"
+display_name = "공허 걸음"
+sp_cost = 0
+attack_type = 3
+category = 1
+effects = Array[ExtResource("1_fjaf5")]([SubResource("Resource_uqfpg")])

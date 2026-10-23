@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_uft02"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_wn4p2"]
+
+[sub_resource type="Resource" id="Resource_ex0tu"]
+script = ExtResource("1_uft02")
+kind = 1
+target = 1
+
+[resource]
+script = ExtResource("2_wn4p2")
+id = &"brute_guard"
+display_name = "기름 갑옷"
+sp_cost = 0
+attack_type = 3
+category = 1
+effects = Array[ExtResource("1_uft02")]([SubResource("Resource_ex0tu")])

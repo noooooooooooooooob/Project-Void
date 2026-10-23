@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Resource" path="res://Resources/content/cards/brute_slam.tres" id="1_3p254"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/brute_attack.png" id="2_f4tig"]
+[ext_resource type="Resource" path="res://Resources/content/cards/brute_guard.tres" id="3_1liwr"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/brute_hit.png" id="4_4qmc6"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/brute_idle.png" id="5_hic1e"]
+[ext_resource type="Resource" path="res://Resources/content/cards/brute_rest.tres" id="6_8s1kc"]
+[ext_resource type="Script" path="res://Scripts/combat/data/enemy_data.gd" id="7_nerhj"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/brute.png" id="8_8vswy"]
+
+[resource]
+script = ExtResource("7_nerhj")
+move_chance = 0.0
+attack_card = ExtResource("1_3p254")
+defend_card = ExtResource("3_1liwr")
+rest_card = ExtResource("6_8s1kc")
+id = &"brute"
+display_name = "검은 기름 거인"
+max_hp = 64
+speed = 6
+attack = 11
+defense = 12
+crit_chance = 0
+move = 1
+stagger = 30
+sprite = ExtResource("8_8vswy")
+idle_sheet = ExtResource("5_hic1e")
+attack_sheet = ExtResource("2_f4tig")
+hit_sheet = ExtResource("4_4qmc6")

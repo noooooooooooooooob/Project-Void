@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="AllyData" format=3]
+
+[ext_resource type="Texture2D" path="res://Art/gen/units/baekjun_attack.png" id="1_xehio"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_dnxjt"]
+[ext_resource type="Resource" path="res://Resources/content/cards/mend.tres" id="3_v3oht"]
+[ext_resource type="Resource" path="res://Resources/content/cards/void_bolt.tres" id="4_6m2fn"]
+[ext_resource type="Resource" path="res://Resources/content/cards/ward.tres" id="5_sby15"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/baekjun_hit.png" id="6_5ekoc"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/baekjun_idle.png" id="7_cvlii"]
+[ext_resource type="Script" path="res://Scripts/combat/data/ally_data.gd" id="8_qb2ia"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/baekjun.png" id="9_a5y07"]
+
+[resource]
+script = ExtResource("8_qb2ia")
+deck = Array[ExtResource("2_dnxjt")]([ExtResource("3_v3oht"), ExtResource("3_v3oht"), ExtResource("4_6m2fn"), ExtResource("4_6m2fn"), ExtResource("4_6m2fn"), ExtResource("5_sby15")])
+id = &"baekjun"
+display_name = "백준"
+max_hp = 24
+speed = 11
+attack = 9
+defense = 8
+crit_chance = 5
+stagger = 16
+sprite = ExtResource("9_a5y07")
+idle_sheet = ExtResource("7_cvlii")
+attack_sheet = ExtResource("1_xehio")
+hit_sheet = ExtResource("6_5ekoc")

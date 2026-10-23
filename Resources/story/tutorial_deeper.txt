@@ -1,0 +1,31 @@
+// 튜토리얼 전투 2 이후: 핵 발견 직전, 공허 속의 공허 발견. 리더가 들어가자고 한다.
+@bg void
+@show doyun left
+doyun: 좋아, 이쯤이면 핵이 근처에...
+@show mira right
+mira: 소장님. 저거.
+> 하수도 벽에, 또 하나의 균열이 열려 있었다. 보랏빛으로, 숨을 쉬듯 일렁이며.
+hangyeol: 공허 속의... 공허.
+@hide right
+@show baekjun right
+baekjun: 돌아가죠. 핵만 들고 나가면 됩니다. 저건 우리 일이 아니에요.
+doyun: 백준, 저 안 봐. 황혼층이다. 저 안의 자원이면 사무소 빚을 한 번에 갚아.
+doyun: 잠깐 보고만 나온다. 핵은 여기 있으니까, 이 층이 무너지기 전에만 돌아오면 돼.
+* 교관님이 들어가지 말라고 했어요. -> warn
+* ...알겠습니다. -> follow
+@label warn
+hangyeol: 학원에서 교관님이 그러셨어요. 더 깊은 공허는 절대 들어가지 말라고.
+doyun: 교관들은 다 그렇게 말해. 걱정 마, 신입. 내가 리더야.
+@goto enter
+@label follow
+hangyeol: ...알겠습니다.
+@label enter
+@hide all
+@bg twilight
+> 균열 너머는 해 질 녘이었다. 하늘이 거꾸로 매달려 있었다.
+> 그리고 무언가가, 하늘에서 내려오고 있었다.
+@show mira right
+mira: 소장님... 저거, 손이에요?
+@show doyun left
+doyun: 진형 갖춰! 신입은 뒤로!
+@end

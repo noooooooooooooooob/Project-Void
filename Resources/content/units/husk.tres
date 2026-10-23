@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Resource" path="res://Resources/content/cards/husk_swipe.tres" id="1_gdy2l"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/husk_attack.png" id="2_7fkb3"]
+[ext_resource type="Resource" path="res://Resources/content/cards/husk_guard.tres" id="3_mfvmb"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/husk_hit.png" id="4_d032f"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/husk_idle.png" id="5_cudwn"]
+[ext_resource type="Script" path="res://Scripts/combat/data/enemy_data.gd" id="6_pwxf4"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/husk.png" id="7_vpxvy"]
+
+[resource]
+script = ExtResource("6_pwxf4")
+move_chance = 0.15
+attack_card = ExtResource("1_gdy2l")
+defend_card = ExtResource("3_mfvmb")
+id = &"husk"
+display_name = "잠든 자"
+max_hp = 30
+speed = 7
+attack = 9
+crit_chance = 0
+move = 1
+stagger = 16
+sprite = ExtResource("7_vpxvy")
+idle_sheet = ExtResource("5_cudwn")
+attack_sheet = ExtResource("2_7fkb3")
+hit_sheet = ExtResource("4_d032f")

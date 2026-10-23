@@ -1,0 +1,17 @@
+// 사건: 쓰러진 정화자의 장비
+@bg void
+> 기름에 반쯤 묻힌 정화자의 유해. 손에는 아직 무기가 쥐여 있다.
+@show hangyeol left
+hangyeol: ......
+* 장비를 챙긴다 -> take
+* 유해를 수습해 묻어 준다 -> bury
+@label take
+hangyeol: 미안해요. 대신 꼭 핵을 정화할게요.
+@effect item random
+@end
+@label bury
+> 유해를 기름 밖으로 옮겨 눕혔다. 품 안의 사무소 증표를 챙겼다. 돌아가면 그 사무소에 전해 줄 것이다.
+@effect gold 20
+@effect heal 10
+@effect journal 이름 모를 정화자|하수도 공허에서 다른 사무소 정화자의 유해를 수습했다. 증표를 돌려줘야 한다.
+@end

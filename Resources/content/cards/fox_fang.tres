@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_tldk1"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_jjdtf"]
+
+[sub_resource type="Resource" id="Resource_tmqba"]
+script = ExtResource("1_tldk1")
+percent = 35
+
+[sub_resource type="Resource" id="Resource_64dly"]
+script = ExtResource("1_tldk1")
+kind = 6
+percent = 130
+
+[resource]
+script = ExtResource("2_jjdtf")
+id = &"fox_fang"
+display_name = "여우 이빨"
+effects = Array[ExtResource("1_tldk1")]([SubResource("Resource_tmqba"), SubResource("Resource_64dly")])

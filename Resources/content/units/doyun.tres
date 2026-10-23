@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="AllyData" format=3]
+
+[ext_resource type="Texture2D" path="res://Art/gen/units/doyun_attack.png" id="1_le7am"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_7xmcs"]
+[ext_resource type="Resource" path="res://Resources/content/cards/heavy_slash.tres" id="3_iwl21"]
+[ext_resource type="Resource" path="res://Resources/content/cards/shield_bash.tres" id="4_rvo85"]
+[ext_resource type="Resource" path="res://Resources/content/cards/guard.tres" id="5_44e8x"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/doyun_hit.png" id="6_jquxe"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/doyun_idle.png" id="7_n62s5"]
+[ext_resource type="Script" path="res://Scripts/combat/data/ally_data.gd" id="8_ncox6"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/doyun.png" id="9_ngj3x"]
+
+[resource]
+script = ExtResource("8_ncox6")
+deck = Array[ExtResource("2_7xmcs")]([ExtResource("3_iwl21"), ExtResource("3_iwl21"), ExtResource("4_rvo85"), ExtResource("4_rvo85"), ExtResource("5_44e8x"), ExtResource("5_44e8x")])
+id = &"doyun"
+display_name = "강도윤"
+max_hp = 44
+speed = 9
+attack = 12
+defense = 14
+crit_chance = 5
+move = 1
+stagger = 28
+sprite = ExtResource("9_ngj3x")
+idle_sheet = ExtResource("7_n62s5")
+attack_sheet = ExtResource("1_le7am")
+hit_sheet = ExtResource("6_jquxe")

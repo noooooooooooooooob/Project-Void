@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Resource" path="res://Resources/content/cards/hound_bite.tres" id="1_tcls3"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hound_attack.png" id="2_xv2wv"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hound_hit.png" id="3_nmhbc"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hound_idle.png" id="4_7ny6l"]
+[ext_resource type="Script" path="res://Scripts/combat/data/enemy_data.gd" id="5_hxlky"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hound.png" id="6_o8rj0"]
+
+[resource]
+script = ExtResource("5_hxlky")
+attack_card = ExtResource("1_tcls3")
+id = &"hound"
+display_name = "잠식된 들개"
+max_hp = 24
+speed = 15
+defense = 8
+crit_chance = 0
+move = 3
+stagger = 12
+sprite = ExtResource("6_o8rj0")
+idle_sheet = ExtResource("4_7ny6l")
+attack_sheet = ExtResource("2_xv2wv")
+hit_sheet = ExtResource("3_nmhbc")

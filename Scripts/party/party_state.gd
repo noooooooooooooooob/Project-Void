@@ -26,6 +26,32 @@ func _init(roster: Array[UnitPlacement]) -> void:
 		_equipment[i] = {}
 
 
+## 파티원을 한 명 더한다 (이야기 중에 합류할 때). 장착 칸은 비어 있다.
+func add_member(placement: UnitPlacement) -> void:
+	_equipment[members.size()] = {}
+	members.append(placement)
+	changed.emit()
+
+
+## 이 id 의 파티원 번호. 없으면 -1.
+func index_of(member_id: StringName) -> int:
+	for i in members.size():
+		if members[i].unit_data.id == member_id:
+			return i
+	return -1
+
+
+## 장착 상태를 저장용으로 꺼낸다: 파티원 번호 → {부위 → 아이템 id}.
+func equipment_ids() -> Dictionary:
+	var out: Dictionary = {}
+	for index in _equipment:
+		var slots: Dictionary = {}
+		for slot in _equipment[index]:
+			slots[slot] = String((_equipment[index][slot] as ItemData).id)
+		out[index] = slots
+	return out
+
+
 ## 파티원 수.
 func member_count() -> int:
 	# 목록 길이를 돌려준다.

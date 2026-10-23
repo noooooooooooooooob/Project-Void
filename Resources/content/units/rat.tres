@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Resource" path="res://Resources/content/cards/rat_bite.tres" id="1_nyao2"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/rat_attack.png" id="2_65v67"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/rat_hit.png" id="3_yvn62"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/rat_idle.png" id="4_wgo66"]
+[ext_resource type="Script" path="res://Scripts/combat/data/enemy_data.gd" id="5_bttwv"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/rat.png" id="6_q6ryg"]
+
+[resource]
+script = ExtResource("5_bttwv")
+move_chance = 0.3
+attack_card = ExtResource("1_nyao2")
+id = &"rat"
+display_name = "공허 쥐"
+max_hp = 16
+speed = 13
+attack = 8
+defense = 6
+crit_chance = 0
+stagger = 8
+sprite = ExtResource("6_q6ryg")
+idle_sheet = ExtResource("4_wgo66")
+attack_sheet = ExtResource("2_65v67")
+hit_sheet = ExtResource("3_yvn62")

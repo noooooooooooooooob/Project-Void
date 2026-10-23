@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_qwm72"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_3lwyw"]
+
+[sub_resource type="Resource" id="Resource_e4nx8"]
+script = ExtResource("1_qwm72")
+percent = 75
+
+[resource]
+script = ExtResource("2_3lwyw")
+id = &"husk_swipe"
+display_name = "휘두르기"
+sp_cost = 0
+effects = Array[ExtResource("1_qwm72")]([SubResource("Resource_e4nx8")])

@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AllyData" format=3]
+
+[ext_resource type="Texture2D" path="res://Art/gen/units/hongyeon_attack.png" id="1_k6mp4"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_05y8x"]
+[ext_resource type="Resource" path="res://Resources/content/cards/blood_claw.tres" id="3_sgcd7"]
+[ext_resource type="Resource" path="res://Resources/content/cards/bloodletting.tres" id="4_2fe8x"]
+[ext_resource type="Resource" path="res://Resources/content/cards/blood_veil.tres" id="5_vwr5a"]
+[ext_resource type="Resource" path="res://Resources/content/cards/blood_burst.tres" id="6_bnum5"]
+[ext_resource type="Resource" path="res://Resources/content/cards/frenzy.tres" id="7_a3jan"]
+[ext_resource type="Resource" path="res://Resources/content/cards/fox_fang.tres" id="8_usenx"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hongyeon_hit.png" id="9_3q3a6"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hongyeon_idle.png" id="10_bquni"]
+[ext_resource type="Script" path="res://Scripts/combat/data/ally_data.gd" id="11_drbmy"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hongyeon.png" id="12_4lofu"]
+
+[resource]
+script = ExtResource("11_drbmy")
+deck = Array[ExtResource("2_05y8x")]([ExtResource("3_sgcd7"), ExtResource("3_sgcd7"), ExtResource("4_2fe8x"), ExtResource("5_vwr5a"), ExtResource("5_vwr5a"), ExtResource("6_bnum5"), ExtResource("7_a3jan"), ExtResource("8_usenx")])
+id = &"hongyeon"
+display_name = "홍연"
+max_hp = 30
+speed = 14
+attack = 12
+defense = 8
+crit_chance = 10
+move = 3
+stagger = 16
+passives = Array[StringName]([&"blood_armor", &"blood_thirst"])
+sprite = ExtResource("12_4lofu")
+idle_sheet = ExtResource("10_bquni")
+attack_sheet = ExtResource("1_k6mp4")
+hit_sheet = ExtResource("9_3q3a6")

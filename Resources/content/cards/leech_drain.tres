@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_enwa6"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_kfu8f"]
+
+[sub_resource type="Resource" id="Resource_7o7eu"]
+script = ExtResource("1_enwa6")
+percent = 60
+
+[sub_resource type="Resource" id="Resource_v8hcg"]
+script = ExtResource("1_enwa6")
+kind = 2
+percent = 40
+target = 1
+
+[resource]
+script = ExtResource("2_kfu8f")
+id = &"leech_drain"
+display_name = "흡혈"
+sp_cost = 0
+effects = Array[ExtResource("1_enwa6")]([SubResource("Resource_7o7eu"), SubResource("Resource_v8hcg")])

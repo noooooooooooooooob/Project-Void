@@ -1,0 +1,10 @@
+@bg twilight
+> 황혼층 · 거꾸로 선 수로
+> 하늘에 하수도가 매달려 있었다. 발밑에는 해 질 녘이 고여 있었다.
+@show hongyeon right
+hongyeon: ......이상해. 머리가, 멍해.
+@show hangyeol left
+hangyeol: 황혼층은 전의식이래. 떠올리려 하면 떠오르는 것들. ...정신 바짝 차려.
+hongyeon: 응. ...캥. 캥. 이러면 좀 깨.
+hangyeol: ...그래, 계속 해.
+@end

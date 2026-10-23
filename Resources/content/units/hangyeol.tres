@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="AllyData" format=3]
+
+[ext_resource type="Texture2D" path="res://Art/gen/units/hangyeol_attack.png" id="1_6bwvh"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_hnv3j"]
+[ext_resource type="Resource" path="res://Resources/content/cards/slash.tres" id="3_bmbxh"]
+[ext_resource type="Resource" path="res://Resources/content/cards/guard.tres" id="4_sjy0s"]
+[ext_resource type="Resource" path="res://Resources/content/cards/rift_thrust.tres" id="5_p8ev2"]
+[ext_resource type="Resource" path="res://Resources/content/cards/quick_shot.tres" id="6_1t6oo"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hangyeol_hit.png" id="7_kh232"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hangyeol_idle.png" id="8_ywl74"]
+[ext_resource type="Script" path="res://Scripts/combat/data/ally_data.gd" id="9_3xocv"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hangyeol.png" id="10_1fuoq"]
+
+[resource]
+script = ExtResource("9_3xocv")
+deck = Array[ExtResource("2_hnv3j")]([ExtResource("3_bmbxh"), ExtResource("3_bmbxh"), ExtResource("3_bmbxh"), ExtResource("4_sjy0s"), ExtResource("4_sjy0s"), ExtResource("5_p8ev2"), ExtResource("5_p8ev2"), ExtResource("6_1t6oo")])
+id = &"hangyeol"
+display_name = "한결"
+max_hp = 34
+speed = 12
+crit_chance = 5
+stagger = 20
+sprite = ExtResource("10_1fuoq")
+idle_sheet = ExtResource("8_ywl74")
+attack_sheet = ExtResource("1_6bwvh")
+hit_sheet = ExtResource("7_kh232")

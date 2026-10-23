@@ -107,6 +107,9 @@ func _init(encounter: EncounterData, p_rng: RandomNumberGenerator) -> void:
 	for placement in encounter.ally_units:
 		# 배치 정보로 아군 유닛을 만든다.
 		var ally := Unit.new(next_id, placement.unit_data, Unit.Team.ALLY, placement.cell)
+		# 원정에서 이어진 체력이 있으면 그 체력으로 시작한다.
+		if placement.start_hp > 0:
+			ally.hp = mini(placement.start_hp, placement.unit_data.max_hp)
 		# 전투 시작 전에 덱을 섞는다.
 		ally.shuffle_deck(rng)
 		# 전장 목록에 넣는다.

@@ -12,7 +12,7 @@ signal battle_finished(ally_won: bool)
 signal battle_fled
 
 ## 유닛 그림이 없을 때 쓰는 임시 실루엣 그림.
-const PLACEHOLDER_SPRITE: Texture2D = preload("res://Resources/sprites/placeholder_unit.png")
+const PLACEHOLDER_SPRITE: Texture2D = preload("res://Art/gen/effects/placeholder_unit.png")
 ## 카메라가 내려다보는 각도 (도). 0 이면 수평, 90 이면 바로 위.
 const CAMERA_PITCH_DEG: float = 44.0
 ## 카메라 세로 시야각 (도).
@@ -25,7 +25,7 @@ const CAMERA_TARGET_OFFSET := Vector3(0.0, 0.0, 0.6)
 ## 전투 효과음 묶음.
 const BATTLE_SOUNDS: BattleSounds = preload("res://Resources/audio/battle_sounds.tres")
 ## 원거리 화살 그림.
-const ARROW_TEXTURE: Texture2D = preload("res://Art/effects/arrow.png")
+const ARROW_TEXTURE: Texture2D = preload("res://Art/gen/effects/arrow.png")
 
 ## Esc 메뉴가 올라가는 캔버스 층 (HUD 층보다 위).
 const FLEE_MENU_LAYER: int = 20
@@ -87,7 +87,7 @@ func _ready() -> void:
 		add_child(room_env)
 		# 씬 환경을 이 전투 전용 사본으로 바꿔 분위기를 입힌다.
 		var env: Environment = _environment.environment.duplicate()
-		BattleEnvironment.apply_atmosphere(env, get_node("Sun") as DirectionalLight3D)
+		BattleEnvironment.apply_atmosphere(env, get_node("Sun") as DirectionalLight3D, encounter.room)
 		_environment.environment = env
 
 	# 타일과 유닛 화면 객체를 만든다.

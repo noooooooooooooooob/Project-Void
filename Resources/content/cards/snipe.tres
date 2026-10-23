@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_v6r04"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_nr4cq"]
+
+[sub_resource type="Resource" id="Resource_cf0lv"]
+script = ExtResource("1_v6r04")
+percent = 110
+
+[resource]
+script = ExtResource("2_nr4cq")
+id = &"snipe"
+display_name = "저격"
+sp_cost = 2
+attack_type = 1
+effects = Array[ExtResource("1_v6r04")]([SubResource("Resource_cf0lv")])

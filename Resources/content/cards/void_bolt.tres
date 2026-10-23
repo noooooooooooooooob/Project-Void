@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_xcegd"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_owxu3"]
+
+[sub_resource type="Resource" id="Resource_6yogd"]
+script = ExtResource("1_xcegd")
+percent = 55
+
+[resource]
+script = ExtResource("2_owxu3")
+id = &"void_bolt"
+display_name = "공허탄"
+attack_type = 1
+effects = Array[ExtResource("1_xcegd")]([SubResource("Resource_6yogd")])

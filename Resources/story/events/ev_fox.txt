@@ -1,0 +1,25 @@
+// 사건: 홍연의 여우 흉내 (휴식 겸 친밀도)
+@bg void
+> 비교적 마른 배관 위. 잠깐 쉬어 가기로 했다.
+@show hongyeon right
+hongyeon: ......
+hongyeon: 캥.
+@show hangyeol left
+hangyeol: 이번엔 왜.
+hongyeon: 여우는... 굴에서 쉴 때, 꼬리로 몸을 감싸.
+hongyeon: 나는 꼬리가 없으니까... 너가 옆에 있어.
+* 옆에 앉아 준다 (체력 20% 회복) -> sit
+* 여우는 그렇게 안 운다고 알려 준다 -> correct
+@label sit
+> 둘은 한동안 말없이 앉아 있었다. 홍연은 금방 잠들었다.
+@effect heal 20
+@end
+@label correct
+hangyeol: 그런데 여우는 캥 하고 안 울어. 컹컹이나... 아무튼 캥은 아니야.
+hongyeon: ......캥.
+hangyeol: 듣고 있어?
+hongyeon: ...캥캥.
+> 왠지 힘이 났다.
+@effect heal 10
+@effect card random
+@end

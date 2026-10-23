@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_08n72"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_a6qb6"]
+
+[sub_resource type="Resource" id="Resource_gpg77"]
+script = ExtResource("1_08n72")
+kind = 4
+percent = 35
+status = &"blood_armor"
+
+[resource]
+script = ExtResource("2_a6qb6")
+id = &"blood_lance"
+display_name = "혈창"
+sp_cost = 2
+attack_type = 1
+category = 2
+effects = Array[ExtResource("1_08n72")]([SubResource("Resource_gpg77")])

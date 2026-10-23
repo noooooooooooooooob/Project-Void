@@ -1,0 +1,24 @@
+// 1장 의뢰 수락: 감독관과 재회, 출발
+@bg office
+@show supervisor right
+supervisor: 소장님... 아니, 그때 그 신입 양반이구먼. 살아 있었어.
+@show hangyeol left
+hangyeol: 저 혼자만요. 의뢰는 아직 끝나지 않았어요. 다시 들어가겠습니다.
+supervisor: 아랫동네에 잠든 사람이 스무 명을 넘었소. 혼미 상태라 불러도 반응이 없어.
+supervisor: 하수도의 검은 기름도 더 퍼졌고. 부탁드리오.
+@hide right
+@show hongyeon right
+hongyeon: ...같이 가.
+hangyeol: 위험할 거야. 저번엔 네 명이 들어가서...
+hongyeon: 알아. 그러니까... 같이 가.
+hongyeon: 나, 다치면 더 세져. ...여우처럼.
+hangyeol: 여우는 그런 동물이 아니야.
+hongyeon: ......캥.
+@hide all
+@bg sewer_gate
+> 다시, 하수도 입구.
+> 균열은 일주일 전보다 넓어져 있었다.
+hangyeol: 다섯 구역쯤 내려가면 핵이 있을 거야. 홍연, 무리하지 마.
+hongyeon: ...응. 너도.
+@effect journal 1장 · 잠든 하수도|감독관의 의뢰를 다시 받았다. 홍연과 둘이서 하수도 공허로 들어간다. 핵을 회수해 정화하는 것이 목표.
+@end

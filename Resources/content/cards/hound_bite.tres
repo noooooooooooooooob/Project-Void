@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_smpsl"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_2fyot"]
+
+[sub_resource type="Resource" id="Resource_ef6p1"]
+script = ExtResource("1_smpsl")
+percent = 80
+
+[sub_resource type="Resource" id="Resource_uq7y4"]
+script = ExtResource("1_smpsl")
+kind = 6
+percent = 40
+
+[resource]
+script = ExtResource("2_2fyot")
+id = &"hound_bite"
+display_name = "덮치기"
+sp_cost = 0
+effects = Array[ExtResource("1_smpsl")]([SubResource("Resource_ef6p1"), SubResource("Resource_uq7y4")])

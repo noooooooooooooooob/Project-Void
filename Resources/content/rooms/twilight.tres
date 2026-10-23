@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BattleRoomData" format=3]
+
+[ext_resource type="Texture2D" path="res://Art/gen/tiles/ally.png" id="1_tud3b"]
+[ext_resource type="Texture2D" path="res://Art/gen/battle/twilight.png" id="2_xvwvh"]
+[ext_resource type="Texture2D" path="res://Art/gen/tiles/enemy.png" id="3_6nxjm"]
+[ext_resource type="Script" path="res://Scripts/combat/data/prop_placement.gd" id="4_1x1r1"]
+[ext_resource type="Script" path="res://Scripts/combat/data/battle_room_data.gd" id="5_nk3ww"]
+
+[resource]
+script = ExtResource("5_nk3ww")
+backdrop = ExtResource("2_xvwvh")
+backdrop_dim = 0.2
+ally_tile_texture = ExtResource("1_tud3b")
+enemy_tile_texture = ExtResource("3_6nxjm")

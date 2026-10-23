@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_n312u"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_tipg7"]
+
+[sub_resource type="Resource" id="Resource_8guh0"]
+script = ExtResource("1_n312u")
+percent = 45
+
+[resource]
+script = ExtResource("2_tipg7")
+id = &"quick_shot"
+display_name = "견제 사격"
+attack_type = 1
+effects = Array[ExtResource("1_n312u")]([SubResource("Resource_8guh0")])

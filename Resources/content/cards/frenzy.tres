@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_mpcje"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_yv4wi"]
+
+[sub_resource type="Resource" id="Resource_l0ial"]
+script = ExtResource("1_mpcje")
+percent = 45
+
+[sub_resource type="Resource" id="Resource_7ugh7"]
+script = ExtResource("1_mpcje")
+percent = 45
+
+[sub_resource type="Resource" id="Resource_8virb"]
+script = ExtResource("1_mpcje")
+kind = 6
+percent = 50
+
+[resource]
+script = ExtResource("2_yv4wi")
+id = &"frenzy"
+display_name = "광란"
+sp_cost = 2
+effects = Array[ExtResource("1_mpcje")]([SubResource("Resource_l0ial"), SubResource("Resource_7ugh7"), SubResource("Resource_8virb")])

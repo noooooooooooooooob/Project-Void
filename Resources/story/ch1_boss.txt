@@ -1,0 +1,10 @@
+@bg core_room
+> 5구역 · 핵의 방
+> 무너진 배관들이 왕관처럼 얽힌 거대한 덩어리. 그 가슴 한가운데에서 청록빛 핵이 맥동하고 있었다.
+@show hongyeon right
+hongyeon: ...저게, 핵.
+@show hangyeol left
+hangyeol: 하수도의 왕관. 핵을 품고 있는 수호자야. 저걸 쓰러뜨리고 핵을 꺼내자.
+hongyeon: 응. ...피, 많이 흘릴게.
+hangyeol: 적당히 흘려.
+@end

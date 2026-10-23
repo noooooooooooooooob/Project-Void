@@ -53,6 +53,11 @@ var right_wall: MeshInstance3D
 var props: Array[Node3D] = []
 ## 창문 스포트라이트.
 var lights: Array[SpotLight3D] = []
+## 배경 그림 층 (방에 backdrop 이 있을 때만).
+var backdrop_layer: CanvasLayer
+
+## 배경 그림이 그려지는 캔버스 층 번호 (Environment 의 배경 캔버스 최대 층보다 작아야 한다).
+const BACKDROP_LAYER: int = -100
 
 
 ## 보드 배치와 방 데이터로 방을 만든다. 방이 없으면 null.
@@ -67,6 +72,11 @@ static func build(layout: BoardLayout, room: BattleRoomData) -> BattleEnvironmen
 	# 보드 중심과 바닥 높이 (칸 윗면 0 에서 두께만큼 아래).
 	var center: Vector3 = layout.center()
 	var floor_y: float = -Board3D.TILE_THICKNESS
+
+	# --- 배경 그림 (있으면 바닥·벽·소품 대신) ---
+	if room.backdrop != null:
+		env._backdrop(room.backdrop, room.backdrop_dim)
+		return env
 
 	# --- 바닥 ---
 	# 바닥 그림이 있을 때만 만든다.
@@ -130,7 +140,24 @@ static func build(layout: BoardLayout, room: BattleRoomData) -> BattleEnvironmen
 
 
 ## 실내 분위기로 환경·태양을 바꾼다 (유니티 AtmosphereSetup + Battle.unity 안개·조명).
-static func apply_atmosphere(env: Environment, sun: DirectionalLight3D) -> void:
+## 방에 배경 그림이 있으면 그 그림을 배경으로 쓰고, 안개 없이 유닛이 또렷하게 보이는 조명으로 바꾼다.
+static func apply_atmosphere(env: Environment, sun: DirectionalLight3D, room: BattleRoomData = null) -> void:
+	if room != null and room.backdrop != null:
+		env.background_mode = Environment.BG_CANVAS
+		env.background_canvas_max_layer = BACKDROP_LAYER + 1
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.ambient_light_color = Color(0.62, 0.58, 0.7)
+		env.ambient_light_energy = 1.0
+		env.fog_enabled = false
+		env.volumetric_fog_enabled = false
+		env.ssao_enabled = false
+		env.glow_enabled = true
+		env.glow_hdr_threshold = 0.9
+		env.glow_intensity = 0.4
+		env.adjustment_enabled = false
+		sun.light_energy = 0.9
+		sun.shadow_enabled = true
+		return
 	# 바깥은 안개 색과 같은 어둠.
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = FOG_COLOR
@@ -175,6 +202,30 @@ func _process(_delta: float) -> void:
 	# 모든 소품에 같은 회전을 준다.
 	for prop in props:
 		prop.rotation = rotation_now
+
+
+## 화면 가득 배경 그림을 깐다 (비율을 지키며 덮고, 픽셀이 뭉개지지 않게 최근접 필터).
+func _backdrop(texture: Texture2D, dim: float) -> void:
+	backdrop_layer = CanvasLayer.new()
+	backdrop_layer.name = "Backdrop"
+	backdrop_layer.layer = BACKDROP_LAYER
+	add_child(backdrop_layer)
+	var rect := TextureRect.new()
+	rect.name = "Picture"
+	rect.texture = texture
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	backdrop_layer.add_child(rect)
+	if dim > 0.0:
+		var shade := ColorRect.new()
+		shade.name = "Dim"
+		shade.color = Color(0.02, 0.01, 0.04, dim)
+		shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		backdrop_layer.add_child(shade)
 
 
 # 벽 한 면: 아래 가운데 bottom_center, 세로축 yaw_deg 회전, 가로 length, 높이 WALL_HEIGHT.

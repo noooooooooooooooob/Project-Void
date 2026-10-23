@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Resource" path="res://Resources/content/cards/hand_crush.tres" id="1_h63u1"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hand_attack.png" id="2_tg4uo"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hand_hit.png" id="3_ufaph"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hand_idle.png" id="4_kvjob"]
+[ext_resource type="Script" path="res://Scripts/combat/data/enemy_data.gd" id="5_u8ayn"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/hand.png" id="6_87xb0"]
+
+[resource]
+script = ExtResource("5_u8ayn")
+move_chance = 0.0
+attack_card = ExtResource("1_h63u1")
+id = &"hand"
+display_name = "황혼의 손"
+max_hp = 999
+speed = 99
+crit_chance = 0
+move = 0
+stagger = 999
+sprite = ExtResource("6_87xb0")
+idle_sheet = ExtResource("4_kvjob")
+attack_sheet = ExtResource("2_tg4uo")
+hit_sheet = ExtResource("3_ufaph")

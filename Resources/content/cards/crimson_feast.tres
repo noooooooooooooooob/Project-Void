@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_mp7f3"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_q2kc7"]
+
+[sub_resource type="Resource" id="Resource_y1gro"]
+script = ExtResource("1_mp7f3")
+percent = 60
+
+[sub_resource type="Resource" id="Resource_bt5tv"]
+script = ExtResource("1_mp7f3")
+kind = 2
+percent = 30
+target = 1
+
+[resource]
+script = ExtResource("2_q2kc7")
+id = &"crimson_feast"
+display_name = "피의 연회"
+effects = Array[ExtResource("1_mp7f3")]([SubResource("Resource_y1gro"), SubResource("Resource_bt5tv")])

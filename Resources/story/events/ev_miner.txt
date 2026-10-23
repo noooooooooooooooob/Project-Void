@@ -1,0 +1,20 @@
+// 사건: 잠든 광부
+@bg void
+> 검은 기름 웅덩이에 한 남자가 반쯤 잠겨 잠들어 있다. 정화자 협회의 광부 배지가 보인다.
+@show hongyeon right
+hongyeon: ...아직 숨 쉬어.
+* 흔들어 깨운다 -> wake
+* 주머니를 뒤진다 -> loot
+* 그냥 지나간다 -> leave
+@label wake
+> 몇 번을 흔들자 남자가 눈을 떴다. 초점 없는 눈으로 고맙다고 중얼거리며, 품에서 무언가를 건넸다.
+@effect item random
+@end
+@label loot
+> 주머니에는 공허 자원 조각이 들어 있었다. 홍연이 아무 말 없이 그것을 바라보았다.
+hongyeon: ......
+@effect gold 35
+@end
+@label leave
+> 지금은 핵이 먼저다. 핵을 정화하면 그도 깨어날 것이다.
+@end

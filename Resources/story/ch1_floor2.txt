@@ -1,0 +1,10 @@
+@bg void
+> 2구역 · 배수 터널
+@show hongyeon right
+hongyeon: ...한결.
+@show hangyeol left
+hangyeol: 응?
+hongyeon: 아빠가 그랬어. 너, 죽어도 다시 일어난다고.
+hangyeol: ...그런가 봐. 대신 수명이 줄어든대.
+hongyeon: 그럼... 안 죽게 할게. 내가 앞에 설게.
+@end

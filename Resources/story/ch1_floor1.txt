@@ -1,0 +1,8 @@
+@bg void
+@show hongyeon right
+> 1구역 · 하수도 입구
+hongyeon: ...조용해. 물소리도, 쥐 소리도.
+@show hangyeol left
+hangyeol: 공허 안은 원래 그래. 소리가 먼저 사라지거든.
+hongyeon: ...싫다. 조용한 거.
+@end

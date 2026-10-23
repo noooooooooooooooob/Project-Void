@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_rf5mu"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_7rim3"]
+
+[sub_resource type="Resource" id="Resource_o7eia"]
+script = ExtResource("1_rf5mu")
+kind = 1
+percent = 75
+
+[resource]
+script = ExtResource("2_7rim3")
+id = &"cover"
+display_name = "엄호"
+attack_type = 2
+category = 1
+effects = Array[ExtResource("1_rf5mu")]([SubResource("Resource_o7eia")])

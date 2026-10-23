@@ -1,0 +1,21 @@
+// 사건: 무지갯빛 웅덩이
+@bg void
+> 표면이 무지갯빛으로 번들거리는 검은 웅덩이. 그 안에서 누군가의 기억 같은 것이 일렁인다.
+* 손을 넣어 본다 (전원 체력 -15%, 카드 획득) -> touch
+* 피로 표면을 가른다 [홍연] -> blood
+* 멀찍이 돌아간다 -> leave
+@label touch
+> 차가운 손길이 팔을 타고 올라왔다. 머릿속에 낯선 기술 하나가 새겨졌다.
+@effect damage 15
+@effect card random
+@end
+@label blood
+@show hongyeon right
+hongyeon: ...이건, 피를 싫어해.
+> 홍연이 손끝을 베어 피를 떨어뜨리자 웅덩이가 움찔하며 갈라졌다. 바닥에 가라앉아 있던 것을 건졌다.
+@effect damage 5
+@effect item random
+@end
+@label leave
+> 괜히 건드릴 이유는 없다.
+@end

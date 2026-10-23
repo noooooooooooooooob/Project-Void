@@ -1,0 +1,62 @@
+// 황혼의 손에 전멸한 뒤: 주인공의 공허 능력(탈출) 발현 → 비 오는 골목 → 장로 혈귀와의 만남 → 사무소 제안
+@bg void
+> 아무것도 들리지 않았다.
+> 선배들이 쓰러진 자리에, 검은 기름이 고여 있었다.
+> 손이 다시 내려왔다.
+hangyeol: ...싫어.
+hangyeol: 여기서 끝나는 건, 싫어.
+> 그 순간, 무언가가 몸 안쪽에서 찢어졌다.
+> 세상이 접혔다. 공허가, 그를 '밖'으로 뱉어 냈다.
+@bg alley_rain
+> 비. 차가운 돌바닥. 쇠 냄새.
+> 하수도 입구에서 세 블록 떨어진 뒷골목이었다.
+hangyeol: 선배... 선배들은...
+> 몸이 움직이지 않았다. 눈앞이 점점 어두워졌다.
+@show hyeolgwi right
+hyeolgwi: 공허에서 걸어 나온 사람은 오랜만에 보는군.
+hyeolgwi: 아니, 걸어 나온 게 아니지. 공허가 자네를 놓아준 게야.
+hangyeol: 누구... 세요...
+hyeolgwi: 지나가던 늙은이일세. 피 냄새를 좀 잘 맡는.
+> 사내의 붉은 눈이 빗속에서 희미하게 빛났다.
+hyeolgwi: 자네 안에 공허가 닿았네. '공허와 닿은 자'. 이제 자네는 죽어도, 공허가 한 번은 다시 밀어낼 걸세.
+hyeolgwi: 대신 그때마다 자네의 시간이 깎이겠지만.
+hangyeol: 시간...?
+hyeolgwi: 수명 말일세. 공짜는 없지.
+@hide right
+@bg office
+> 사흘 뒤.
+> 눈을 떠 보니, 낯선 사무실이었다. 강도윤 정화 사무소. 주인을 잃은 방.
+@show hyeolgwi right
+hyeolgwi: 일어났나. 이 사무소는 빚 때문에 곧 넘어갈 참이었네. 내가 샀지.
+hyeolgwi: 그리고 자네에게 맡기려 하네. 소장으로.
+@show hangyeol left
+hangyeol: 저는 신입이에요. 첫 의뢰에서... 다 죽었어요. 저만 살았고.
+hyeolgwi: 그러니까 자네여야 하네. 그 안에서 무엇을 봤는지 아는 사람은 이제 자네뿐이니.
+hyeolgwi: 공허는 아직 열려 있네. 그 하수도의 공허도. 핵을 들고 나오지 못했으니.
+* 하겠습니다. -> accept
+* 왜 저를 돕는 거죠? -> why
+@label why
+hyeolgwi: 늙은이에게도 사정이 있다네. 공허가 더 깊어지면, 우리 같은 것들도 살 곳이 없어지거든.
+hyeolgwi: 그리고 하나 부탁이 있네.
+@goto daughter
+@label accept
+hangyeol: ...하겠습니다. 선배들이 남긴 일이니까.
+hyeolgwi: 좋은 대답이야. 그럼 부탁 하나만 들어 주게.
+@label daughter
+hyeolgwi: 내 딸을 첫 직원으로 받아 주게. 홍연.
+@hide right
+@show hongyeon right
+hongyeon: ......
+hyeolgwi: 홍연. 인사.
+hongyeon: ...홍연. 잘 부탁... 해.
+hongyeon: ......캥.
+hangyeol: 캥?
+hyeolgwi: 여우 흉내일세. 여우를 좋아해서. 신경 쓰지 말게.
+hyeolgwi: 말수는 적어도 피를 다루는 솜씨는 확실하네. 다치면 다칠수록 강해지는 아이지.
+hongyeon: ...졸려.
+@effect join hongyeon
+@set met_hyeolgwi
+@effect journal 사무소를 맡다|첫 의뢰에서 선배들을 모두 잃었다. 공허에 닿은 대가로 죽어도 되살아나는 힘을 얻었지만, 그때마다 수명이 깎인다. 장로 혈귀에게서 사무소를 넘겨받고, 그의 딸 홍연을 첫 직원으로 받았다.
+hyeolgwi: 사무소 운영은 간단하네. 의뢰를 받고, 공허 지도에서 출발하고, 돌아오면 장비를 정비하게.
+hyeolgwi: 하수도 공허의 의뢰는 아직 유효하네. 준비되면 가 보게.
+@end

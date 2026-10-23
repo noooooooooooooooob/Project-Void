@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_b8ny8"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_cwwor"]
+
+[sub_resource type="Resource" id="Resource_6hg7p"]
+script = ExtResource("1_b8ny8")
+kind = 2
+percent = 70
+
+[resource]
+script = ExtResource("2_cwwor")
+id = &"mend"
+display_name = "치유"
+attack_type = 2
+category = 1
+effects = Array[ExtResource("1_b8ny8")]([SubResource("Resource_6hg7p")])

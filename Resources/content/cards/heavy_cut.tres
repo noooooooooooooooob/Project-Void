@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://Scripts/combat/data/card_effect.gd" id="1_jtxjs"]
+[ext_resource type="Script" path="res://Scripts/combat/data/card_data.gd" id="2_25p1u"]
+
+[sub_resource type="Resource" id="Resource_gnjcc"]
+script = ExtResource("1_jtxjs")
+percent = 140
+
+[resource]
+script = ExtResource("2_25p1u")
+id = &"heavy_cut"
+display_name = "내려베기"
+sp_cost = 2
+effects = Array[ExtResource("1_jtxjs")]([SubResource("Resource_gnjcc")])

@@ -1,0 +1,8 @@
+@bg void
+> 4구역 · 깊은 수로
+@show hongyeon right
+hongyeon: ...물이 위로 흘러.
+@show hangyeol left
+hangyeol: 핵이 가까워서 그래. 공간이 뒤틀리기 시작한 거야.
+hongyeon: 한결. 아까 균열... 안 들어가서, 조금 다행이야.
+@end

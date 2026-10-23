@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Resource" path="res://Resources/content/cards/leech_drain.tres" id="1_frk1f"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/leech_attack.png" id="2_dtnop"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/leech_hit.png" id="3_axkqw"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/leech_idle.png" id="4_sljdw"]
+[ext_resource type="Script" path="res://Scripts/combat/data/enemy_data.gd" id="5_c0s02"]
+[ext_resource type="Texture2D" path="res://Art/gen/units/leech.png" id="6_it1tb"]
+
+[resource]
+script = ExtResource("5_c0s02")
+move_chance = 0.1
+attack_card = ExtResource("1_frk1f")
+id = &"leech"
+display_name = "공허 거머리"
+max_hp = 22
+speed = 6
+attack = 9
+defense = 8
+crit_chance = 0
+move = 1
+stagger = 10
+sprite = ExtResource("6_it1tb")
+idle_sheet = ExtResource("4_sljdw")
+attack_sheet = ExtResource("2_dtnop")
+hit_sheet = ExtResource("3_axkqw")

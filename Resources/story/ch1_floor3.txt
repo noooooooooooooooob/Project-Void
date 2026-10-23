@@ -1,0 +1,8 @@
+@bg void
+> 3구역 · 침전조
+> 검은 기름이 고인 넓은 저수조. 그 한가운데에서 무언가가 몸을 일으켰다.
+@show hongyeon right
+hongyeon: 크다. ...기름 냄새.
+@show hangyeol left
+hangyeol: 정예다. 흐트러짐부터 깎자. 기절시키면 한 차례 공짜로 때릴 수 있어.
+@end

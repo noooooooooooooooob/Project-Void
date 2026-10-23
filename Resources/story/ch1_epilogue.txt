@@ -1,0 +1,28 @@
+// 정화 완료 후 사무소: 감독관 감사, 혈귀의 경고, 다음을 향한 복선
+@bg office
+@show supervisor right
+supervisor: 소장님! 아랫동네 애들이 깨어났소. 다들 꿈을 꾼 것 같다고... 정말 고맙소.
+@show hangyeol left
+hangyeol: 다행이에요. 정말로.
+supervisor: 이건 약속한 보수요. 그리고 하수도에 남은 작은 균열들 청소도 계속 맡아 주시오.
+@effect gold 200
+@hide right
+@show hyeolgwi right
+hyeolgwi: 첫 정화를 축하하네, 소장.
+hangyeol: 혈귀님. 하나 묻고 싶어요. 그날 본 손... 황혼층의 그건 뭐였죠?
+hyeolgwi: ...공허에는 층이 있네. 공허, 황혼, 암야, 심연.
+hyeolgwi: 깊이 내려갈수록 사람의 마음 바닥과 닮아 간다고들 하지. 의식, 그 아래, 또 그 아래.
+hyeolgwi: 그리고 가장 깊은 곳에, 모든 공허를 만드는 것이 있다네. 자아가 없는 무의식. 끝없이 넘쳐흐르는 것.
+hangyeol: 그걸 없애면... 공허도 사라지나요?
+hyeolgwi: 아마도. 하지만 그걸 원하지 않는 자들도 많네. 공허는 지금 세상의 돈줄이니.
+@hide right
+@show hongyeon right
+hongyeon: ......한결.
+hangyeol: 응.
+hongyeon: 다음에도... 같이 가.
+hangyeol: 당연하지.
+hongyeon: ...캥.
+@effect journal 1장 완료|하수도 공허의 핵을 정화했다. 아랫동네 사람들이 깨어났다. 혈귀에게서 공허의 층(공허·황혼·암야·심연)과 가장 깊은 곳의 존재에 대해 들었다. 반복 의뢰로 하수도의 잔재를 청소할 수 있다.
+> 1장 · 잠든 하수도 — 완료
+> (프로토타입은 여기까지입니다. 사무소에서 반복 의뢰를 계속할 수 있습니다.)
+@end
