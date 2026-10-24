@@ -5,7 +5,6 @@
 ## 흐름: start_battle() → (아군 차례에서 멈춤) → play_card()·move_unit() 여러 번 → end_turn() → (적 차례 자동 처리) → 다음 아군 차례에서 멈춤 ...
 ## 한 차례는 Phase 순서(스탠바이 → 드로우 → 턴 행동 → 종료 전 → 종료 후)로 진행하고, 아군은 턴 행동 단계에서 멈춘다.
 class_name BattleState
-# RefCounted: 노드가 아닌 가벼운 객체. 참조가 없어지면 자동으로 해제된다.
 extends RefCounted
 
 ## 어떤 유닛의 차례가 시작됐다 (스탠바이 처리 직후 — 방어도 초기화·아군 SP 충전은 끝났고, 드로우는 아직 전).
@@ -88,7 +87,6 @@ var phase: Phase = Phase.STANDBY
 
 ## 전투 구성과 난수 생성기로 전투를 준비한다 (아직 시작하지는 않음).
 func _init(encounter: EncounterData, p_rng: RandomNumberGenerator) -> void:
-	# 난수 생성기를 기억한다.
 	rng = p_rng
 	# 적 AI 전용 난수 생성기를 만든다.
 	ai_rng = RandomNumberGenerator.new()
@@ -112,29 +110,23 @@ func _init(encounter: EncounterData, p_rng: RandomNumberGenerator) -> void:
 			ally.hp = mini(placement.start_hp, placement.unit_data.max_hp)
 		# 전투 시작 전에 덱을 섞는다.
 		ally.shuffle_deck(rng)
-		# 전장 목록에 넣는다.
 		units.append(ally)
-		# 다음 번호로 넘어간다.
 		next_id += 1
 
 	# 적군 배치 목록을 돌며 적 유닛을 만든다 (번호는 아군 다음부터 이어진다).
 	for placement in encounter.enemy_units:
 		# 적 유닛을 만들어 바로 전장 목록에 넣는다.
 		units.append(Unit.new(next_id, placement.unit_data, Unit.Team.ENEMY, placement.cell))
-		# 다음 번호로 넘어간다.
 		next_id += 1
 
 
 ## 주어진 편에서 살아 있는 유닛만 모아 돌려준다.
 func living_units(team: Unit.Team) -> Array[Unit]:
-	# 결과를 담을 배열.
 	var alive: Array[Unit] = []
-	# 모든 유닛을 확인한다.
 	for unit in units:
 		# 살아 있고 요청한 편이면 담는다.
 		if unit.is_alive() and unit.team == team:
 			alive.append(unit)
-	# 모은 목록을 돌려준다.
 	return alive
 
 
@@ -151,7 +143,6 @@ func current_unit() -> Unit:
 # `log` 은 GDScript 전역 함수(자연로그)라 이름으로 쓸 수 없다.
 ## 전투 로그 한 줄을 신호로 내보낸다.
 func write_log(text: String) -> void:
-	# 로그 신호를 낸다.
 	log_message.emit(text)
 
 
@@ -165,13 +156,10 @@ func apply_damage(target: Unit, amount: int, critical: bool = false, source: Uni
 	target.take_damage(amount)
 	# 흐트러짐 게이지를 깎는다 (피해 신호에 깎인 값이 함께 기록되도록 먼저).
 	var broke: bool = _reduce_stagger(target, amount)
-	# 피해 신호를 낸다.
 	unit_damaged.emit(target, amount, critical)
 	# 이번 피해로 체력이 0 이 됐는지 확인한다.
 	if not target.is_alive():
-		# 쓰러짐 신호를 낸다.
 		unit_died.emit(target)
-		# 로그에 남긴다.
 		write_log("%s 쓰러짐" % target.data.display_name)
 		# 피의 갈망: 적을 쓰러뜨리면 혈갑을 얻는다.
 		if source != null and source.is_alive() and source.team != target.team and source.has_passive(BLOOD_THIRST):
@@ -190,11 +178,8 @@ func apply_stagger_damage(target: Unit, amount: int) -> void:
 	# 쓰러졌거나 이미 무너진 유닛은 더 깎이지 않는다.
 	if not target.is_alive() or target.broken:
 		return
-	# 깎기 전 값.
 	var before: int = target.stagger
-	# 깎는다.
 	var broke: bool = _reduce_stagger(target, amount)
-	# 깎인 양을 알린다.
 	stagger_damaged.emit(target, before - target.stagger)
 	# 0 이 됐으면 무너짐을 알린다.
 	if broke:
@@ -208,7 +193,6 @@ func apply_hp_cost(target: Unit, amount: int) -> void:
 	# 잃을 게 없으면 아무 일도 없다.
 	if lose <= 0:
 		return
-	# 체력을 깎는다.
 	target.hp -= lose
 	# 피해처럼 알린다 (화면은 같은 연출을 쓴다).
 	unit_damaged.emit(target, lose, false)
@@ -219,16 +203,11 @@ func apply_hp_cost(target: Unit, amount: int) -> void:
 
 ## 상태 스택을 delta 만큼 더한다 (최대치·0 에서 잘린다). 실제로 바뀌었으면 알린다.
 func add_status(target: Unit, status_id: StringName, delta: int) -> void:
-	# 지금 스택.
 	var before: int = target.status(status_id)
-	# 바뀐 뒤 스택.
 	var after: int = clampi(before + delta, 0, status_cap(status_id))
-	# 그대로면 알리지 않는다.
 	if after == before:
 		return
-	# 바꾼다.
 	target.set_status(status_id, after)
-	# 알린다.
 	status_changed.emit(target, status_id, after)
 
 
@@ -242,7 +221,6 @@ func _reduce_stagger(target: Unit, amount: int) -> bool:
 	# 쓰러졌거나 이미 무너졌으면 더 깎지 않는다.
 	if not target.is_alive() or target.broken or amount <= 0:
 		return false
-	# 깎는다.
 	target.stagger = maxi(0, target.stagger - amount)
 	# 0 이 됐으면 무너진다.
 	if target.stagger == 0:
@@ -253,7 +231,6 @@ func _reduce_stagger(target: Unit, amount: int) -> bool:
 
 ## 무너짐을 신호와 로그로 알린다.
 func _announce_break(target: Unit) -> void:
-	# 신호.
 	unit_staggered.emit(target)
 	# 적은 기절, 아군은 탈진.
 	write_log("%s %s" % [target.data.display_name, "탈진" if target.is_ally() else "기절"])
@@ -261,7 +238,6 @@ func _announce_break(target: Unit) -> void:
 
 ## 유닛을 회복시키고 실제로 오른 양을 알린다.
 func apply_heal(target: Unit, amount: int) -> void:
-	# 회복 전 체력을 기억한다.
 	var before: int = target.hp
 	# 회복을 적용한다 (최대 체력에서 잘린다).
 	target.heal(amount)
@@ -271,15 +247,12 @@ func apply_heal(target: Unit, amount: int) -> void:
 
 ## 유닛에게 방어도를 주고 알린다.
 func apply_block(target: Unit, amount: int) -> void:
-	# 방어도를 더한다.
 	target.gain_block(amount)
-	# 방어도 신호를 낸다.
 	block_gained.emit(target, amount)
 
 
 ## 적이 정한 행동을 신호로 알린다 (EnemyBrain 이 부르는 통로).
 func report_enemy_action(actor: Unit, action: EnemyBrain.Action, target: Unit) -> void:
-	# 적 행동 신호를 낸다.
 	enemy_acted.emit(actor, action, target)
 
 
@@ -288,18 +261,14 @@ func check_end() -> void:
 	# 이미 끝난 전투는 다시 끝내지 않는다 (신호 중복 방지).
 	if finished:
 		return
-	# 살아 있는 아군이 있는지.
 	var allies_alive: bool = not living_units(Unit.Team.ALLY).is_empty()
-	# 살아 있는 적군이 있는지.
 	var enemies_alive: bool = not living_units(Unit.Team.ENEMY).is_empty()
 	# 양쪽 다 살아 있으면 전투는 계속된다.
 	if allies_alive and enemies_alive:
 		return
-	# 전투 종료로 표시한다.
 	finished = true
 	# 아군이 남아 있으면 아군 승리.
 	ally_won = allies_alive
-	# 종료 신호를 낸다.
 	battle_ended.emit(ally_won)
 
 
@@ -332,31 +301,24 @@ func play_card(hand_index: int, anchor: Unit) -> bool:
 	# 여기부터는 검사를 모두 통과했으므로 상태를 바꾼다.
 	# SP 를 비용만큼 쓴다.
 	actor.sp -= card.sp_cost
-	# 손패에서 카드를 뺀다.
 	actor.hand.remove_at(hand_index)
-	# 쓴 카드는 묘지로 간다.
 	actor.discard.append(card)
 	# 카드 사용 신호를 낸다 (효과 신호보다 먼저 나가야 화면이 돌진 → 피격 순으로 연출한다).
 	card_played.emit(actor, card, anchor)
 	# 로그에 "사용자 → 기준 유닛 (카드)" 형식으로 남긴다.
 	write_log("%s → %s (%s)" % [actor.data.display_name, anchor.data.display_name, card.display_name])
-	# 효과를 적용한다.
 	resolve_card(actor, card, anchor)
 
 	# 이번 카드로 전투가 끝났는지 확인한다.
 	check_end()
-	# 성공.
 	return true
 
 
 ## 카드 효과를 순서대로 적용한다. 아군 카드(play_card)와 적 행동(EnemyBrain)이 함께 쓴다.
 ## AREA 효과의 대상은 효과마다 다시 계산하므로 앞 효과로 쓰러진 유닛은 뒤 효과에서 빠진다.
 func resolve_card(actor: Unit, card: CardData, anchor: Unit) -> void:
-	# 사용자의 스탯.
 	var stats: UnitData = actor.data
-	# 효과마다.
 	for effect in card.effects:
-		# 수치.
 		var amount: int = CardMath.amount(effect, stats)
 		# 0 이면 적용하지 않는다.
 		if amount <= 0:
@@ -381,19 +343,14 @@ func resolve_card(actor: Unit, card: CardData, anchor: Unit) -> void:
 				CardEffect.Kind.DAMAGE, CardEffect.Kind.BURST:
 					var critical: bool = CardMath.rolls_crit(stats, crit_rng)
 					apply_damage(target, CardMath.critical_amount(amount, stats) if critical else amount, critical, actor)
-				# 방어도.
 				CardEffect.Kind.BLOCK:
 					apply_block(target, amount)
-				# 회복.
 				CardEffect.Kind.HEAL:
 					apply_heal(target, amount)
-				# 상태 스택 획득.
 				CardEffect.Kind.GAIN_STATUS:
 					add_status(target, effect.status, amount)
-				# 체력 소모.
 				CardEffect.Kind.HP_COST:
 					apply_hp_cost(target, amount)
-				# 흐트러짐만.
 				CardEffect.Kind.STAGGER:
 					apply_stagger_damage(target, amount)
 
@@ -404,7 +361,6 @@ func move_unit(to_cell: Vector2i) -> bool:
 	# 끝난 전투에서는 이동할 수 없다.
 	if finished:
 		return false
-	# 지금 차례인 유닛.
 	var actor: Unit = current_unit()
 	# 차례 유닛이 없거나, 적이거나, 쓰러졌으면 이동할 수 없다.
 	if actor == null or not actor.is_ally() or not actor.is_alive():
@@ -419,21 +375,15 @@ func move_unit(to_cell: Vector2i) -> bool:
 		return false
 	# 걸음 수만큼 이동력을 쓴다.
 	actor.move_points -= int(reach[to_cell])
-	# 옮기고 알린다.
 	apply_move(actor, to_cell)
-	# 성공.
 	return true
 
 
 ## 검사 없이 유닛을 to_cell 로 옮기고 알린다 (아군 move_unit 과 EnemyBrain 이 부르는 통로).
 func apply_move(unit: Unit, to_cell: Vector2i) -> void:
-	# 원래 칸을 기억한다.
 	var from_cell: Vector2i = unit.cell
-	# 칸을 바꾼다.
 	unit.cell = to_cell
-	# 이동 신호를 낸다.
 	unit_moved.emit(unit, from_cell, to_cell)
-	# 로그에 남긴다.
 	write_log("%s 이동" % unit.data.display_name)
 
 
@@ -475,14 +425,11 @@ func _start_round() -> void:
 func _compute_initiative() -> Array[Unit]:
 	# 살아 있는 유닛만 담을 배열.
 	var alive: Array[Unit] = []
-	# 모든 유닛을 확인한다.
 	for unit in units:
-		# 살아 있으면 담는다.
 		if unit.is_alive():
 			alive.append(unit)
 	# 정렬 규칙 함수로 정렬한다.
 	alive.sort_custom(_initiative_sorter)
-	# 정렬된 순서를 돌려준다.
 	return alive
 
 
@@ -500,14 +447,12 @@ func _initiative_sorter(a: Unit, b: Unit) -> bool:
 func _run_until_player_input() -> void:
 	# 전투가 끝나면 반복을 멈춘다.
 	while not finished:
-		# 다음 유닛으로 넘어간다.
 		turn_index += 1
 		# 행동 순서 끝을 넘었으면 새 라운드를 시작하고 다시 반복한다.
 		if turn_index >= initiative.size():
 			_start_round()
 			continue
 
-		# 이번에 행동할 유닛.
 		var actor: Unit = initiative[turn_index]
 		# 라운드 도중에 쓰러진 유닛은 건너뛴다.
 		if not actor.is_alive():
@@ -519,7 +464,6 @@ func _run_until_player_input() -> void:
 
 		# 스탠바이 → 차례 시작 알림 → 드로우.
 		_start_phases(actor)
-		# 턴 행동 단계로 들어간다.
 		_enter_phase(actor, Phase.ACTION)
 
 		# 아군이면 여기서 멈추고 플레이어 입력을 기다린다 — 다음 진행은 end_turn() 이 이어 간다.
@@ -533,13 +477,11 @@ func _run_until_player_input() -> void:
 		# 전투가 끝났으면 남은 단계는 진행하지 않는다.
 		if finished:
 			return
-		# 종료 전 → 종료 후.
 		_end_phases(actor)
 
 
 ## 현재 단계를 바꾸고 단계 시작 신호를 낸다.
 func _enter_phase(actor: Unit, next_phase: Phase) -> void:
-	# 현재 단계를 바꾼다.
 	phase = next_phase
 	# 단계 시작 신호를 낸다 (그 단계의 처리보다 먼저).
 	phase_started.emit(actor, next_phase)
@@ -547,11 +489,9 @@ func _enter_phase(actor: Unit, next_phase: Phase) -> void:
 
 ## 스탠바이(block 초기화·SP 회복) → 차례 시작 알림 → 드로우 단계를 진행한다.
 func _start_phases(actor: Unit) -> void:
-	# 스탠바이 단계.
 	_enter_phase(actor, Phase.STANDBY)
 	# 방어도는 자기 차례가 시작될 때 사라진다 (한 바퀴 동안만 유지).
 	actor.block = 0
-	# 이동력을 채운다.
 	actor.move_points = actor.data.move
 	# 아군이면 SP 를 최대치로 채운다.
 	if actor.is_ally():
@@ -561,7 +501,6 @@ func _start_phases(actor: Unit) -> void:
 	# 혈갑 패시브: 혈갑 스택만큼 방어도를 얻는다.
 	if actor.has_passive(BLOOD_ARMOR) and actor.status(BLOOD_ARMOR) > 0:
 		apply_block(actor, actor.status(BLOOD_ARMOR))
-	# 드로우 단계.
 	_enter_phase(actor, Phase.DRAW)
 	# 아군만 카드를 뽑는다 (적은 덱이 없어 단계만 지나간다).
 	if actor.is_ally():
@@ -570,7 +509,6 @@ func _start_phases(actor: Unit) -> void:
 
 ## 무너진 유닛의 차례: 스탠바이만 지나고 행동 없이 쉰 뒤, 흐트러짐 게이지를 가득 채운다.
 func _skip_turn(actor: Unit) -> void:
-	# 스탠바이 단계.
 	_enter_phase(actor, Phase.STANDBY)
 	# 방어도는 평소처럼 사라진다.
 	actor.block = 0
@@ -578,13 +516,10 @@ func _skip_turn(actor: Unit) -> void:
 	actor.move_points = 0
 	# 차례 시작을 알린다 (행동 순서 표시용).
 	turn_started.emit(actor)
-	# 무너짐에서 회복한다.
 	actor.broken = false
 	actor.stagger = actor.data.stagger
-	# 쉬었다고 알린다.
 	turn_skipped.emit(actor)
 	write_log("%s 차례를 쉰다" % actor.data.display_name)
-	# 종료 단계.
 	_end_phases(actor)
 
 
@@ -592,7 +527,6 @@ func _skip_turn(actor: Unit) -> void:
 func _end_phases(actor: Unit) -> void:
 	# 종료 전 단계 (지금은 처리할 일이 없다).
 	_enter_phase(actor, Phase.BEFORE_END)
-	# 종료 후 단계.
 	_enter_phase(actor, Phase.AFTER_END)
 	# 아군이면 남은 손패를 묘지로 버린다.
 	if actor.is_ally():
@@ -611,7 +545,6 @@ func _draw_cards(actor: Unit, count: int) -> void:
 				return
 			# 묘지를 섞어 덱으로 만들고, 옮긴 장수로 리셔플 신호를 낸다.
 			deck_reshuffled.emit(actor, actor.reshuffle_discard(rng))
-		# 한 장 뽑는다.
 		var card: CardData = actor.draw_one()
 		# 뽑은 카드와 뽑은 뒤 덱·묘지 장수로 드로우 신호를 낸다.
 		card_drawn.emit(actor, card, actor.deck.size(), actor.discard.size())
@@ -621,7 +554,6 @@ func _draw_cards(actor: Unit, count: int) -> void:
 func _discard_hand(actor: Unit) -> void:
 	# 버리기 전에 손패 목록을 복사해 둔다 (버린 뒤에는 손패가 비므로).
 	var cards: Array[CardData] = actor.hand.duplicate()
-	# 손패를 묘지로 옮긴다.
 	actor.discard_hand()
 	# 버린 카드들과 버린 뒤 묘지 장수로 신호를 낸다.
 	hand_discarded.emit(actor, cards, actor.discard.size())

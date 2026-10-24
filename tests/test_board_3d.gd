@@ -14,27 +14,21 @@ const EncounterScript := preload("res://Scripts/combat/data/encounter_data.gd")
 
 # 실행기가 부르는 진입점.
 func run() -> Array[Dictionary]:
-	# 타일과 유닛 화면 생성.
 	_test_build_creates_tiles_and_views()
 	# 규칙 상태로 타일 상태 맞추기.
 	_test_sync_sets_tile_states()
-	# 차례 강조 옮기기.
 	_test_show_current_moves_highlight()
 	# 대상 힌트 보이기·지우기.
 	_test_target_hints()
 	# 커서 기준 범위 미리보기 보이기·지우기.
 	_test_shape_preview()
-	# 빈 칸 표시.
 	_test_mark_empty()
 	# move_view 가 위치·타일·클릭 칸을 옮긴다.
 	_test_move_view_updates_tiles_and_pick_cell()
-	# 이동 힌트 표시와 지우기.
 	_test_move_hints()
 	# 동기화가 유닛 화면을 규칙의 칸으로 맞춘다.
 	_test_sync_places_views_on_current_cells()
-	# 방의 칸 텍스처.
 	_test_room_tile_textures()
-	# 결과를 돌려준다.
 	return results()
 
 
@@ -46,82 +40,59 @@ func _texture(height: int) -> Texture2D:
 
 # 데이터와 칸으로 배치 한 줄을 만든다.
 func _placement(data: UnitData, cell: Vector2i) -> UnitPlacement:
-	# 배치 리소스.
 	var placement: UnitPlacement = PlacementScript.new()
-	# 유닛 데이터.
 	placement.unit_data = data
-	# 칸.
 	placement.cell = cell
-	# 돌려준다.
 	return placement
 
 
 # id 만 정한 느린 적 데이터 (그림 없음).
 func _enemy(id: StringName) -> EnemyData:
-	# 적 데이터.
 	var data: EnemyData = EnemyDataScript.new()
 	# id.
 	data.id = id
-	# 이름.
 	data.display_name = String(id)
-	# 최대 체력.
 	data.max_hp = 20
-	# 아군보다 느리게.
 	data.speed = 1
-	# 돌려준다.
 	return data
 
 
 # 아군 3x3 에 a(0,1). 적군 2x2 에 e1(0,0), e2(1,0).
 # ally_sprite 를 주면 아군 데이터에 그림으로 넣는다.
 func _state(ally_sprite: Texture2D = null) -> BattleState:
-	# 아군 데이터.
 	var ally: AllyData = AllyDataScript.new()
 	# id.
 	ally.id = &"a"
-	# 이름.
 	ally.display_name = "a"
-	# 최대 체력.
 	ally.max_hp = 30
-	# 적보다 빠르게.
 	ally.speed = 10
 	# 그림 (없으면 null).
 	ally.sprite = ally_sprite
 
-	# 전투 구성.
 	var encounter: EncounterData = EncounterScript.new()
 	# 아군 격자 3×3.
 	encounter.ally_grid = Vector2i(3, 3)
 	# 적군 격자 2×2.
 	encounter.enemy_grid = Vector2i(2, 2)
-	# 아군 배치.
 	var allies: Array[UnitPlacement] = [_placement(ally, Vector2i(0, 1))]
 	# 적 배치: e1 앞줄, e2 뒷줄 (같은 0 행).
 	var enemies: Array[UnitPlacement] = [
 		_placement(_enemy(&"e1"), Vector2i(0, 0)),
 		_placement(_enemy(&"e2"), Vector2i(1, 0)),
 	]
-	# 아군 배치 넣기.
 	encounter.ally_units = allies
-	# 적 배치 넣기.
 	encounter.enemy_units = enemies
-	# 난수 생성기.
 	var rng := RandomNumberGenerator.new()
-	# 시드 고정.
 	rng.seed = 5
-	# 전투 상태를 만든다.
 	return BattleState.new(encounter, rng)
 
 
 # id 로 전투 속 유닛을 찾는다.
 func _unit(state: BattleState, id: StringName) -> Unit:
-	# 모든 유닛 중.
 	for unit in state.units:
 		# id 가 같으면.
 		if unit.data.id == id:
-			# 그 유닛.
 			return unit
-	# 못 찾음.
 	return null
 
 
@@ -133,70 +104,50 @@ func _test_build_creates_tiles_and_views() -> void:
 	var placeholder: Texture2D = _texture(20)
 	# 아군에게만 그림이 있는 전투.
 	var state: BattleState = _state(own_sprite)
-	# 보드.
 	var board := Board3D.new()
-	# 만든다.
 	board.build(state, placeholder)
-	# 아군 유닛.
 	var ally: Unit = _unit(state, &"a")
-	# 적 유닛.
 	var foe: Unit = _unit(state, &"e1")
 
 	# 타일 13 개.
 	check_eq("one tile per cell on both sides", board.tile_count(), 13)
 	# 아군 화면이 (0,1) 칸 위치에.
 	check("view placed on its cell", board.view_for(ally).position.is_equal_approx(board.layout.cell_position(Unit.Team.ALLY, Vector2i(0, 1))))
-	# 아군은 자기 그림.
 	check("unit sprite wins over placeholder", board.view_for(ally).still_texture == own_sprite)
-	# 적은 임시 그림.
 	check("placeholder when no sprite", board.view_for(foe).still_texture == placeholder)
-	# 지운다.
 	board.free()
 
 
 # 동기화 후 차례 유닛 칸은 CURRENT, 유닛이 선 칸은 BASE, 빈 칸은 EMPTY 이고, 쓰러지면 EMPTY·숨김이 되는지.
 func _test_sync_sets_tile_states() -> void:
-	# 전투.
 	var state: BattleState = _state()
-	# 보드.
 	var board := Board3D.new()
-	# 만든다.
 	board.build(state, _texture(20))
 	# 시작 (아군 차례).
 	state.start_battle()
 	# 적 e1.
 	var foe: Unit = _unit(state, &"e1")
 
-	# 동기화.
 	board.sync_from_state(state)
-	# 아군 칸은 강조.
 	check_eq("current actor tile", board.tile_state(Unit.Team.ALLY, Vector2i(0, 1)), Board3D.TileState.CURRENT)
-	# 적이 선 칸은 기본.
 	check_eq("occupied enemy tile", board.tile_state(Unit.Team.ENEMY, Vector2i(0, 0)), Board3D.TileState.BASE)
-	# 아무도 없는 칸은 빈 칸.
 	check_eq("empty tile", board.tile_state(Unit.Team.ALLY, Vector2i(2, 2)), Board3D.TileState.EMPTY)
 
 	# e1 을 쓰러뜨린다.
 	foe.take_damage(999)
-	# 다시 동기화.
 	board.sync_from_state(state)
 	# e1 칸은 빈 칸.
 	check_eq("dead unit's tile is empty", board.tile_state(Unit.Team.ENEMY, Vector2i(0, 0)), Board3D.TileState.EMPTY)
 	# e1 화면은 숨김.
 	check("dead unit's view hidden", not board.view_for(foe).visible)
-	# 지운다.
 	board.free()
 
 
 # show_current 로 강조를 적 칸으로 옮기면 이전 아군 칸은 기본으로 돌아가는지.
 func _test_show_current_moves_highlight() -> void:
-	# 전투.
 	var state: BattleState = _state()
-	# 보드.
 	var board := Board3D.new()
-	# 만든다.
 	board.build(state, _texture(20))
-	# 시작.
 	state.start_battle()
 	# 동기화 (아군 칸 강조).
 	board.sync_from_state(state)
@@ -205,23 +156,16 @@ func _test_show_current_moves_highlight() -> void:
 	board.show_current(Unit.Team.ENEMY, Vector2i(0, 0))
 	# e1 칸 강조.
 	check_eq("new current tile", board.tile_state(Unit.Team.ENEMY, Vector2i(0, 0)), Board3D.TileState.CURRENT)
-	# 아군 칸은 기본으로.
 	check_eq("previous current tile back to base", board.tile_state(Unit.Team.ALLY, Vector2i(0, 1)), Board3D.TileState.BASE)
-	# 지운다.
 	board.free()
 
 
 # 힌트를 주면 유효/무효 타일 상태와 글자가 보이고(유닛이 없는 빈 칸도 포함해서), 지우면 기본 상태·숨김으로 돌아가는지.
 func _test_target_hints() -> void:
-	# 전투.
 	var state: BattleState = _state()
-	# 보드.
 	var board := Board3D.new()
-	# 만든다.
 	board.build(state, _texture(20))
-	# 시작.
 	state.start_battle()
-	# 동기화.
 	board.sync_from_state(state)
 	# 칠 수 있는 적 e1 이 선 칸.
 	var near: Vector2i = Vector2i(0, 0)
@@ -246,33 +190,23 @@ func _test_target_hints() -> void:
 	check("hint shown", board.hint_label(Unit.Team.ENEMY, near).visible)
 	# 빈 칸도 유효로 하이라이트된다.
 	check_eq("empty cell also highlighted", board.tile_state(Unit.Team.ENEMY, empty), Board3D.TileState.VALID)
-	# 빈 칸 글자도 보인다.
 	check("empty cell hint shown", board.hint_label(Unit.Team.ENEMY, empty).visible)
 
-	# 힌트를 지운다.
 	board.clear_target_hints()
-	# 기본으로 돌아왔다.
 	check_eq("cleared tile back to base", board.tile_state(Unit.Team.ENEMY, near), Board3D.TileState.BASE)
-	# 글자 숨김.
 	check("hint hidden", not board.hint_label(Unit.Team.ENEMY, near).visible)
 	# 빈 칸은 원래대로 EMPTY 로 돌아온다 (유닛이 없던 칸이므로 BASE 가 아니다).
 	check_eq("empty cell cleared back to empty", board.tile_state(Unit.Team.ENEMY, empty), Board3D.TileState.EMPTY)
-	# 지운다.
 	board.free()
 
 
 # 범위 미리보기가 지정한 칸만(유닛이 없는 칸 포함) 하양(칠 수 있음)/주황(무효)으로 바꾸고, 지우면 기본으로 돌아가는지.
 # 물리 판정이 한 번도 돈 적 없는 보드는 커서가 어떤 칸도 가리키지 않는지도 함께 본다.
 func _test_shape_preview() -> void:
-	# 전투.
 	var state: BattleState = _state()
-	# 보드.
 	var board := Board3D.new()
-	# 만든다.
 	board.build(state, _texture(20))
-	# 시작.
 	state.start_battle()
-	# 동기화.
 	board.sync_from_state(state)
 	# 칠 수 있는 적 e1 이 선 칸.
 	var near: Vector2i = Vector2i(0, 0)
@@ -299,7 +233,6 @@ func _test_shape_preview() -> void:
 	# 빈 칸도 하얀 미리보기로 덧그려진다.
 	check_eq("empty cell included in shape preview", board.tile_state(Unit.Team.ENEMY, empty), Board3D.TileState.SHAPE_HIT)
 
-	# 힌트를 지운다.
 	board.clear_target_hints()
 	# 모두 기본/빈 칸으로 돌아왔다.
 	check_eq("shape hit tile cleared", board.tile_state(Unit.Team.ENEMY, near), Board3D.TileState.BASE)
@@ -308,126 +241,88 @@ func _test_shape_preview() -> void:
 
 	# 트리에 붙지 않아 물리 스텝이 돈 적 없는 보드는 커서가 어떤 칸도 가리키지 않는다.
 	check("hover_state defaults to no hover", not board.hover_state()["has"])
-	# 지운다.
 	board.free()
 
 
 # mark_empty 가 유닛 칸을 빈 칸으로 바꾸는지.
 func _test_mark_empty() -> void:
-	# 전투.
 	var state: BattleState = _state()
-	# 보드.
 	var board := Board3D.new()
-	# 만든다.
 	board.build(state, _texture(20))
 	# 동기화 (e2 칸은 기본).
 	board.sync_from_state(state)
 
 	# e2 칸을 빈 칸으로.
 	board.mark_empty(Unit.Team.ENEMY, Vector2i(1, 0))
-	# 빈 칸.
 	check_eq("marked tile is empty", board.tile_state(Unit.Team.ENEMY, Vector2i(1, 0)), Board3D.TileState.EMPTY)
-	# 지운다.
 	board.free()
 
 
 # 아군을 (0,1)→(1,1) 로 move_view 하면 화면 위치·원래 자리·두 타일 상태·클릭 칸 정보가 새 칸 기준인지.
 func _test_move_view_updates_tiles_and_pick_cell() -> void:
-	# 전투.
 	var state: BattleState = _state()
-	# 보드.
 	var board := Board3D.new()
-	# 만든다.
 	board.build(state, _texture(20))
 	# 시작 (아군 차례).
 	state.start_battle()
 	# 동기화 (아군 칸 강조).
 	board.sync_from_state(state)
-	# 아군 유닛.
 	var ally: Unit = _unit(state, &"a")
-	# 연출 없이 옮긴다.
 	board.move_view(ally, Vector2i(0, 1), Vector2i(1, 1), false)
 	# 새 칸의 3D 위치.
 	var target: Vector3 = board.layout.cell_position(Unit.Team.ALLY, Vector2i(1, 1))
-	# 화면 위치.
 	check("view stands on the new cell", board.view_for(ally).position.is_equal_approx(target))
-	# 원래 자리.
 	check("home follows the new cell", board.view_for(ally).home_position.is_equal_approx(target))
-	# 이전 칸은 빈 칸.
 	check_eq("old tile empty", board.tile_state(Unit.Team.ALLY, Vector2i(0, 1)), Board3D.TileState.EMPTY)
-	# 새 칸은 강조.
 	check_eq("new tile current", board.tile_state(Unit.Team.ALLY, Vector2i(1, 1)), Board3D.TileState.CURRENT)
 	# 클릭하면 새 칸으로 판정된다.
 	check_eq("pick body reports the new cell", board.view_for(ally).pick_body.get_meta(&"cell"), Vector2i(1, 1))
-	# 지운다.
 	board.free()
 
 
 # 이동 힌트를 주면 두 빈 칸이 MOVABLE 이 되고, 지우면 빈 칸으로 돌아가며 강조 칸은 그대로인지.
 func _test_move_hints() -> void:
-	# 전투.
 	var state: BattleState = _state()
-	# 보드.
 	var board := Board3D.new()
-	# 만든다.
 	board.build(state, _texture(20))
-	# 시작.
 	state.start_battle()
-	# 동기화.
 	board.sync_from_state(state)
 	# 힌트를 줄 두 빈 칸 (함수 인자가 타입 있는 배열이라 변수에 담는다).
 	var cells: Array[Vector2i] = [Vector2i(1, 1), Vector2i(0, 0)]
-	# 두 빈 칸에 이동 힌트.
 	board.show_move_hints(Unit.Team.ALLY, cells)
 	# (1,1) 이동 가능.
 	check_eq("first hint tile movable", board.tile_state(Unit.Team.ALLY, Vector2i(1, 1)), Board3D.TileState.MOVABLE)
 	# (0,0) 이동 가능.
 	check_eq("second hint tile movable", board.tile_state(Unit.Team.ALLY, Vector2i(0, 0)), Board3D.TileState.MOVABLE)
-	# 힌트를 지운다.
 	board.clear_target_hints()
-	# 빈 칸으로 돌아왔다.
 	check_eq("cleared move hint back to empty", board.tile_state(Unit.Team.ALLY, Vector2i(1, 1)), Board3D.TileState.EMPTY)
-	# 아군 칸 강조는 그대로.
 	check_eq("current tile untouched", board.tile_state(Unit.Team.ALLY, Vector2i(0, 1)), Board3D.TileState.CURRENT)
-	# 지운다.
 	board.free()
 
 
 # 규칙에서 아군 칸을 (2,2) 로 바꾼 뒤 동기화하면 화면 위치·클릭 칸·강조 타일이 (2,2) 기준인지.
 func _test_sync_places_views_on_current_cells() -> void:
-	# 전투.
 	var state: BattleState = _state()
-	# 보드.
 	var board := Board3D.new()
-	# 만든다.
 	board.build(state, _texture(20))
-	# 시작.
 	state.start_battle()
-	# 아군 유닛.
 	var ally: Unit = _unit(state, &"a")
 	# 화면을 거치지 않고 규칙에서만 옮긴다.
 	ally.cell = Vector2i(2, 2)
-	# 동기화.
 	board.sync_from_state(state)
-	# 화면 위치.
 	check("sync moves the view to the rules cell", board.view_for(ally).position.is_equal_approx(board.layout.cell_position(Unit.Team.ALLY, Vector2i(2, 2))))
-	# 클릭 칸.
 	check_eq("sync retags the pick body", board.view_for(ally).pick_body.get_meta(&"cell"), Vector2i(2, 2))
-	# 강조 타일.
 	check_eq("sync highlights the new cell", board.tile_state(Unit.Team.ALLY, Vector2i(2, 2)), Board3D.TileState.CURRENT)
-	# 지운다.
 	board.free()
 
 
 # 방에 칸 텍스처가 있으면 칸 재질에 들어가고 바탕색은 흰 틴트, 빈 칸은 어둡게. 방이 없으면 예전 단색.
 func _test_room_tile_textures() -> void:
-	# 칸 그림 두 장.
 	var ally_tile: Texture2D = _texture(30)
 	var enemy_tile: Texture2D = _texture(31)
 	var room := BattleRoomData.new()
 	room.ally_tile_texture = ally_tile
 	room.enemy_tile_texture = enemy_tile
-	# 방 있는 보드.
 	var state: BattleState = _state()
 	var board := Board3D.new()
 	board.build(state, _texture(20), room)
@@ -438,13 +333,10 @@ func _test_room_tile_textures() -> void:
 	check_eq("textured tile base tint", ally_material.albedo_color, Board3D.TEXTURED_TILE_TINT)
 	# BoxMesh 는 면마다 UV 를 3×2 아틀라스로 나눠 쓴다. 3×2 로 늘려야 윗면에 그림 한 장이 온전히 들어간다.
 	check("tile texture fills the whole top face", ally_material.uv1_scale.is_equal_approx(Vector3(3.0, 2.0, 1.0)))
-	# 적 칸.
 	check("enemy tile uses the room texture", board.tile_material(Unit.Team.ENEMY, Vector2i(0, 1)).albedo_texture == enemy_tile)
-	# 빈 칸은 어둡게.
 	check_eq("textured empty tile is darkened", board.tile_material(Unit.Team.ALLY, Vector2i(2, 2)).albedo_color, Board3D.TEXTURED_TILE_TINT.darkened(0.45))
 	board.free()
 
-	# 방 없는 보드.
 	var plain_state: BattleState = _state()
 	var plain := Board3D.new()
 	plain.build(plain_state, _texture(20))

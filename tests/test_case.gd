@@ -1,7 +1,6 @@
 ## 모든 테스트 스크립트의 부모 클래스. 검사 결과를 모아 두는 간단한 도구.
 ## 각 테스트는 run() 에서 check / check_eq 를 부르고 마지막에 results() 를 돌려준다.
 class_name TestCase
-# RefCounted: 노드가 아닌 가벼운 객체.
 extends RefCounted
 
 ## 지금까지 모은 검사 결과. 항목마다 {"name", "ok", "message"}.
@@ -30,5 +29,4 @@ func check_eq(name: String, actual: Variant, expected: Variant) -> void:
 
 ## 모은 결과를 돌려준다 (run() 의 마지막에 부른다).
 func results() -> Array[Dictionary]:
-	# 결과 배열을 돌려준다.
 	return _results

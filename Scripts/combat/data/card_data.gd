@@ -4,7 +4,6 @@
 ## 전투 중에는 이 리소스를 그대로 덱·손패·묘지 배열에 넣어 돌려 쓴다.
 ## 규칙(BattleState)과 화면(CardView) 모두 이 값을 읽기만 하고 바꾸지 않는다.
 class_name CardData
-# Resource: 파일로 저장·불러오기가 되는 데이터 객체.
 extends Resource
 
 ## 공격 종류. 카드의 기준 유닛을 고르는 방법이 다르다 (TargetResolver.valid_anchors).
@@ -32,11 +31,9 @@ enum Category { ATTACK, SKILL, SPECIAL }
 
 ## 실제로 쓸 범위 오프셋. 비어 있으면 단일 [(0,0)].
 func area_offsets() -> Array[Vector2i]:
-	# 비었으면 기준 칸 하나.
 	if area.is_empty():
 		var single: Array[Vector2i] = [Vector2i.ZERO]
 		return single
-	# 아니면 그대로.
 	return area
 
 

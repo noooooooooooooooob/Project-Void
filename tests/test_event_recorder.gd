@@ -30,59 +30,43 @@ func run() -> Array[Dictionary]:
 	_test_kill_records_death_and_battle_end()
 	# 방어·휴식 기록.
 	_test_defend_and_rest_record_snapshots()
-	# 카드 더미 이벤트의 장수.
 	_test_card_zone_events_snapshot()
 	# 아군 이동: 이동 → 로그.
 	_test_ally_move_records_move_then_log()
 	# 적 이동: 행동 → 이동 → 로그.
 	_test_enemy_move_records_action_move_log()
-	# 치명타 피해 기록.
 	_test_damage_records_critical()
-	# 결과를 돌려준다.
 	return results()
 
 
 # 시드 99 로 고정한 난수 생성기.
 func _rng() -> RandomNumberGenerator:
-	# 생성기를 만든다.
 	var rng := RandomNumberGenerator.new()
-	# 시드 고정.
 	rng.seed = 99
-	# 돌려준다.
 	return rng
 
 
 # 데이터와 칸으로 배치 한 줄을 만든다.
 func _placement(data: UnitData, cell: Vector2i) -> UnitPlacement:
-	# 배치 리소스.
 	var placement: UnitPlacement = PlacementScript.new()
-	# 유닛 데이터.
 	placement.unit_data = data
-	# 칸.
 	placement.cell = cell
-	# 돌려준다.
 	return placement
 
 
 # 원거리 단일 공격 적 (휴식 카드가 없어 휴식하지 않는다).
 func _enemy(id: StringName, speed: int, damage: int) -> EnemyData:
-	# 적 데이터.
 	var data: EnemyData = EnemyDataScript.new()
 	# id.
 	data.id = id
-	# 이름.
 	data.display_name = String(id)
-	# 최대 체력.
 	data.max_hp = 20
-	# 속도.
 	data.speed = speed
-	# 치명타를 끈다.
 	data.crit_chance = 0
 	# 원거리 단일 피해 damage·방어도 5·회복 없음 카드 (공격·방어 10 기준이라 % = 수치 × 10).
 	Fixtures.enemy_cards(data, Fixtures.damage_card(&"enemy_attack", CardData.AttackType.RANGED, damage * 10), 50, 0)
 	# 무작위 이동을 끈다 (이벤트 순서를 정확히 확인하기 위해).
 	data.move_chance = 0.0
-	# 돌려준다.
 	return data
 
 
@@ -93,33 +77,23 @@ func _state(card_damage: int, enemy_count: int) -> BattleState:
 	var card: CardData = CardDataScript.new()
 	# id.
 	card.id = &"zap"
-	# 이름.
 	card.display_name = "zap"
 	# 비용 1.
 	card.sp_cost = 1
-	# 원거리.
 	card.attack_type = CardData.AttackType.RANGED
-	# 피해.
 	card.effects = [Fixtures.effect(CardEffect.Kind.DAMAGE, card_damage * 10)]
 
-	# 아군 데이터.
 	var ally: AllyData = AllyDataScript.new()
 	# id.
 	ally.id = &"a"
-	# 이름.
 	ally.display_name = "a"
-	# 최대 체력.
 	ally.max_hp = 30
-	# 가장 빠르게.
 	ally.speed = 10
 	# SP.
 	ally.max_sp = 3
-	# 카드 한 장짜리 덱.
 	var deck: Array[CardData] = [card]
-	# 덱을 넣는다.
 	ally.deck = deck
 
-	# 아군 배치.
 	var allies: Array[UnitPlacement] = [_placement(ally, Vector2i(0, 1))]
 	# 적 배치 (e1).
 	var enemies: Array[UnitPlacement] = [_placement(_enemy(&"e1", 5, 4), Vector2i(0, 0))]
@@ -127,48 +101,32 @@ func _state(card_damage: int, enemy_count: int) -> BattleState:
 	if enemy_count > 1:
 		enemies.append(_placement(_enemy(&"e2", 4, 3), Vector2i(0, 1)))
 
-	# 전투 구성.
 	var encounter: EncounterData = EncounterScript.new()
-	# 아군 격자.
 	encounter.ally_grid = Vector2i(3, 3)
-	# 적군 격자.
 	encounter.enemy_grid = Vector2i(3, 3)
-	# 아군 배치 넣기.
 	encounter.ally_units = allies
-	# 적 배치 넣기.
 	encounter.enemy_units = enemies
-	# 전투 상태를 만든다.
 	return BattleStateScript.new(encounter, _rng())
 
 
 # 이벤트 목록을 종류 목록으로 바꾼다 (순서 비교용).
 func _kinds(events: Array[BattleEvent]) -> Array:
-	# 종류 배열.
 	var kinds: Array = []
-	# 이벤트마다.
 	for event in events:
-		# 종류를 넣는다.
 		kinds.append(event.kind)
-	# 돌려준다.
 	return kinds
 
 
 # 시작하면 [차례 시작, 드로우] 가 기록되고, 차례 시작 이벤트에 라운드·순서·생존·체력·드로우 전 장수가 담기는지.
 func _test_start_battle_records_first_turn() -> void:
-	# 적 둘인 전투.
 	var state: BattleState = _state(1, 2)
-	# 기록기 연결.
 	var recorder := BattleEventRecorder.new(state)
-	# 시작.
 	state.start_battle()
-	# 기록 꺼내기.
 	var events: Array[BattleEvent] = recorder.take_events()
 	# 종류 enum 을 짧게 부르기 위한 별칭.
 	var k := BattleEvent.Kind
 
-	# 종류 순서.
 	check_eq("turn start then the single draw", _kinds(events), [k.TURN_STARTED, k.CARD_DRAWN])
-	# 주인공은 아군.
 	check("subject is the ally", events[0].unit.is_ally())
 	# 1 라운드.
 	check_eq("round snapshot", events[0].round_index, 1)
@@ -176,40 +134,28 @@ func _test_start_battle_records_first_turn() -> void:
 	check_eq("turn index snapshot", events[0].turn_index, 0)
 	# 순서에 3 명.
 	check_eq("order has every unit", events[0].order.size(), 3)
-	# 모두 살아 있음.
 	check_eq("alive flags", events[0].alive, [true, true, true])
 	# 체력 30.
 	check_eq("hp snapshot", events[0].hp, 30)
-	# 차례 시작 시점의 칸.
 	check_eq("cell snapshot", events[0].cell, Vector2i(0, 1))
 	# 드로우 전 덱 1.
 	check_eq("deck snapshot before the draw", events[0].deck_count, 1)
 	# 드로우 전 묘지 0.
 	check_eq("discard snapshot before the draw", events[0].discard_count, 0)
-	# 꺼낸 뒤에는 비어 있다.
 	check_eq("take_events empties the queue", recorder.take_events().size(), 0)
 
 
 # 차례 종료 뒤: 버리기 → e1 차례(행동·로그·피해) → e2 차례 → 아군 차례(리셔플·드로우) 순서와 체력 기록.
 func _test_end_turn_records_enemies_in_order() -> void:
-	# 적 둘인 전투.
 	var state: BattleState = _state(1, 2)
-	# 기록기 연결.
 	var recorder := BattleEventRecorder.new(state)
-	# 시작.
 	state.start_battle()
-	# 시작 기록은 버린다.
 	recorder.take_events()
-	# 아군 유닛.
 	var ally: Unit = state.living_units(Unit.Team.ALLY)[0]
 
-	# 차례 종료.
 	state.end_turn()
-	# 기록 꺼내기.
 	var events: Array[BattleEvent] = recorder.take_events()
-	# 종류 별칭.
 	var k := BattleEvent.Kind
-	# 전체 종류 순서.
 	check_eq("event kinds in play order", _kinds(events), [
 		k.HAND_DISCARDED,
 		k.TURN_STARTED, k.ENEMY_ACTED, k.LOG, k.DAMAGED,
@@ -218,7 +164,6 @@ func _test_end_turn_records_enemies_in_order() -> void:
 	])
 	# 빠른 e1 이 먼저.
 	check_eq("faster enemy acts first", events[1].unit.data.id, &"e1")
-	# 공격 대상은 아군.
 	check_eq("attack targets the ally", events[2].target.data.id, &"a")
 	# 첫 피해 후 체력 30 - 4 = 26.
 	check_eq("first hit snapshot", events[4].hp, 26)
@@ -234,26 +179,17 @@ func _test_end_turn_records_enemies_in_order() -> void:
 func _test_card_play_records_action_then_damage() -> void:
 	# 피해 1 카드, 적 둘.
 	var state: BattleState = _state(1, 2)
-	# 기록기 연결.
 	var recorder := BattleEventRecorder.new(state)
-	# 시작.
 	state.start_battle()
-	# 시작 기록은 버린다.
 	recorder.take_events()
 	# 첫 적 (e1).
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 
-	# 카드 사용.
 	state.play_card(0, foe)
-	# 기록 꺼내기.
 	var events: Array[BattleEvent] = recorder.take_events()
-	# 종류 별칭.
 	var k := BattleEvent.Kind
-	# 종류 순서.
 	check_eq("card play kinds", _kinds(events), [k.CARD_PLAYED, k.LOG, k.DAMAGED])
-	# 대상.
 	check("target is the clicked enemy", events[0].target == foe)
-	# 카드.
 	check_eq("card recorded", events[0].card.id, &"zap")
 	# 피해량 1.
 	check_eq("damage amount", events[2].amount, 1)
@@ -269,57 +205,37 @@ func _test_card_play_records_action_then_damage() -> void:
 func _test_kill_records_death_and_battle_end() -> void:
 	# 피해 50 카드, 적 하나.
 	var state: BattleState = _state(50, 1)
-	# 기록기 연결.
 	var recorder := BattleEventRecorder.new(state)
-	# 시작.
 	state.start_battle()
-	# 시작 기록은 버린다.
 	recorder.take_events()
-	# 적.
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 
 	# 카드 사용 (처치).
 	state.play_card(0, foe)
-	# 기록 꺼내기.
 	var events: Array[BattleEvent] = recorder.take_events()
-	# 종류 별칭.
 	var k := BattleEvent.Kind
-	# 종류 순서.
 	check_eq("kill kinds", _kinds(events), [k.CARD_PLAYED, k.LOG, k.DAMAGED, k.DIED, k.LOG, k.BATTLE_ENDED])
-	# 쓰러진 유닛은 적.
 	check("died event names the foe", events[3].unit == foe)
-	# 쓰러진 칸.
 	check_eq("died cell snapshot", events[3].cell, Vector2i(0, 0))
-	# 쓰러짐 로그.
 	check("death log follows", events[4].text.ends_with("쓰러짐"))
-	# 아군 승리.
 	check("ally won", events[5].ally_won)
 
 
 # 방어: [행동, 방어도, 로그] 와 방어도 값 / 휴식: [행동, 회복, 로그] 와 회복량·체력.
 func _test_defend_and_rest_record_snapshots() -> void:
-	# 적 하나.
 	var state: BattleState = _state(1, 1)
-	# 기록기 연결.
 	var recorder := BattleEventRecorder.new(state)
-	# 적.
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 	# 적 데이터 (수치를 바꿔 행동을 유도한다).
 	var data: EnemyData = foe.data as EnemyData
-	# 종류 별칭.
 	var k := BattleEvent.Kind
 
 	# 공격 카드를 빼면 칠 대상이 없어 방어를 고른다.
 	data.attack_card = null
-	# 적 차례 처리.
 	EnemyBrain.take_turn(state, foe)
-	# 기록 꺼내기.
 	var defend: Array[BattleEvent] = recorder.take_events()
-	# 종류 순서.
 	check_eq("defend kinds", _kinds(defend), [k.ENEMY_ACTED, k.BLOCK_GAINED, k.LOG])
-	# 행동은 방어.
 	check_eq("defend action", defend[0].action, EnemyBrain.Action.DEFEND)
-	# 대상 없음.
 	check("defend has no target", defend[0].target == null)
 	# 얻은 양 5.
 	check_eq("block amount", defend[1].amount, 5)
@@ -330,13 +246,9 @@ func _test_defend_and_rest_record_snapshots() -> void:
 	Fixtures.enemy_cards(data, null, 50, 40)
 	# 피해 20.
 	foe.take_damage(20)
-	# 적 차례 처리.
 	EnemyBrain.take_turn(state, foe)
-	# 기록 꺼내기.
 	var rest: Array[BattleEvent] = recorder.take_events()
-	# 종류 순서.
 	check_eq("rest kinds", _kinds(rest), [k.ENEMY_ACTED, k.HEALED, k.LOG])
-	# 행동은 휴식.
 	check_eq("rest action", rest[0].action, EnemyBrain.Action.REST)
 	# 회복량 4.
 	check_eq("heal amount", rest[1].amount, 4)
@@ -346,24 +258,15 @@ func _test_defend_and_rest_record_snapshots() -> void:
 
 # 차례 종료 뒤 버리기(0번)·리셔플(10번)·드로우(11번) 이벤트에 담긴 카드와 장수.
 func _test_card_zone_events_snapshot() -> void:
-	# 적 둘인 전투.
 	var state: BattleState = _state(1, 2)
-	# 기록기 연결.
 	var recorder := BattleEventRecorder.new(state)
-	# 시작.
 	state.start_battle()
-	# 시작 기록은 버린다.
 	recorder.take_events()
 
-	# 차례 종료.
 	state.end_turn()
-	# 기록 꺼내기.
 	var events: Array[BattleEvent] = recorder.take_events()
-	# 손패 버리기 이벤트.
 	var discarded: BattleEvent = events[0]
-	# 리셔플 이벤트.
 	var reshuffled: BattleEvent = events[10]
-	# 드로우 이벤트.
 	var drawn: BattleEvent = events[11]
 	# 버린 카드 1 장.
 	check_eq("discarded cards", discarded.cards.size(), 1)
@@ -385,30 +288,19 @@ func _test_card_zone_events_snapshot() -> void:
 
 # 아군이 (0,1)→(1,1) 로 이동하면 [UNIT_MOVED, LOG] 가 기록되고 두 칸·유닛·로그 문장이 맞는지.
 func _test_ally_move_records_move_then_log() -> void:
-	# 적 하나인 전투.
 	var state: BattleState = _state(1, 1)
-	# 기록기 연결.
 	var recorder := BattleEventRecorder.new(state)
 	# 시작 (아군 차례).
 	state.start_battle()
-	# 시작 기록은 버린다.
 	recorder.take_events()
 
-	# 한 칸 뒤로 이동.
 	state.move_unit(Vector2i(1, 1))
-	# 기록 꺼내기.
 	var events: Array[BattleEvent] = recorder.take_events()
-	# 종류 별칭.
 	var k := BattleEvent.Kind
-	# 종류 순서.
 	check_eq("ally move kinds", _kinds(events), [k.UNIT_MOVED, k.LOG])
-	# 이전 칸.
 	check_eq("from cell", events[0].from_cell, Vector2i(0, 1))
-	# 새 칸.
 	check_eq("to cell", events[0].to_cell, Vector2i(1, 1))
-	# 주인공은 아군.
 	check("moved unit is the ally", events[0].unit.is_ally())
-	# 로그 문장.
 	check_eq("move log text", events[1].text, "a 이동")
 
 
@@ -416,21 +308,13 @@ func _test_ally_move_records_move_then_log() -> void:
 func _test_enemy_move_records_action_move_log() -> void:
 	# 적 하나인 전투 (e1 은 적 격자 (0,0)).
 	var state: BattleState = _state(1, 1)
-	# 기록기 연결.
 	var recorder := BattleEventRecorder.new(state)
-	# 적 유닛.
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
-	# 항상 이동하게 한다.
 	(foe.data as EnemyData).move_chance = 1.0
-	# 적 차례 처리.
 	EnemyBrain.take_turn(state, foe)
-	# 기록 꺼내기.
 	var events: Array[BattleEvent] = recorder.take_events()
-	# 종류 별칭.
 	var k := BattleEvent.Kind
-	# 종류 순서.
 	check_eq("enemy move kinds", _kinds(events), [k.ENEMY_ACTED, k.UNIT_MOVED, k.LOG])
-	# 행동은 이동.
 	check_eq("enemy action is move", events[0].action, EnemyBrain.Action.MOVE)
 	# 기록된 새 칸 = 실제 칸.
 	check_eq("recorded destination matches the unit", events[1].to_cell, foe.cell)
@@ -440,11 +324,9 @@ func _test_enemy_move_records_action_move_log() -> void:
 func _test_damage_records_critical() -> void:
 	# 상태 (카드 피해 1, 적 1명).
 	var state: BattleState = _state(1, 1)
-	# 기록기.
 	var recorder := BattleEventRecorder.new(state)
 	# 피해를 직접 적용한다 (치명).
 	state.apply_damage(state.units[1], 3, true)
-	# 기록.
 	var events: Array[BattleEvent] = recorder.take_events()
 	# DAMAGED + critical.
 	check("damaged critical recorded", events[0].kind == BattleEvent.Kind.DAMAGED and events[0].critical)

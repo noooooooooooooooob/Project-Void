@@ -3,7 +3,6 @@
 ## 신호가 난 시점의 체력·장수 같은 값을 복사해 두고 나중에 순서대로 재생한다.
 ## 종류마다 쓰는 필드가 다르며, 쓰지 않는 필드는 기본값으로 남는다.
 class_name BattleEvent
-# RefCounted: 노드가 아닌 가벼운 객체. 참조가 없어지면 자동으로 해제된다.
 extends RefCounted
 
 ## 기록 종류. BattleState 의 신호 하나에 종류 하나가 대응한다 (화면에 쓰지 않는 phase_started 는 기록하지 않아 종류가 없다).
@@ -70,5 +69,4 @@ var status_value: int = 0
 
 ## 종류를 정해 빈 기록을 만든다. 나머지 필드는 만든 쪽이 채운다.
 func _init(p_kind: Kind) -> void:
-	# 종류를 저장한다.
 	kind = p_kind

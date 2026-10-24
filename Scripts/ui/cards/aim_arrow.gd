@@ -1,7 +1,6 @@
 ## 카드를 끌 때 카드에서 커서까지 휘어진 조준 화살표를 그리는 2D 노드.
 ## 마우스 입력은 받지 않는다 (아래의 보드·카드 클릭을 막지 않게).
 class_name AimArrow
-# Control: 2D UI 노드. _draw 에서 직접 선과 도형을 그린다.
 extends Control
 
 ## 화살표 색 (살짝 투명한 흰색).
@@ -37,7 +36,6 @@ func show_aim(from_global: Vector2, to_global: Vector2) -> void:
 	_from = from_global - global_position
 	# 끝점도 같은 방식으로 바꾼다.
 	_to = to_global - global_position
-	# 보이게 한다.
 	visible = true
 	# 다음 프레임에 _draw 를 다시 부르도록 요청한다.
 	queue_redraw()
@@ -45,7 +43,6 @@ func show_aim(from_global: Vector2, to_global: Vector2) -> void:
 
 ## 화살표를 숨긴다.
 func hide_aim() -> void:
-	# 보이지 않게 한다.
 	visible = false
 
 

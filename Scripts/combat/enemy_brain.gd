@@ -2,7 +2,6 @@
 ## 상태를 직접 바꾸지 않고, BattleState 의 resolve_card / report_* 통로를 불러서 신호가 빠짐없이 나가게 한다.
 ## 공격·방어·휴식은 EnemyData 의 카드로 정의되고, 아군 카드와 같은 규칙(BattleState.resolve_card)으로 적용된다.
 class_name EnemyBrain
-# RefCounted: 노드가 아닌 가벼운 객체. 모든 함수가 static 이라 객체를 만들 필요는 없다.
 extends RefCounted
 
 ## 적이 할 수 있는 행동. ATTACK 공격, DEFEND 방어 카드, REST 휴식 카드, MOVE 한 칸 이동, WAIT 할 행동이 없어 차례를 넘김.
@@ -21,7 +20,6 @@ static func decide(state: BattleState, actor: Unit) -> Action:
 	var data: EnemyData = actor.data as EnemyData
 	# 이동 확률이 있으면 먼저 판정한다 (0 이면 난수를 쓰지 않아 결과가 결정론적이다).
 	if data.move_chance > 0.0 and state.ai_rng.randf() < data.move_chance:
-		# 갈 칸이 있으면 이동한다.
 		if not state.resolver.movable_cells(actor, state.units).is_empty():
 			return Action.MOVE
 		# 막혔으면 쓸 수 있는 행동 중 무작위로 고른다.
@@ -34,17 +32,13 @@ static func decide(state: BattleState, actor: Unit) -> Action:
 	# 칠 수 있는 대상이 없으면 방어한다 (방어 카드도 없으면 대기).
 	if find_target(state, actor) == null:
 		return Action.DEFEND if data.defend_card != null else Action.WAIT
-	# 그 외에는 공격한다.
 	return Action.ATTACK
 
 
 ## 이동하려 했지만 막혔을 때: 쓸 수 있는 행동(공격은 대상이 있을 때만, 방어·휴식은 카드가 있을 때만) 중 하나를 고른다. 없으면 대기.
 static func _random_fallback(state: BattleState, actor: Unit) -> Action:
-	# 적 데이터.
 	var data: EnemyData = actor.data as EnemyData
-	# 후보 행동 목록.
 	var choices: Array[Action] = []
-	# 칠 대상이 있을 때만 공격.
 	if find_target(state, actor) != null:
 		choices.append(Action.ATTACK)
 	# 방어 카드가 있을 때만 방어.
@@ -53,24 +47,20 @@ static func _random_fallback(state: BattleState, actor: Unit) -> Action:
 	# 휴식 카드가 있을 때만 휴식.
 	if data.rest_card != null:
 		choices.append(Action.REST)
-	# 아무것도 없으면 대기.
 	if choices.is_empty():
 		return Action.WAIT
-	# 하나를 무작위로 고른다.
 	return choices[state.ai_rng.randi_range(0, choices.size() - 1)]
 
 
 ## 이 적의 공격 카드로 칠 수 있는 대상 중 가장 좋은 대상. 공격 카드가 없거나 후보가 없으면 null.
 ## 기준: 체력이 가장 낮은 유닛, 같으면 unit_id 가 작은 유닛 (결과가 항상 같게).
 static func find_target(state: BattleState, actor: Unit) -> Unit:
-	# 적 데이터.
 	var data: EnemyData = actor.data as EnemyData
 	# 공격 카드가 없으면 대상도 없다.
 	if data.attack_card == null:
 		return null
 	# 지금까지 찾은 가장 좋은 대상.
 	var best: Unit = null
-	# 카드의 기준 후보마다.
 	for candidate in state.resolver.valid_anchors(actor, data.attack_card, state.units):
 		# 첫 후보이거나, 체력이 더 낮거나, 같으면 번호가 작으면 바꾼다.
 		if best == null or candidate.hp < best.hp or (candidate.hp == best.hp and candidate.unit_id < best.unit_id):
@@ -92,15 +82,12 @@ static func take_turn(state: BattleState, actor: Unit) -> void:
 			state.report_enemy_action(actor, Action.REST, null)
 			# 카드 효과를 적용한다 (unit_healed 신호가 나간다).
 			state.resolve_card(actor, data.rest_card, actor)
-			# 전투 로그에 남긴다.
 			state.write_log("%s 휴식" % data.display_name)
 		# 방어: 방어 카드를 자신에게 쓴다.
 		Action.DEFEND:
-			# 행동을 알린다.
 			state.report_enemy_action(actor, Action.DEFEND, null)
 			# 카드 효과를 적용한다 (block_gained 신호가 나간다).
 			state.resolve_card(actor, data.defend_card, actor)
-			# 전투 로그에 남긴다.
 			state.write_log("%s 방어" % data.display_name)
 		# 공격: 대상을 기준으로 공격 카드를 쓴다.
 		Action.ATTACK:
@@ -111,13 +98,11 @@ static func take_turn(state: BattleState, actor: Unit) -> void:
 				return
 			# 누구를 공격하는지 알린다 (화면의 돌진 연출용).
 			state.report_enemy_action(actor, Action.ATTACK, target)
-			# 전투 로그에 남긴다.
 			state.write_log("%s → %s 공격" % [data.display_name, target.data.display_name])
 			# 카드 효과를 적용한다 (범위 안의 유닛마다 피해 신호가 나간다).
 			state.resolve_card(actor, data.attack_card, target)
 		# 이동: 갈 수 있는 칸 중 하나로 옮긴다.
 		Action.MOVE:
-			# 갈 수 있는 칸들.
 			var cells: Array[Vector2i] = state.resolver.movable_cells(actor, state.units)
 			# 칸이 없으면 아무것도 하지 않는다 (안전장치).
 			if cells.is_empty():
@@ -130,7 +115,5 @@ static func take_turn(state: BattleState, actor: Unit) -> void:
 			state.apply_move(actor, cell)
 		# 대기: 할 행동이 없다.
 		Action.WAIT:
-			# 행동을 알린다.
 			state.report_enemy_action(actor, Action.WAIT, null)
-			# 전투 로그에 남긴다.
 			state.write_log("%s 대기" % data.display_name)

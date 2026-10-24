@@ -31,7 +31,14 @@ func _ready() -> void:
 	theme = UiTheme.get_theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_build_background()
+	_build_portraits()
+	_build_bottom_fade()
+	_build_text_box()
+	_build_controls()
 
+
+func _build_background() -> void:
 	var black := ColorRect.new()
 	black.color = Color(0.02, 0.01, 0.03)
 	black.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -45,6 +52,9 @@ func _ready() -> void:
 	_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_bg)
 
+
+## 왼쪽·오른쪽 일러스트 자리 (오른쪽은 좌우로 뒤집어 서로 마주 보게).
+func _build_portraits() -> void:
 	for side in ["left", "right"]:
 		var p := TextureRect.new()
 		p.name = "Portrait_" + side
@@ -64,7 +74,9 @@ func _ready() -> void:
 		add_child(p)
 		_portraits[side] = p
 
-	# 아래쪽 글자를 읽기 쉽게 어둡게.
+
+## 아래쪽 글자를 읽기 쉽게 화면 아래를 어둡게 한다.
+func _build_bottom_fade() -> void:
 	var fade := TextureRect.new()
 	var grad := Gradient.new()
 	grad.set_color(0, Color(0, 0, 0, 0))
@@ -82,6 +94,9 @@ func _ready() -> void:
 	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(fade)
 
+
+## 대사창, 이름표, 넘김 표시.
+func _build_text_box() -> void:
 	_box = PanelContainer.new()
 	_box.add_theme_stylebox_override("panel", UiTheme.box(Color(0.08, 0.06, 0.12, 0.9), UiTheme.LAVENDER_DIM, 2, 10, 28))
 	_box.anchor_left = 0.12
@@ -123,6 +138,9 @@ func _ready() -> void:
 	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_hint)
 
+
+## 선택지 목록과 건너뛰기 버튼.
+func _build_controls() -> void:
 	_choices = VBoxContainer.new()
 	_choices.add_theme_constant_override("separation", 12)
 	_choices.anchor_left = 0.3

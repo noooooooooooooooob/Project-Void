@@ -40,14 +40,7 @@ func _ready() -> void:
 		inner.add_theme_constant_override("separation", 12)
 		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(inner)
-		var icon := TextureRect.new()
-		icon.texture = load("res://Art/gen/icons/%s.png" % ["weapon", "armor", "accessory"][item.slot])
-		icon.custom_minimum_size = Vector2(64, 64)
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		inner.add_child(icon)
+		inner.add_child(UiTheme.item_icon(item.slot, 64))
 		for l in [UiTheme.title_label(item.display_name, 28), UiTheme.label("%s · %s" % [ItemData.slot_name(item.slot), item.summary()], 18, UiTheme.GOLD), UiTheme.body(item.description, 16, UiTheme.TEXT_DIM)]:
 			(l as Label).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			(l as Label).mouse_filter = Control.MOUSE_FILTER_IGNORE

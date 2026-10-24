@@ -2,7 +2,6 @@
 ## 아군은 왼쪽(-x), 적군은 오른쪽(+x)에 놓이고, 두 격자 사이에 SIDE_GAP 만큼 틈이 있다.
 ## 행(cell.y)은 앞뒤 방향(z)으로 펼쳐진다.
 class_name BoardLayout
-# RefCounted: 노드가 아닌 가벼운 객체.
 extends RefCounted
 
 ## 타일 한 장의 한 변 길이 (3D 단위).
@@ -30,13 +29,11 @@ func _init(p_ally_grid: Vector2i, p_enemy_grid: Vector2i) -> void:
 func cell_position(team: Unit.Team, cell: Vector2i) -> Vector3:
 	# 아군은 왼쪽(-1), 적군은 오른쪽(+1)으로 뻗어 나간다.
 	var side: float = -1.0 if team == Unit.Team.ALLY else 1.0
-	# 그 편 격자의 행 수.
 	var rows: int = ally_grid.y if team == Unit.Team.ALLY else enemy_grid.y
 	# x: 가운데 틈의 절반 + 칸 절반(첫 칸 중심까지) + 열 번호만큼의 칸 거리. 앞줄(x=0)이 가운데에 가장 가깝다.
 	var x: float = side * (SIDE_GAP / 2.0 + CELL_PITCH / 2.0 + cell.x * CELL_PITCH)
 	# 행 수가 다른 두 격자를 가운데로 맞춘다.
 	var z: float = TargetResolver.center_offset(cell.y, rows) * CELL_PITCH
-	# 계산한 위치를 돌려준다.
 	return Vector3(x, 0.0, z)
 
 
@@ -54,7 +51,6 @@ func max_x() -> float:
 
 ## 보드 전체의 가로 폭.
 func width() -> float:
-	# 오른쪽 끝 - 왼쪽 끝.
 	return max_x() - min_x()
 
 

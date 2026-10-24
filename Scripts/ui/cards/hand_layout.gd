@@ -1,7 +1,6 @@
 ## 손패 부채꼴 배치 계산 (노드 없음, 순수 계산).
 ## 카드 수와 몇 번째 카드인지로 그 카드가 놓일 위치와 기울기를 구한다.
 class_name HandLayout
-# RefCounted: 노드가 아닌 가벼운 객체. 함수가 static 이라 객체를 만들 필요는 없다.
 extends RefCounted
 
 ## 이웃한 카드 사이의 기울기 차이 (도).

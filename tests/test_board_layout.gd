@@ -14,9 +14,7 @@ func run() -> Array[Dictionary]:
 	_test_odd_even_rows_sit_half_a_cell_apart()
 	# 보드 경계·크기.
 	_test_bounds()
-	# 카메라 거리 계산.
 	_test_camera_distance()
-	# 결과를 돌려준다.
 	return results()
 
 
@@ -24,15 +22,10 @@ func run() -> Array[Dictionary]:
 func _test_sides_are_mirrored() -> void:
 	# 양쪽 3×3 격자.
 	var layout := BoardLayout.new(Vector2i(3, 3), Vector2i(3, 3))
-	# 아군 앞줄 가운데 칸.
 	var ally: Vector3 = layout.cell_position(Unit.Team.ALLY, Vector2i(0, 1))
-	# 적군 앞줄 가운데 칸.
 	var enemy: Vector3 = layout.cell_position(Unit.Team.ENEMY, Vector2i(0, 1))
-	# 아군은 왼쪽.
 	check("ally is on the left", ally.x < 0.0)
-	# 적군은 오른쪽.
 	check("enemy is on the right", enemy.x > 0.0)
-	# 좌우 거리가 같다.
 	check("same column mirrors", is_equal_approx(-ally.x, enemy.x))
 	# 앞줄 중심 x = 틈 절반 0.75 + 칸 절반 0.55 = 1.3.
 	check("front column centre", is_equal_approx(enemy.x, 1.3))
@@ -44,9 +37,7 @@ func _test_sides_are_mirrored() -> void:
 func _test_col_zero_is_nearest_the_gap() -> void:
 	# 양쪽 3×3 격자.
 	var layout := BoardLayout.new(Vector2i(3, 3), Vector2i(3, 3))
-	# 아군 앞줄.
 	var front: Vector3 = layout.cell_position(Unit.Team.ALLY, Vector2i(0, 1))
-	# 아군 뒷줄.
 	var back: Vector3 = layout.cell_position(Unit.Team.ALLY, Vector2i(2, 1))
 	# 앞줄이 가운데에 더 가깝다.
 	check("col 0 is closer to the centre than col 2", absf(front.x) < absf(back.x))
@@ -102,7 +93,6 @@ func _test_camera_distance() -> void:
 	var narrow: float = BoardLayout.camera_distance(4.0, 2.0, 40.0, 16.0 / 9.0, 1.2)
 	# 폭 8 보드의 거리.
 	var wide: float = BoardLayout.camera_distance(8.0, 2.0, 40.0, 16.0 / 9.0, 1.2)
-	# 넓을수록 멀다.
 	check("wider board needs a farther camera", wide > narrow)
 	# 폭은 좁고 깊이만 깊은 보드의 거리.
 	var deep: float = BoardLayout.camera_distance(1.0, 6.0, 40.0, 16.0 / 9.0, 1.2)

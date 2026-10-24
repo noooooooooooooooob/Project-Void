@@ -4,7 +4,6 @@
 ## 양쪽 격자 크기와 어떤 유닛이 어느 칸에 서는지를 정한다.
 ## BattleState 가 이 데이터를 받아 실제 유닛들을 만든다.
 class_name EncounterData
-# Resource: 파일로 저장·불러오기가 되는 데이터 객체.
 extends Resource
 
 ## 아군 격자 크기. x = 가로 칸 수(앞뒤 열), y = 세로 칸 수(행).

@@ -37,6 +37,10 @@ var _info_body: Label
 var _time: float = 0.0
 
 
+func expedition() -> Expedition:
+	return _ex
+
+
 func _init(ex: Expedition) -> void:
 	_ex = ex
 
@@ -46,7 +50,6 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_bg = UiTheme.backdrop(UiTheme.bg("void"), 0.5)
 	add_child(_bg)
-	# 머리글.
 	var top := VBoxContainer.new()
 	top.position = Vector2(60, 36)
 	add_child(top)
@@ -57,7 +60,6 @@ func _ready() -> void:
 	_floors = HBoxContainer.new()
 	_floors.add_theme_constant_override("separation", 8)
 	top.add_child(_floors)
-	# 지도.
 	_lines = Control.new()
 	_lines.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -67,7 +69,6 @@ func _ready() -> void:
 	_node_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_node_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_node_layer)
-	# 왼쪽 아래 파티.
 	var party_panel := PanelContainer.new()
 	party_panel.anchor_top = 1.0
 	party_panel.anchor_bottom = 1.0
@@ -79,7 +80,6 @@ func _ready() -> void:
 	_party = VBoxContainer.new()
 	_party.add_theme_constant_override("separation", 10)
 	party_panel.add_child(_party)
-	# 가운데 아래 노드 정보.
 	var info := PanelContainer.new()
 	info.anchor_top = 1.0
 	info.anchor_bottom = 1.0
@@ -94,7 +94,6 @@ func _ready() -> void:
 	info_col.add_child(_info_title)
 	_info_body = UiTheme.body("", 19, UiTheme.TEXT)
 	info_col.add_child(_info_body)
-	# 오른쪽 아래 버튼.
 	var party_button := UiTheme.button("사원 명부 · 장비", Vector2(260, 60))
 	party_button.anchor_left = 1.0
 	party_button.anchor_right = 1.0
@@ -136,10 +135,9 @@ func refresh() -> void:
 
 ## 노드 중심의 화면 좌표.
 func node_position(id: int) -> Vector2:
-	var n: Dictionary = _ex.node(id)
-	var cols: int = _ex.column_count()
-	var x: float = MAP_LEFT + (MAP_RIGHT - MAP_LEFT) * float(n["col"]) / float(cols)
-	return Vector2(x, LANE_Y[n["lane"]])
+	var n: ExpeditionNode = _ex.node(id)
+	var x: float = MAP_LEFT + (MAP_RIGHT - MAP_LEFT) * float(n.col) / float(_ex.column_count())
+	return Vector2(x, LANE_Y[n.lane])
 
 
 func button_for(id: int) -> Button:
@@ -150,16 +148,16 @@ func _build_nodes() -> void:
 	_clear(_node_layer)
 	_buttons.clear()
 	for n in _ex.nodes:
-		var id: int = n["id"]
-		var t: String = n["type"]
+		var id: int = n.id
+		var t: String = n.type
 		var color: Color = TYPE_COLORS.get(t, UiTheme.LAVENDER)
-		var size: float = EXIT_SIZE if n["exit"] else NODE_SIZE
+		var size: float = EXIT_SIZE if n.exit else NODE_SIZE
 		var selectable: bool = _ex.is_selectable(id)
 		var visited: bool = _ex.visited.has(id)
 		var current: bool = id == _ex.current_id
 		var b := Button.new()
 		b.text = TYPE_ICONS.get(t, "•")
-		b.add_theme_font_size_override("font_size", 46 if n["exit"] else 38)
+		b.add_theme_font_size_override("font_size", 46 if n.exit else 38)
 		b.custom_minimum_size = Vector2(size, size)
 		b.size = Vector2(size, size)
 		b.position = node_position(id) - Vector2(size, size) / 2.0
@@ -191,7 +189,7 @@ func _build_nodes() -> void:
 		b.mouse_exited.connect(_show_info.bind(-1))
 		_node_layer.add_child(b)
 		_buttons[id] = b
-		if n["exit"]:
+		if n.exit:
 			var tag := UiTheme.label("출구 · %s" % ChapterData.NODE_INFO[t]["name"], 18, color)
 			tag.position = node_position(id) + Vector2(-60, size / 2.0 + 6)
 			_node_layer.add_child(tag)
@@ -199,11 +197,11 @@ func _build_nodes() -> void:
 
 func _draw_lines() -> void:
 	for n in _ex.nodes:
-		var from: Vector2 = node_position(n["id"])
-		for next_id in n["next"]:
+		var from: Vector2 = node_position(n.id)
+		for next_id in n.next:
 			var to: Vector2 = node_position(next_id)
-			var walked: bool = _ex.visited.has(n["id"]) and _ex.visited.has(next_id)
-			var open: bool = n["id"] == _ex.current_id and _ex.is_selectable(next_id)
+			var walked: bool = _ex.visited.has(n.id) and _ex.visited.has(next_id)
+			var open: bool = n.id == _ex.current_id and _ex.is_selectable(next_id)
 			var color := Color(0.55, 0.5, 0.65, 0.35)
 			var width: float = 3.0
 			if walked:
@@ -213,7 +211,6 @@ func _draw_lines() -> void:
 				color = UiTheme.LAVENDER
 				width = 5.0
 			_lines.draw_line(from, to, color, width, true)
-	# 구역 시작점에서 첫 열로.
 	if _ex.current_id < 0:
 		for id in _ex.selectable_ids():
 			var to: Vector2 = node_position(id)
@@ -226,15 +223,14 @@ func _show_info(id: int) -> void:
 		_info_title.text = "갈 곳을 고르세요"
 		_info_body.text = "빛나는 노드만 고를 수 있습니다. 노드는 선으로 이어진 다음 칸으로만 나아갑니다."
 		return
-	var n: Dictionary = _ex.node(id)
-	var info: Dictionary = ChapterData.NODE_INFO[n["type"]]
-	_info_title.text = info["name"] + ("  (구역 출구)" if n["exit"] else "")
+	var n: ExpeditionNode = _ex.node(id)
+	var info: Dictionary = ChapterData.NODE_INFO[n.type]
+	_info_title.text = info["name"] + ("  (구역 출구)" if n.exit else "")
 	var lines: PackedStringArray = [info["desc"]]
-	if n.has("enemies"):
+	if n.is_battle():
 		var names: PackedStringArray = []
-		for enemy_id in n["enemies"]:
-			var data: UnitData = load("res://Resources/content/units/%s.tres" % enemy_id)
-			names.append(data.display_name)
+		for enemy_id in n.enemies:
+			names.append(Content.unit(enemy_id).display_name)
 		lines.append("적: " + ", ".join(names))
 	if not _ex.is_selectable(id) and not _ex.visited.has(id):
 		lines.append("(지금은 갈 수 없음)")

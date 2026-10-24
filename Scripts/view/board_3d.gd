@@ -3,7 +3,6 @@
 ## 마우스 위치도 매 물리 스텝 같은 방식으로 판정해 커서가 가리키는 칸이 바뀔 때 알려 준다 (cell_hovered / hover_cleared).
 ## 규칙 상태는 바꾸지 않는다 — BattleRoot 가 신호를 받아 규칙을 호출한다.
 class_name Board3D
-# Node3D: 3D 공간에 위치를 가지는 노드.
 extends Node3D
 
 ## 칸을 클릭했다 (타일이나 그 칸의 유닛을 눌렀을 때). team 은 그 칸의 편, cell 은 칸 좌표.
@@ -81,14 +80,11 @@ func build(state: BattleState, placeholder: Texture2D, room: BattleRoomData = nu
 	}
 	# 규칙의 격자 크기로 위치 계산기를 만든다.
 	layout = BoardLayout.new(state.resolver.ally_grid, state.resolver.enemy_grid)
-	# 아군 쪽 타일을 만든다.
 	_build_side(Unit.Team.ALLY, layout.ally_grid)
-	# 적군 쪽 타일을 만든다.
 	_build_side(Unit.Team.ENEMY, layout.enemy_grid)
 
 	# 유닛마다 화면 객체를 만든다.
 	for unit in state.units:
-		# 새 유닛 화면 객체.
 		var view := UnitView.new()
 		# 유닛 그림이 없으면 임시 그림을 쓴다.
 		var texture: Texture2D = unit.data.sprite if unit.data.sprite != null else placeholder
@@ -98,7 +94,6 @@ func build(state: BattleState, placeholder: Texture2D, room: BattleRoomData = nu
 		view.set_home(layout.cell_position(unit.team, unit.cell))
 		# 유닛 클릭 몸체에 편과 칸 정보를 붙인다 (유닛을 눌러도 칸 클릭으로 처리됨).
 		_tag(view.pick_body, unit.team, unit.cell)
-		# 보드의 자식으로 붙인다.
 		add_child(view)
 		# 나중에 찾을 수 있게 사전에 넣는다.
 		_views[unit] = view
@@ -114,7 +109,6 @@ func sync_from_state(state: BattleState) -> void:
 		set_tile_state(key.x as Unit.Team, Vector2i(key.y, key.z), TileState.EMPTY)
 	# 유닛마다 표시를 규칙 값으로 맞춘다.
 	for unit in state.units:
-		# 그 유닛의 화면 객체.
 		var view: UnitView = _views[unit]
 		# 규칙의 현재 칸 위치를 원래 자리로 삼는다 (이동 연출이 어긋나도 실제 상태로 맞춘다).
 		view.set_home(layout.cell_position(unit.team, unit.cell))
@@ -129,7 +123,6 @@ func sync_from_state(state: BattleState) -> void:
 		# 살아 있는 유닛의 칸은 기본 타일로 되돌린다.
 		if unit.is_alive():
 			set_tile_state(unit.team, unit.cell, TileState.BASE)
-	# 지금 차례인 유닛.
 	var actor: Unit = state.current_unit()
 	# 전투가 진행 중이고 차례인 유닛이 살아 있으면 그 칸을 강조한다.
 	if actor != null and not state.finished and actor.is_alive():
@@ -144,7 +137,6 @@ func show_current(team: Unit.Team, cell: Vector2i) -> void:
 		# 강조 상태인 칸이면 기본으로 되돌린다.
 		if _tile_states[key] == TileState.CURRENT:
 			set_tile_state(key.x as Unit.Team, Vector2i(key.y, key.z), TileState.BASE)
-	# 새 칸을 강조한다.
 	set_tile_state(team, cell, TileState.CURRENT)
 
 
@@ -158,19 +150,14 @@ func mark_empty(team: Unit.Team, cell: Vector2i) -> void:
 ## hints: Vector2i(칸) → {"valid": bool, "text": String} (BattleRoot 가 만들어 준다). 유닛이 없는 칸도 광역·관통로
 ## 카드로 겨냥할 수 있으므로 유닛이 아니라 칸을 키로 쓴다.
 func show_target_hints(team: Unit.Team, hints: Dictionary) -> void:
-	# 이전 힌트를 먼저 지운다.
 	clear_target_hints()
-	# 후보 칸마다.
 	for cell in hints:
-		# 그 칸의 힌트 정보.
 		var info: Dictionary = hints[cell]
 		# 칠 수 있으면 초록 빛, 없으면 어둡게.
 		set_tile_state(team, cell, TileState.VALID if info["valid"] else TileState.INVALID)
-		# 그 칸의 힌트 글자.
 		var label: Label3D = hint_label(team, cell)
 		# "✓ 거리 2", "거리 4", "막힘" 같은 문장을 넣는다.
 		label.text = info["text"]
-		# 보이게 한다.
 		label.visible = true
 
 
@@ -178,7 +165,6 @@ func show_target_hints(team: Unit.Team, hints: Dictionary) -> void:
 func clear_target_hints() -> void:
 	# 모든 칸의 힌트를 확인한다.
 	for key in _hints:
-		# 글자를 숨긴다.
 		(_hints[key] as Label3D).visible = false
 		# 그 칸의 현재 타일 상태 (없으면 EMPTY 로 본다).
 		var current: TileState = _tile_states.get(key, TileState.EMPTY)
@@ -201,45 +187,34 @@ func _occupied_by_living_view(team: Unit.Team, cell: Vector2i) -> bool:
 	for unit in _views:
 		if unit.team == team and unit.cell == cell and unit.is_alive():
 			return true
-	# 아무도 없다.
 	return false
 
 
 ## 커서가 가리키는 칸을 기준으로 한 범위 모양 미리보기를 그 칸들에만(유닛이 있든 없든) 덧그린다 (나머지 칸은 손대지 않는다).
 ## hints: Vector2i(칸) → {"valid": bool, "text": String} (BattleRoot 가 만들어 준다). 기존 대상 힌트를 먼저 그려 둔 뒤에 불러야 한다.
 func show_shape_preview(team: Unit.Team, hits: Dictionary) -> void:
-	# 범위 모양에 든 칸마다.
 	for cell in hits:
-		# 그 칸의 힌트 정보.
 		var info: Dictionary = hits[cell]
 		# 칠 수 있으면 하얀 빛, 무효이면 주황 빛.
 		set_tile_state(team, cell, TileState.SHAPE_HIT if info["valid"] else TileState.SHAPE_OUT)
-		# 그 칸의 힌트 글자.
 		var label: Label3D = hint_label(team, cell)
-		# 문장을 넣는다.
 		label.text = info["text"]
-		# 보이게 한다.
 		label.visible = true
 
 
 ## 이동할 수 있는 칸들을 파란 빛으로 표시한다 (이전 힌트는 먼저 지운다).
 func show_move_hints(team: Unit.Team, cells: Array[Vector2i]) -> void:
-	# 이전 힌트를 지운다.
 	clear_target_hints()
-	# 칸마다.
 	for cell in cells:
-		# 이동 가능 상태로 칠한다.
 		set_tile_state(team, cell, TileState.MOVABLE)
 
 
 ## 유닛 화면을 from_cell 에서 to_cell 로 옮긴다. 타일 강조와 클릭 칸 정보도 함께 옮긴다.
 ## animate 가 true 면 미끄러짐이 끝날 때까지 await 할 수 있다.
 func move_view(unit: Unit, from_cell: Vector2i, to_cell: Vector2i, animate: bool) -> void:
-	# 원래 칸은 빈 칸으로.
 	set_tile_state(unit.team, from_cell, TileState.EMPTY)
 	# 새 칸은 지금 차례 강조로 (이동은 자기 차례에만 일어난다).
 	set_tile_state(unit.team, to_cell, TileState.CURRENT)
-	# 유닛 화면.
 	var view: UnitView = view_for(unit)
 	# 클릭하면 새 칸으로 판정되게 칸 정보를 바꾼다.
 	_tag(view.pick_body, unit.team, to_cell)
@@ -248,20 +223,17 @@ func move_view(unit: Unit, from_cell: Vector2i, to_cell: Vector2i, animate: bool
 	# 연출이 있으면 미끄러진다.
 	if animate:
 		await view.slide_to(target)
-	# 없으면 즉시 옮긴다.
 	else:
 		view.set_home(target)
 
 
 ## 규칙 유닛에 대응하는 화면 객체를 찾는다. 없으면 null.
 func view_for(unit: Unit) -> UnitView:
-	# 사전에서 꺼낸다.
 	return _views.get(unit)
 
 
 ## 만든 타일 수 (테스트용).
 func tile_count() -> int:
-	# 타일 사전의 크기.
 	return _tiles.size()
 
 
@@ -281,7 +253,6 @@ func hover_state() -> Dictionary:
 	# 가리키는 칸이 없으면 has 만 false.
 	if not _has_hover:
 		return {"has": false}
-	# 있으면 편과 칸도 함께.
 	return {"has": true, "team": _hover_team, "cell": _hover_cell}
 
 
@@ -293,9 +264,7 @@ func hint_label(team: Unit.Team, cell: Vector2i) -> Label3D:
 
 ## 칸의 타일 상태를 바꾸고 재질 색·빛을 그에 맞게 칠한다.
 func set_tile_state(team: Unit.Team, cell: Vector2i, new_state: TileState) -> void:
-	# 사전 키를 만든다.
 	var key := Vector3i(team, cell.x, cell.y)
-	# 새 상태를 기억한다.
 	_tile_states[key] = new_state
 	# 타일마다 따로 만든 재질을 꺼낸다 (공유 재질이 아니라 한 칸만 바뀐다).
 	var material: StandardMaterial3D = (_tiles[key] as MeshInstance3D).material_override
@@ -303,7 +272,6 @@ func set_tile_state(team: Unit.Team, cell: Vector2i, new_state: TileState) -> vo
 	var base: Color = TEXTURED_TILE_TINT if _tile_textures.get(team) != null else (ALLY_TILE_COLOR if team == Unit.Team.ALLY else ENEMY_TILE_COLOR)
 	# 강조·유효·이동 가능·범위 미리보기 상태일 때만 스스로 빛나게 한다.
 	material.emission_enabled = new_state == TileState.CURRENT or new_state == TileState.VALID or new_state == TileState.MOVABLE or new_state == TileState.SHAPE_HIT or new_state == TileState.SHAPE_OUT
-	# 상태별로 색을 정한다.
 	match new_state:
 		# 기본: 편 색 그대로.
 		TileState.BASE:
@@ -313,55 +281,38 @@ func set_tile_state(team: Unit.Team, cell: Vector2i, new_state: TileState) -> vo
 			material.albedo_color = base.darkened(0.45)
 		# 지금 차례: 편 색 + 노란 빛.
 		TileState.CURRENT:
-			# 바탕은 편 색.
 			material.albedo_color = base
-			# 빛 색을 노랗게.
 			material.emission = CURRENT_EMISSION
-			# 빛 세기.
 			material.emission_energy_multiplier = 0.8
 		# 칠 수 있음: 편 색 + 초록 빛.
 		TileState.VALID:
-			# 바탕은 편 색.
 			material.albedo_color = base
-			# 빛 색을 초록으로.
 			material.emission = VALID_EMISSION
-			# 빛 세기.
 			material.emission_energy_multiplier = 0.8
 		# 칠 수 없음: 60% 어둡게.
 		TileState.INVALID:
 			material.albedo_color = base.darkened(0.6)
 		# 이동 가능: 편 색 + 파란 빛.
 		TileState.MOVABLE:
-			# 바탕은 편 색.
 			material.albedo_color = base
-			# 빛 색을 파랗게.
 			material.emission = MOVE_EMISSION
-			# 빛 세기.
 			material.emission_energy_multiplier = 0.6
 		# 범위 미리보기 안이며 칠 수 있음: 편 색 + 하얀 빛.
 		TileState.SHAPE_HIT:
-			# 바탕은 편 색.
 			material.albedo_color = base
-			# 빛 색을 하얗게.
 			material.emission = SHAPE_HIT_EMISSION
-			# 빛 세기.
 			material.emission_energy_multiplier = 1.0
 		# 범위 미리보기 안이지만 무효: 편 색 + 주황 빛.
 		TileState.SHAPE_OUT:
-			# 바탕은 편 색.
 			material.albedo_color = base
-			# 빛 색을 주황으로.
 			material.emission = SHAPE_OUT_EMISSION
-			# 빛 세기.
 			material.emission_energy_multiplier = 0.8
 
 
 # 드래그로 놓은 카드처럼 마우스 이벤트가 보드에 오지 않는 경우에도 같은 판정 경로를 쓴다.
 ## 화면 좌표 하나를 다음 물리 스텝에서 클릭처럼 판정하도록 예약한다.
 func request_pick(screen_position: Vector2) -> void:
-	# 판정할 좌표를 기억한다.
 	_pending_click = screen_position
-	# 대기 표시를 켠다.
 	_has_pending_click = true
 
 
@@ -376,7 +327,6 @@ func update_pointer(screen_position: Vector2) -> void:
 ## GUI 가 처리하지 않고 넘긴 입력을 받는다. 마우스가 움직이면 커서 판정에 쓸 위치를 기억하고,
 ## 왼쪽 버튼을 뗄 때 클릭으로 예약한다.
 func _unhandled_input(event: InputEvent) -> void:
-	# 잠겨 있으면 무시한다.
 	if not input_enabled:
 		return
 	# 마우스 이동 이벤트로 형 변환한다 (아니면 null).
@@ -393,7 +343,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	# 클릭 위치를 기억한다 (커서 판정 위치도 함께 맞춘다).
 	_pending_click = button.position
 	_mouse_position = button.position
-	# 대기 표시를 켠다.
 	_has_pending_click = true
 	# 이 입력을 처리했다고 알려 다른 노드로 더 전달되지 않게 한다.
 	get_viewport().set_input_as_handled()
@@ -423,7 +372,6 @@ func _physics_process(_delta: float) -> void:
 func _update_hover() -> void:
 	# 지금 마우스 위치를 광선으로 판정한다.
 	var result: Dictionary = _raycast_cell(_mouse_position)
-	# 아무 칸도 안 맞았다.
 	if result.is_empty():
 		# 이전에 칸을 가리키고 있었을 때만 벗어남을 알린다 (매 스텝 중복해서 알리지 않는다).
 		if _has_hover:
@@ -433,7 +381,6 @@ func _update_hover() -> void:
 	# 이전과 같은 칸이면 다시 알릴 필요가 없다.
 	if _has_hover and result["team"] == _hover_team and result["cell"] == _hover_cell:
 		return
-	# 새 칸을 기억하고 알린다.
 	_has_hover = true
 	_hover_team = result["team"]
 	_hover_cell = result["cell"]
@@ -455,10 +402,8 @@ func _raycast_cell(screen_position: Vector2) -> Dictionary:
 	var query := PhysicsRayQueryParameters3D.create(from, to, UnitView.PICK_LAYER_BIT)
 	# 물리 공간에 광선을 쏴서 가장 먼저 맞은 물체를 얻는다.
 	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
-	# 아무것도 안 맞았다.
 	if hit.is_empty():
 		return {}
-	# 맞은 물리 몸체.
 	var collider: Object = hit["collider"]
 	# 몸체에 붙여 둔 편·칸 정보를 돌려준다.
 	return {"team": collider.get_meta(&"team"), "cell": collider.get_meta(&"cell")}
@@ -466,25 +411,17 @@ func _raycast_cell(screen_position: Vector2) -> Dictionary:
 
 ## 한 편의 격자 타일, 타일 클릭 몸체, 힌트 글자를 칸마다 만든다.
 func _build_side(team: Unit.Team, grid: Vector2i) -> void:
-	# 행마다.
 	for row in grid.y:
-		# 열마다.
 		for col in grid.x:
-			# 칸 좌표.
 			var cell := Vector2i(col, row)
-			# 사전 키.
 			var key := Vector3i(team, col, row)
 			# 칸 중심의 바닥 위치 (타일 윗면 높이 0).
 			var top: Vector3 = layout.cell_position(team, cell)
 
-			# --- 타일 메시 ---
-			# 메시 노드를 만든다.
 			var tile := MeshInstance3D.new()
-			# 납작한 상자 메시.
 			var mesh := BoxMesh.new()
 			# 가로·세로 TILE_SIZE, 두께 TILE_THICKNESS.
 			mesh.size = Vector3(BoardLayout.TILE_SIZE, TILE_THICKNESS, BoardLayout.TILE_SIZE)
-			# 메시를 넣는다.
 			tile.mesh = mesh
 			# 칸마다 따로 색을 바꿀 수 있게 새 재질을 만든다.
 			var material := StandardMaterial3D.new()
@@ -497,56 +434,39 @@ func _build_side(team: Unit.Team, grid: Vector2i) -> void:
 			tile.material_override = material
 			# 윗면이 높이 0 에 오도록 두께 절반만큼 내린다.
 			tile.position = top - Vector3(0.0, TILE_THICKNESS / 2.0, 0.0)
-			# 보드에 붙인다.
 			add_child(tile)
 
-			# --- 타일 클릭 몸체 ---
-			# 움직이지 않는 물리 몸체.
 			var body := StaticBody3D.new()
 			# 클릭 판정 레이어에 올린다.
 			body.collision_layer = UnitView.PICK_LAYER_BIT
 			# 다른 물체와 부딪히지 않는다.
 			body.collision_mask = 0
-			# 충돌 모양 노드.
 			var shape := CollisionShape3D.new()
-			# 타일과 같은 크기의 상자.
 			var box := BoxShape3D.new()
-			# 메시 크기를 그대로 쓴다.
 			box.size = mesh.size
-			# 모양을 넣는다.
 			shape.shape = box
-			# 모양을 몸체에 붙인다.
 			body.add_child(shape)
 			# 몸체를 타일에 붙인다 (타일 위치를 따라간다).
 			tile.add_child(body)
 			# 몸체에 편·칸 정보를 붙인다.
 			_tag(body, team, cell)
 
-			# --- 힌트 글자 ---
 			# 3D 글자 노드를 만든다.
 			var hint := Label3D.new()
-			# 글꼴 크기.
 			hint.font_size = 40
 			# 픽셀 하나의 3D 크기.
 			hint.pixel_size = 0.004
-			# 외곽선 두께.
 			hint.outline_size = 10
-			# 항상 카메라를 향한다.
 			hint.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			# 가려지지 않고 항상 위에 그린다.
 			hint.no_depth_test = true
-			# 체력 바보다 위에 그린다.
 			hint.render_priority = 2
-			# 외곽선은 글자보다 먼저.
 			hint.outline_render_priority = 1
 			# 유닛 머리 위(이름보다 위)에 놓아 앞줄 유닛의 클릭을 가리지 않게 한다.
 			hint.position = top + Vector3(0.0, UnitView.OVERHEAD_Y + 0.6, 0.0)
-			# 처음에는 숨긴다.
 			hint.visible = false
-			# 보드에 붙인다.
 			add_child(hint)
 
-			# 타일을 사전에 넣는다.
 			_tiles[key] = tile
 			# 힌트 글자를 사전에 넣는다.
 			_hints[key] = hint
@@ -556,7 +476,5 @@ func _build_side(team: Unit.Team, grid: Vector2i) -> void:
 
 ## 물리 몸체에 편·칸 정보를 메타데이터로 붙인다 (광선이 맞으면 이 정보로 칸을 알아낸다).
 func _tag(body: StaticBody3D, team: Unit.Team, cell: Vector2i) -> void:
-	# 편.
 	body.set_meta(&"team", team)
-	# 칸 좌표.
 	body.set_meta(&"cell", cell)

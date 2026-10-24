@@ -57,7 +57,6 @@ static func get_theme() -> Theme:
 	t.set_color("default_color", "RichTextLabel", TEXT)
 	t.set_stylebox("panel", "Panel", box(PANEL))
 	t.set_stylebox("panel", "PanelContainer", box(PANEL))
-	# 버튼.
 	t.set_stylebox("normal", "Button", box(Color(0.17, 0.14, 0.23, 0.95), LAVENDER_DIM))
 	t.set_stylebox("hover", "Button", box(Color(0.27, 0.22, 0.38, 0.97), LAVENDER))
 	t.set_stylebox("pressed", "Button", box(Color(0.38, 0.31, 0.55, 1.0), LAVENDER))
@@ -68,7 +67,6 @@ static func get_theme() -> Theme:
 	t.set_color("font_pressed_color", "Button", Color.WHITE)
 	t.set_color("font_disabled_color", "Button", Color(0.45, 0.43, 0.5))
 	t.set_font_size("font_size", "Button", 20)
-	# 스크롤.
 	t.set_stylebox("panel", "ScrollContainer", StyleBoxEmpty.new())
 	_theme = t
 	return t
@@ -130,3 +128,15 @@ static func backdrop(texture: Texture2D, dim: float = 0.0) -> Control:
 static func bg(id: String) -> Texture2D:
 	var path: String = "res://Art/gen/bg/%s.png" % id
 	return load(path) if ResourceLoader.exists(path) else null
+
+
+## 장비 부위 아이콘 (픽셀 아트라 확대해도 흐려지지 않게 NEAREST).
+static func item_icon(slot: ItemData.Slot, edge: float) -> TextureRect:
+	var icon := TextureRect.new()
+	icon.texture = load("res://Art/gen/icons/%s.png" % ["weapon", "armor", "accessory"][slot])
+	icon.custom_minimum_size = Vector2(edge, edge)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return icon

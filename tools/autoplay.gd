@@ -34,7 +34,7 @@ func _process(_delta: float) -> bool:
 	# 겹쳐 뜬 선택 창이 먼저.
 	for child in _root.get_children():
 		if child is ChoiceDialog and not child.is_queued_for_deletion():
-			var title: String = (child as ChoiceDialog)._title
+			var title: String = (child as ChoiceDialog).title()
 			_note("Choice: %s" % title)
 			var pick: int = 1 if (_deep and title == "공허 속의 공허") else 0
 			(child as ChoiceDialog).chosen.emit(pick)
@@ -42,7 +42,7 @@ func _process(_delta: float) -> bool:
 		if child is PartyView:
 			(child as PartyView).closed.emit()
 			return false
-	var screen: Node = _root._screen
+	var screen: Node = _root.current_screen()
 	if screen == null or not is_instance_valid(screen) or screen.is_queued_for_deletion():
 		return false
 	if screen is TitleScreen:
@@ -61,9 +61,9 @@ func _process(_delta: float) -> bool:
 	elif screen is BattleRoot:
 		_finish_battle(screen as BattleRoot)
 	elif screen is ExpeditionView:
-		var ex: Expedition = (screen as ExpeditionView)._ex
+		var ex: Expedition = (screen as ExpeditionView).expedition()
 		var ids: Array[int] = ex.selectable_ids()
-		_note("Map Z%d at %d -> %s" % [ex.floor_index + 1, ex.current_id, ids.map(func(id: int) -> String: return ex.node(id)["type"])])
+		_note("Map Z%d at %d -> %s" % [ex.floor_index + 1, ex.current_id, ids.map(func(id: int) -> String: return ex.node(id).type)])
 		(screen as ExpeditionView).node_chosen.emit(ids[0])
 	elif screen is RewardView:
 		_note("Reward")

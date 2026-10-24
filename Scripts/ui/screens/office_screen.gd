@@ -31,26 +31,38 @@ func _ready() -> void:
 	theme = UiTheme.get_theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(UiTheme.backdrop(UiTheme.bg("office"), 0.12))
-	# 홍연 일러스트 (합류했으면).
 	if _game.has_member("hongyeon"):
-		var p := TextureRect.new()
-		p.texture = StoryCast.portrait("hongyeon")
-		p.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		p.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-		p.anchor_left = 0.36
-		p.anchor_right = 0.66
-		p.anchor_top = 0.24
-		p.anchor_bottom = 1.0
-		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(p)
-		_bubble = UiTheme.label(OFFICE_LINES[randi() % OFFICE_LINES.size()], 20)
-		var bubble_panel := PanelContainer.new()
-		bubble_panel.add_theme_stylebox_override("panel", UiTheme.box(Color(0.1, 0.08, 0.14, 0.85), UiTheme.LAVENDER_DIM, 1, 8, 14))
-		bubble_panel.anchor_left = 0.42
-		bubble_panel.anchor_top = 0.2
-		bubble_panel.add_child(_bubble)
-		add_child(bubble_panel)
-	# 머리글·HUD.
+		_build_companion()
+	_build_header()
+	_build_rail()
+	_build_panel()
+	refresh()
+	_on_rail("requests")
+
+
+## 사무소에 있는 홍연 일러스트와 한마디 말풍선.
+func _build_companion() -> void:
+	var p := TextureRect.new()
+	p.texture = StoryCast.portrait("hongyeon")
+	p.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	p.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+	p.anchor_left = 0.36
+	p.anchor_right = 0.66
+	p.anchor_top = 0.24
+	p.anchor_bottom = 1.0
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(p)
+	_bubble = UiTheme.label(OFFICE_LINES[randi() % OFFICE_LINES.size()], 20)
+	var bubble_panel := PanelContainer.new()
+	bubble_panel.add_theme_stylebox_override("panel", UiTheme.box(Color(0.1, 0.08, 0.14, 0.85), UiTheme.LAVENDER_DIM, 1, 8, 14))
+	bubble_panel.anchor_left = 0.42
+	bubble_panel.anchor_top = 0.2
+	bubble_panel.add_child(_bubble)
+	add_child(bubble_panel)
+
+
+## 제목과 오른쪽 위 자금·수명 표시.
+func _build_header() -> void:
 	var title := UiTheme.title_label("공허 정화 사무소", 40)
 	title.position = Vector2(48, 32)
 	add_child(title)
@@ -63,7 +75,10 @@ func _ready() -> void:
 	hud_panel.offset_top = 30
 	hud_panel.add_child(_hud)
 	add_child(hud_panel)
-	# 오른쪽 레일.
+
+
+## 오른쪽 메뉴 버튼 줄.
+func _build_rail() -> void:
 	var rail := VBoxContainer.new()
 	rail.anchor_left = 1.0
 	rail.anchor_right = 1.0
@@ -80,7 +95,10 @@ func _ready() -> void:
 		b.pressed.connect(_on_rail.bind(entry[2]))
 		rail.add_child(b)
 		_rail_buttons[entry[2]] = b
-	# 왼쪽 패널 (처음엔 닫힘).
+
+
+## 메뉴를 고르면 내용을 채우는 왼쪽 패널 (처음엔 닫힘).
+func _build_panel() -> void:
 	_panel = PanelContainer.new()
 	_panel.add_theme_stylebox_override("panel", UiTheme.box(Color(0.12, 0.1, 0.17, 0.95), UiTheme.LAVENDER, 2, 10, 28))
 	_panel.position = Vector2(48, 120)
@@ -94,8 +112,6 @@ func _ready() -> void:
 	_panel_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_panel_body.add_theme_constant_override("separation", 16)
 	scroll.add_child(_panel_body)
-	refresh()
-	_on_rail("requests")
 
 
 func refresh() -> void:

@@ -1,6 +1,5 @@
 ## 카드 효과 수치를 계산하는 순수 함수 모음. 규칙(BattleState)과 카드 문구(CardText)가 함께 쓴다.
 class_name CardMath
-# RefCounted: 모든 함수가 static 이라 객체를 만들 필요는 없다.
 extends RefCounted
 
 
@@ -36,5 +35,4 @@ static func rolls_crit(stats: UnitData, rng: RandomNumberGenerator) -> bool:
 
 ## 치명타 피해 = 내림(수치 × 치명피해 / 100).
 static func critical_amount(amount: int, stats: UnitData) -> int:
-	# 배율을 곱해 내림한다.
 	return floori(float(amount * stats.crit_damage) / 100.0)

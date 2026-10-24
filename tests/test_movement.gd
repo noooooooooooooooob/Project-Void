@@ -15,11 +15,8 @@ const EncounterScript := preload("res://Scripts/combat/data/encounter_data.gd")
 
 # 실행기가 부르는 진입점.
 func run() -> Array[Dictionary]:
-	# 성공한 이동의 결과.
 	_test_move_spends_move_points_not_sp()
-	# 규칙에 맞지 않는 칸 거절.
 	_test_rejects_invalid_cells()
-	# 아군 차례가 아니면 거절.
 	_test_rejects_outside_an_ally_turn()
 	# 이동력이 남는 동안 연속 이동.
 	_test_moves_while_move_points_last()
@@ -31,84 +28,61 @@ func run() -> Array[Dictionary]:
 	_test_move_points_refill_each_turn()
 	# 이동하면 근접 기준이 새 행을 따른다.
 	_test_melee_anchor_follows_the_new_row()
-	# 결과를 돌려준다.
 	return results()
 
 
 # 데이터와 칸으로 배치 한 줄을 만든다.
 func _placement(data: UnitData, cell: Vector2i) -> UnitPlacement:
-	# 배치 리소스.
 	var placement: UnitPlacement = PlacementScript.new()
-	# 유닛 데이터.
 	placement.unit_data = data
-	# 칸.
 	placement.cell = cell
-	# 돌려준다.
 	return placement
 
 
 # id·속도를 정한 아군 데이터 (체력 30, SP 3, 덱 없음).
 func _ally(id: StringName, speed: int) -> AllyData:
-	# 아군 데이터.
 	var data: AllyData = AllyDataScript.new()
 	# id.
 	data.id = id
 	# 이름은 id 와 같게.
 	data.display_name = String(id)
-	# 최대 체력.
 	data.max_hp = 30
-	# 속도.
 	data.speed = speed
 	# SP 3.
 	data.max_sp = 3
-	# 돌려준다.
 	return data
 
 
 # 아군 a(속도 10)를 a_cell 에, 아군 b(속도 5)를 (0,0) 에, 적 e(속도 1)를 적 (0,1) 에 세우고 전투를 시작한다 (a 차례에서 멈춤).
 func _started_state(a_cell: Vector2i) -> BattleState:
-	# 적 데이터.
 	var enemy: EnemyData = EnemyDataScript.new()
 	# id.
 	enemy.id = &"e"
-	# 이름.
 	enemy.display_name = "e"
-	# 최대 체력.
 	enemy.max_hp = 20
-	# 가장 느리게.
 	enemy.speed = 1
 
 	# 전투 구성 (격자 기본 3×3).
 	var encounter: EncounterData = EncounterScript.new()
 	# 아군 배치: a 는 a_cell, b 는 (0,0).
 	var allies: Array[UnitPlacement] = [_placement(_ally(&"a", 10), a_cell), _placement(_ally(&"b", 5), Vector2i(0, 0))]
-	# 적 배치.
 	var enemies: Array[UnitPlacement] = [_placement(enemy, Vector2i(0, 1))]
-	# 아군 배치 넣기.
 	encounter.ally_units = allies
-	# 적 배치 넣기.
 	encounter.enemy_units = enemies
-	# 난수 생성기.
 	var rng := RandomNumberGenerator.new()
-	# 시드 고정.
 	rng.seed = 21
-	# 전투 상태.
 	var state: BattleState = BattleStateScript.new(encounter, rng)
 	# 시작 (a 의 턴 행동 단계에서 멈춘다).
 	state.start_battle()
-	# 돌려준다.
 	return state
 
 
 # id 로 전투 속 유닛을 찾는다.
 func _unit(state: BattleState, id: StringName) -> Unit:
-	# 모든 유닛 중.
 	for unit in state.units:
 		# id 가 같으면.
 		if unit.data.id == id:
-			# 그 유닛.
 			return unit
-	# 못 찾음.
 	return null
 
 
@@ -118,27 +92,20 @@ func _test_move_spends_move_points_not_sp() -> void:
 	var state: BattleState = _started_state(Vector2i(1, 1))
 	# a 유닛.
 	var a: Unit = _unit(state, &"a")
-	# 이동 신호 기록.
 	var moved: Array = []
 	# 이동 신호를 [id, 이전 칸, 새 칸] 으로 기록한다.
 	state.unit_moved.connect(func(unit: Unit, from_cell: Vector2i, to_cell: Vector2i) -> void: moved.append([unit.data.id, from_cell, to_cell]))
-	# 로그 기록.
 	var logs: Array = []
-	# 로그를 기록한다.
 	state.log_message.connect(func(text: String) -> void: logs.append(text))
 	# 시작 이동력은 기본값 2.
 	check_eq("turn starts with full move points", a.move_points, 2)
-	# 이동 성공.
 	check("move accepted", state.move_unit(Vector2i(2, 1)))
-	# 새 칸.
 	check_eq("unit stands on the new cell", a.cell, Vector2i(2, 1))
 	# 이동력 1.
 	check_eq("one move point spent", a.move_points, 1)
 	# SP 는 그대로.
 	check_eq("sp is not spent on moving", a.sp, 3)
-	# 신호 인자.
 	check_eq("move signal carries both cells", moved, [[&"a", Vector2i(1, 1), Vector2i(2, 1)]])
-	# 로그.
 	check_eq("move logged", logs, ["a 이동"])
 
 
@@ -152,35 +119,24 @@ func _test_rejects_invalid_cells() -> void:
 	check("too far rejected", not state.move_unit(Vector2i(2, 2)))
 	# b 가 선 칸.
 	check("occupied cell rejected", not state.move_unit(Vector2i(0, 0)))
-	# 격자 밖.
 	check("outside the grid rejected", not state.move_unit(Vector2i(-1, 1)))
-	# 제자리.
 	check("own cell rejected", not state.move_unit(Vector2i(0, 1)))
-	# 칸 그대로.
 	check_eq("cell unchanged", a.cell, Vector2i(0, 1))
-	# 이동력 그대로.
 	check_eq("move points unchanged", a.move_points, 2)
 	# 이동력을 다 썼다고 가정한다.
 	a.move_points = 0
-	# 비어 있는 아래 칸도 거절.
 	check("no move points rejected", not state.move_unit(Vector2i(0, 2)))
 
 
 # 끝난 전투와 적 차례에서는 이동이 거절되는지.
 func _test_rejects_outside_an_ally_turn() -> void:
-	# 끝난 전투.
 	var finished_state: BattleState = _started_state(Vector2i(0, 1))
-	# 끝난 것으로 표시.
 	finished_state.finished = true
-	# 거절.
 	check("finished battle rejects moves", not finished_state.move_unit(Vector2i(0, 2)))
-	# 적 차례 전투.
 	var enemy_turn: BattleState = _started_state(Vector2i(0, 1))
 	# 행동 순서를 적 하나로 바꾼다.
 	enemy_turn.initiative = [_unit(enemy_turn, &"e")]
-	# 그 적의 차례.
 	enemy_turn.turn_index = 0
-	# 거절.
 	check("enemy turn rejects moves", not enemy_turn.move_unit(Vector2i(0, 2)))
 
 
@@ -196,7 +152,6 @@ func _test_moves_while_move_points_last() -> void:
 	check_eq("two moves then out of move points", accepted, [true, true, false])
 	# 이동력 0.
 	check_eq("move points used up", a.move_points, 0)
-	# 두 번째 칸에 멈췄다.
 	check_eq("stopped on the second cell", a.cell, Vector2i(2, 1))
 
 
@@ -206,14 +161,12 @@ func _test_moves_several_cells_at_once() -> void:
 	var state: BattleState = _started_state(Vector2i(0, 1))
 	# a 유닛.
 	var a: Unit = _unit(state, &"a")
-	# 이동 신호 수.
 	var moves: Array[int] = [0]
 	state.unit_moved.connect(func(_unit: Unit, _from: Vector2i, _to: Vector2i) -> void: moves[0] += 1)
 	# 대각선 칸 (두 걸음).
 	check("a two-step diagonal cell is reachable", state.move_unit(Vector2i(1, 2)))
 	# 이동력 0.
 	check_eq("two move points spent", a.move_points, 0)
-	# 신호 한 번.
 	check_eq("one move signal", moves[0], 1)
 
 
@@ -234,7 +187,6 @@ func _test_move_points_refill_each_turn() -> void:
 	# a 가 (0,1) 인 전투.
 	var state: BattleState = _started_state(Vector2i(0, 1))
 	var a: Unit = _unit(state, &"a")
-	# 다 쓴다.
 	state.move_unit(Vector2i(1, 2))
 	check_eq("spent", a.move_points, 0)
 	# a → b → e → (다음 라운드) a 까지 진행한다.
@@ -251,7 +203,6 @@ func _test_melee_anchor_follows_the_new_row() -> void:
 	var state: BattleState = _started_state(Vector2i(0, 1))
 	# a 유닛.
 	var a: Unit = _unit(state, &"a")
-	# 적 유닛.
 	var e: Unit = _unit(state, &"e")
 	# 같은 행이라 e 가 기준.
 	check_eq("same row anchors the enemy", state.resolver.melee_anchor(a, state.units), e)
@@ -261,5 +212,4 @@ func _test_melee_anchor_follows_the_new_row() -> void:
 	check_eq("moving back keeps the row", state.resolver.melee_anchor(a, state.units), e)
 	# 한 칸 위로 (행 0, 적 없음).
 	state.move_unit(Vector2i(1, 0))
-	# 기준 없음.
 	check("another row has no melee anchor", state.resolver.melee_anchor(a, state.units) == null)

@@ -3,7 +3,6 @@
 ## 전투가 벌어지는 방의 표현 데이터: 반복 바닥·벽 텍스처, 칸 윗면 그림, 가장자리 소품.
 ## EncounterData.room 이 가리킨다. 규칙과는 상관없다.
 class_name BattleRoomData
-# Resource: .tres 로 저장해 여러 인카운터가 같은 방을 쓴다.
 extends Resource
 
 ## 화면 뒤에 까는 배경 그림 (픽셀 아트 한 장). 있으면 바닥·벽·소품 대신 이 그림을 화면 가득 깐다.

@@ -2,7 +2,6 @@
 @tool
 ## 전투 구성(EncounterData)에서 "어떤 유닛이 어느 칸에 서는가" 한 줄을 나타낸다.
 class_name UnitPlacement
-# Resource: 파일로 저장·불러오기가 되는 데이터 객체.
 extends Resource
 
 ## 배치할 유닛의 설계 데이터 (AllyData 또는 EnemyData).

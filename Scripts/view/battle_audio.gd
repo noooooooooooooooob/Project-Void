@@ -1,6 +1,5 @@
 ## 전투 효과음 재생기. 한 플레이어에서 여러 소리를 겹쳐 내고, 같은 소리가 반복돼도 덜 기계적이게 음높이를 조금씩 흔든다.
 class_name BattleAudio
-# Node: 씬 트리에 붙어야 소리가 난다.
 extends Node
 
 ## 음높이를 흔드는 폭 (±8%).
@@ -19,10 +18,8 @@ var _player: AudioStreamPlayer
 
 ## 클립 하나를 낸다. null 이면 아무것도 안 한다. 트리 밖(테스트)에서는 세기만 한다.
 func play(stream: AudioStream) -> void:
-	# 빈 클립.
 	if stream == null:
 		return
-	# 셌다.
 	play_count += 1
 	# 트리 밖이면 소리를 낼 수 없다.
 	if not is_inside_tree():

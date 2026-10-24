@@ -2,7 +2,6 @@
 @tool
 ## 전투 방에 놓는 소품 하나. 유닛처럼 카메라를 향한 그림 판으로 서 있다.
 class_name PropPlacement
-# Resource: 방 리소스 안에 하위 리소스로 저장된다.
 extends Resource
 
 ## 소품 그림.

@@ -1,7 +1,6 @@
 ## 덱 또는 묘지 더미 하나의 화면 표현: 카드 뒷면 위에 장수 숫자, 그 위에 이름.
 ## 입력은 받지 않는다. 노드 크기(SIZE)는 고정이고 씬(battle_hud.tscn)에서 위치만 정한다.
 class_name PileView
-# Control: 2D UI 노드.
 extends Control
 
 ## 더미 크기 (카드보다 조금 작다).
@@ -22,22 +21,16 @@ func _init() -> void:
 	# 컨테이너 안에서도 이 크기 이하로 줄지 않게 한다.
 	custom_minimum_size = SIZE
 
-	# --- 카드 뒷면 ---
 	# CardView 와 같은 뒷면 패널을 만든다.
 	var back: Panel = CardView.make_back()
 	# 카드 크기(110×154)의 뒷면을 더미 크기로 줄여 보이게 한다.
 	back.scale = SIZE / CardView.SIZE
-	# 자식으로 붙인다.
 	add_child(back)
 
-	# --- 장수 숫자 ---
-	# 글자 노드를 만든다.
 	_count_label = Label.new()
-	# 더미 아래쪽에 놓는다.
 	_count_label.position = Vector2(0, SIZE.y - 38)
 	# 더미 폭 전체, 높이 32.
 	_count_label.size = Vector2(SIZE.x, 32)
-	# 가운데 정렬.
 	_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# 글자 크기 24.
 	_count_label.add_theme_font_size_override(&"font_size", 24)
@@ -45,23 +38,18 @@ func _init() -> void:
 	_count_label.add_theme_constant_override(&"outline_size", 6)
 	# 마우스 이벤트를 통과시킨다.
 	_count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# 자식으로 붙인다.
 	add_child(_count_label)
 
-	# --- 이름 ---
-	# 글자 노드를 만든다.
 	_owner_label = Label.new()
 	# 더미 위쪽 바깥에 놓는다 (y 가 음수).
 	_owner_label.position = Vector2(0, -26)
 	# 더미 폭 전체, 높이 24.
 	_owner_label.size = Vector2(SIZE.x, 24)
-	# 가운데 정렬.
 	_owner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# 글자 크기 14.
 	_owner_label.add_theme_font_size_override(&"font_size", 14)
 	# 마우스 이벤트를 통과시킨다.
 	_owner_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# 자식으로 붙인다.
 	add_child(_owner_label)
 
 	# 처음 장수는 0.
@@ -70,7 +58,6 @@ func _init() -> void:
 
 ## 더미 위의 이름을 바꾼다.
 func set_owner_name(owner_name: String) -> void:
-	# 글자를 넣는다.
 	_owner_label.text = owner_name
 
 
@@ -94,13 +81,11 @@ func is_dimmed() -> bool:
 
 ## 장수 글자 (테스트용).
 func count_text() -> String:
-	# 글자를 돌려준다.
 	return _count_label.text
 
 
 ## 이름 글자 (테스트용).
 func owner_text() -> String:
-	# 글자를 돌려준다.
 	return _owner_label.text
 
 

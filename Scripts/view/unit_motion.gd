@@ -2,7 +2,6 @@
 ## 진행률 t(0→1)를 넣으면 자세가 나온다. 자세는 발을 축으로 한 늘이기(stretch)와
 ## 기울기(lean, 도 단위, 양수 = 바라보는 방향의 뒤쪽)뿐이다.
 class_name UnitMotion
-# RefCounted: 노드가 아닌 가벼운 객체 (정적 함수만 쓴다).
 extends RefCounted
 
 ## 한 순간의 자세.
@@ -14,9 +13,7 @@ class Pose:
 
 	## 늘이기와 기울기로 자세를 만든다.
 	func _init(p_stretch: float = 0.0, p_lean: float = 0.0) -> void:
-		# 늘이기.
 		stretch = p_stretch
-		# 기울기.
 		lean = p_lean
 
 
@@ -69,19 +66,16 @@ static func attack(t: float) -> Pose:
 
 ## 공격할 때 몸이 앞으로 나간 정도 (0 = 제자리, 1 = 끝까지).
 static func lunge_reach(t: float) -> float:
-	# 예비동작 동안은 제자리.
 	return _eval(_LUNGE_TIMES, _LUNGE_VALUES, t)
 
 
 ## 깡충 자세: 웅크림 → 늘어남 → 착지 눌림.
 static func hop(t: float) -> Pose:
-	# 늘이기만 쓴다.
 	return Pose.new(_eval(_HOP_TIMES, _HOP_STRETCH, t))
 
 
 ## 깡충 높이 (3D 단위).
 static func hop_height(t: float) -> float:
-	# 웅크리는 동안은 바닥.
 	return _eval(_HOP_HEIGHT_TIMES, _HOP_HEIGHT_VALUES, t)
 
 
@@ -99,20 +93,15 @@ static func knockback_reach(t: float) -> float:
 
 ## 쓰러짐: 처음엔 천천히, 끝에서 빠르게 넘어간다.
 static func death(t: float) -> Pose:
-	# 제곱이라 가속한다.
 	return Pose.new(0.0, DEATH_LEAN * t * t)
 
 
 # 키 사이를 smoothstep 으로 잇는다. 키마다 속도가 0 이 되어 동작의 "멈칫"이 생긴다.
 static func _eval(times: Array[float], values: Array[float], t: float) -> float:
-	# 범위 밖 진행률은 자른다.
 	var clamped: float = clampf(t, 0.0, 1.0)
 	# 이 진행률이 들어 있는 구간을 찾는다.
 	for i in range(1, times.size()):
 		if clamped <= times[i]:
-			# 구간 안에서의 진행률.
 			var local: float = inverse_lerp(times[i - 1], times[i], clamped)
-			# 부드럽게 섞는다.
 			return lerpf(values[i - 1], values[i], smoothstep(0.0, 1.0, local))
-	# 마지막 키 값.
 	return values[values.size() - 1]

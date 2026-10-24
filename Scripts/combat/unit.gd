@@ -2,7 +2,6 @@
 ## 설계 데이터(UnitData)는 바꾸지 않고, 전투에서 변하는 값만 여기에 둔다.
 ## 신호를 내지 않는다 — 화면에 알릴 일은 BattleState 가 이 객체를 바꾼 뒤 신호로 알린다.
 class_name Unit
-# RefCounted: 노드가 아닌 가벼운 객체. 참조가 없어지면 자동으로 해제된다.
 extends RefCounted
 
 ## 소속 편.
@@ -43,13 +42,9 @@ var exile: Array[CardData] = []
 
 ## 설계 데이터로부터 전투 시작 상태의 유닛을 만든다.
 func _init(p_unit_id: int, p_data: UnitData, p_team: Team, p_cell: Vector2i) -> void:
-	# 번호를 기억한다.
 	unit_id = p_unit_id
-	# 설계 데이터를 기억한다.
 	data = p_data
-	# 소속 편을 기억한다.
 	team = p_team
-	# 서 있는 칸을 기억한다.
 	cell = p_cell
 	# 체력은 최대 체력으로 시작한다.
 	hp = p_data.max_hp
@@ -116,7 +111,6 @@ func heal(amount: int) -> void:
 
 ## 방어도를 얻는다. 여러 번 얻으면 누적된다.
 func gain_block(amount: int) -> void:
-	# 기존 방어도에 더한다.
 	block += amount
 
 
@@ -133,11 +127,8 @@ func reshuffle_discard(rng: RandomNumberGenerator) -> int:
 	var count: int = discard.size()
 	# 묘지 카드를 덱 뒤에 붙인다.
 	deck.append_array(discard)
-	# 묘지를 비운다.
 	discard.clear()
-	# 덱을 섞는다.
 	_shuffle(deck, rng)
-	# 옮긴 장수를 알려 준다.
 	return count
 
 
@@ -147,11 +138,8 @@ func draw_one() -> CardData:
 	# 뽑을 카드가 없으면 아무것도 하지 않는다.
 	if deck.is_empty():
 		return null
-	# 덱의 첫 카드를 꺼낸다.
 	var card: CardData = deck.pop_front()
-	# 손패 끝에 넣는다.
 	hand.append(card)
-	# 뽑은 카드를 돌려준다.
 	return card
 
 
@@ -167,7 +155,6 @@ func draw(count: int, rng: RandomNumberGenerator) -> void:
 				return
 			# 묘지를 섞어 덱으로 만든다.
 			reshuffle_discard(rng)
-		# 한 장 뽑는다.
 		draw_one()
 
 
@@ -175,7 +162,6 @@ func draw(count: int, rng: RandomNumberGenerator) -> void:
 func discard_hand() -> void:
 	# 손패 카드를 묘지 뒤에 붙인다.
 	discard.append_array(hand)
-	# 손패를 비운다.
 	hand.clear()
 
 

@@ -11,41 +11,29 @@ const EnemyDataScript := preload("res://Scripts/combat/data/enemy_data.gd")
 
 # 실행기가 부르는 진입점.
 func run() -> Array[Dictionary]:
-	# 카드 기본값.
 	_test_card_defaults()
-	# 상속 관계.
 	_test_ally_extends_unit_data()
-	# 새 스탯 기본값.
 	_test_unit_stat_defaults()
-	# 시작 카드 파일.
 	_test_starter_cards_exist()
 	# 유닛 .tres 의 그림·띠·오라 연결 상태.
 	_test_unit_art_links()
-	# 적 행동 카드.
 	_test_enemies_have_cards()
-	# 전투 방 데이터와 연결.
 	_test_rooms()
-	# 결과를 돌려준다.
 	return results()
 
 
 # 새로 만든 카드의 기본값이 비용 1, 단일 범위인지.
 func _test_card_defaults() -> void:
-	# 빈 카드를 만든다.
 	var card: CardData = CardDataScript.new()
 	# 기본 비용 1.
 	check_eq("card default sp_cost", card.sp_cost, 1)
-	# 기본 분류는 공격.
 	check_eq("card default category", card.category, CardData.Category.ATTACK)
-	# 기본 효과 없음.
 	check("card default effects empty", card.effects.is_empty())
 
 
 # AllyData 와 EnemyData 가 모두 UnitData 를 상속하고, 서로는 다른 타입인지.
 func _test_ally_extends_unit_data() -> void:
-	# 빈 아군 데이터.
 	var ally: AllyData = AllyDataScript.new()
-	# 빈 적 데이터.
 	var enemy: EnemyData = EnemyDataScript.new()
 	# 아군 데이터는 UnitData.
 	check("AllyData is a UnitData", ally is UnitData)
@@ -80,7 +68,6 @@ func _test_unit_stat_defaults() -> void:
 func _test_starter_cards_exist() -> void:
 	# strike.tres 를 불러온다.
 	var strike: CardData = load("res://Resources/cards/strike.tres")
-	# 불러와졌는지.
 	check("strike.tres loads", strike != null)
 	# 못 불러왔으면 아래 검사는 오류가 나므로 멈춘다.
 	if strike == null:
@@ -89,14 +76,11 @@ func _test_starter_cards_exist() -> void:
 	check_eq("strike id", strike.id, &"strike")
 	# 피해 60% (공격 10 기준 6).
 	check_eq("strike damage percent", strike.effects[0].percent, 60)
-	# 근접.
 	check_eq("strike is melee", strike.attack_type, CardData.AttackType.MELEE)
 
 	# volley.tres 를 불러온다.
 	var volley: CardData = load("res://Resources/cards/volley.tres")
-	# 불러와졌는지.
 	check("volley.tres loads", volley != null)
-	# 못 불러왔으면 멈춘다.
 	if volley == null:
 		return
 	# 세로 5칸 범위.
@@ -104,9 +88,7 @@ func _test_starter_cards_exist() -> void:
 
 	# blast.tres 를 불러온다 (2×2 범위 카드).
 	var blast: CardData = load("res://Resources/cards/blast.tres")
-	# 불러와졌는지.
 	check("blast.tres loads", blast != null)
-	# 못 불러왔으면 멈춘다.
 	if blast == null:
 		return
 	# 2×2 범위.
@@ -114,9 +96,7 @@ func _test_starter_cards_exist() -> void:
 
 	# skewer.tres 를 불러온다 (뒤로 꿰뚫는 근접 카드).
 	var skewer: CardData = load("res://Resources/cards/skewer.tres")
-	# 불러와졌는지.
 	check("skewer.tres loads", skewer != null)
-	# 못 불러왔으면 멈춘다.
 	if skewer == null:
 		return
 	# 기준 적 뒤로 3칸.
@@ -125,11 +105,8 @@ func _test_starter_cards_exist() -> void:
 
 # 적 3종이 공격·방어·휴식 카드를 모두 가지는지.
 func _test_enemies_have_cards() -> void:
-	# 적마다.
 	for id in ["brute", "sentry", "stalker"]:
-		# 데이터.
 		var enemy: EnemyData = load("res://Resources/units/%s.tres" % id)
-		# 세 카드.
 		check("%s has attack/defend/rest cards" % id, enemy.attack_card != null and enemy.defend_card != null and enemy.rest_card != null)
 	# 괴한 공격은 근접 70%.
 	var brute: EnemyData = load("res://Resources/units/brute.tres")
@@ -148,21 +125,13 @@ func _test_unit_art_links() -> void:
 		"brute": [true, false, true, false],
 		"sentry": [false, false, false, true],
 	}
-	# 유닛마다.
 	for id in expected:
-		# 데이터 파일을 불러온다.
 		var data: UnitData = load("res://Resources/units/%s.tres" % id)
-		# 기대값.
 		var flags: Array = expected[id]
-		# 정지 그림은 모두 있다.
 		check("%s has a sprite" % id, data.sprite != null)
-		# 대기 띠.
 		check_eq("%s idle sheet" % id, data.idle_sheet != null, flags[0])
-		# 공격 띠.
 		check_eq("%s attack sheet" % id, data.attack_sheet != null, flags[1])
-		# 피격 띠.
 		check_eq("%s hit sheet" % id, data.hit_sheet != null, flags[2])
-		# 오라.
 		check_eq("%s aura" % id, data.aura_texture != null, flags[3])
 	# 띠는 64px 프레임 16장이다.
 	var vanguard: UnitData = load("res://Resources/units/vanguard.tres")
@@ -172,9 +141,7 @@ func _test_unit_art_links() -> void:
 
 # 창고 방이 텍스처 4장과 소품 9개를 갖고, skirmish 가 그 방을 가리키며, 옛 배경 필드는 없는지.
 func _test_rooms() -> void:
-	# 창고 방.
 	var room: BattleRoomData = load("res://Resources/rooms/warehouse.tres")
-	# 불러와짐.
 	check("warehouse room loads", room != null)
 	# 텍스처 4장.
 	check("room textures set", room.ground_texture != null and room.wall_texture != null and room.ally_tile_texture != null and room.enemy_tile_texture != null)
@@ -184,7 +151,5 @@ func _test_rooms() -> void:
 	check("first prop is the far-left crates", room.props[0].texture != null and room.props[0].position.is_equal_approx(Vector3(-5.8, 0.0, -2.7)) and is_equal_approx(room.props[0].height, 1.6))
 	# skirmish.
 	var skirmish: EncounterData = load("res://Resources/encounters/skirmish.tres")
-	# 같은 방.
 	check_eq("skirmish uses the warehouse room", skirmish.room.resource_path, "res://Resources/rooms/warehouse.tres")
-	# 옛 배경 필드 제거.
 	check("encounter has no background field", not ("background" in skirmish))

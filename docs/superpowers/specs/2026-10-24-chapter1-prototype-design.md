@@ -50,7 +50,7 @@
 ## 6. 검증 도구
 
 - `tests/run_tests.gd`: 규칙·대본·원정·저장 단위 테스트.
-- `tools/simulate_chapter.gd`: 탐욕 AI 로 원정을 반복 시뮬레이션 (1장 약 73%, 황혼층 약 30%, 반복 의뢰 약 95%).
+- `tools/simulate_chapter.gd`: 탐욕 AI 로 원정을 반복 시뮬레이션 (노드 지도 기준 1장 약 50%, 황혼층 약 33%, 반복 의뢰 약 95%).
 - `tools/autoplay.gd`: 타이틀부터 1장 완료까지 전체 흐름 자동 진행 (플레이어 저장은 백업 후 복원).
 - `tools/screenshots.gd`: 창 모드로 주요 화면 캡처.
 

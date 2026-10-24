@@ -2,7 +2,6 @@
 ## 카메라를 향해 서는 몸(빌보드) 위에 픽셀 그림·애니메이션 띠를 그리고, 발밑 그림자·진영 고리,
 ## 머리 위 이름·체력 바·수치 글자, 클릭 판정용 충돌 상자를 가진다. 규칙 상태는 바꾸지 않고 보여 주기만 한다.
 class_name UnitView
-# Node3D: 3D 공간에 위치를 가지는 노드.
 extends Node3D
 
 ## 유닛·소품 몸 셰이더 (프레임·번쩍임·디더 페이드).
@@ -151,11 +150,9 @@ static var _ring_texture: Texture2D
 
 ## 유닛과 정지 그림을 받아 필요한 자식 노드를 모두 만든다. 트리에 붙이기 전에 불러도 된다.
 func setup(p_unit: Unit, texture: Texture2D) -> void:
-	# 보여 줄 유닛을 기억한다.
 	unit = p_unit
 	# 적은 왼쪽을 보도록 뒤집는다.
 	_facing = 1.0 if unit.is_ally() else -1.0
-	# 그림과 띠를 기억한다.
 	still_texture = texture
 	idle_sheet = unit.data.idle_sheet
 	attack_sheet = unit.data.attack_sheet
@@ -163,9 +160,25 @@ func setup(p_unit: Unit, texture: Texture2D) -> void:
 	# 유닛마다 숨쉬기·대기 프레임을 어긋나게 한다.
 	_idle_phase = unit.unit_id * 1.7
 	_idle_frame_offset = unit.unit_id * 5
+	_build_body(texture)
+	sparks = _make_sparks()
+	if unit.data.aura_texture != null:
+		aura = _make_aura(unit.data.aura_texture)
+	shadow = _floor_decal(_get_shadow_texture(), Vector2(0.9, 0.5), 0.01, CONTACT_SHADOW_COLOR)
+	ring = _floor_decal(_get_ring_texture(), Vector2(0.95, 0.6), 0.012, ALLY_RING_COLOR if unit.is_ally() else ENEMY_RING_COLOR)
+	_build_overhead()
+	_build_pick_body()
 
-	# --- 몸 ---
-	# 카메라를 향해 도는 피벗.
+	# 규칙 유닛의 현재 값으로 표시를 채운다.
+	_stagger = unit.stagger
+	_max_stagger = maxi(unit.data.stagger, 1)
+	_broken = unit.broken
+	_statuses = unit.statuses.duplicate()
+	set_stats(unit.hp, unit.data.max_hp, unit.block)
+
+
+## 몸(Body) → 자세 피벗(Pose) → 그림 판(Sprite). 판 높이는 SPRITE_HEIGHT, 폭은 그림 비율대로.
+func _build_body(texture: Texture2D) -> void:
 	body = Node3D.new()
 	body.name = "Body"
 	add_child(body)
@@ -188,45 +201,23 @@ func setup(p_unit: Unit, texture: Texture2D) -> void:
 	body_material.set_shader_parameter("flip_h", not unit.is_ally())
 	sprite.material_override = body_material
 	pose.add_child(sprite)
-	# 대기 모습으로 시작한다.
 	_return_to_idle()
 
-	# --- 불꽃 ---
-	sparks = _make_sparks()
 
-	# --- 오라 ---
-	# 데이터에 오라 그림이 있을 때만.
-	if unit.data.aura_texture != null:
-		aura = _make_aura(unit.data.aura_texture)
-
-	# --- 발밑 ---
-	# 접지 그림자.
-	shadow = _floor_decal(_get_shadow_texture(), Vector2(0.9, 0.5), 0.01, CONTACT_SHADOW_COLOR)
-	# 진영 고리.
-	ring = _floor_decal(_get_ring_texture(), Vector2(0.95, 0.6), 0.012, ALLY_RING_COLOR if unit.is_ally() else ENEMY_RING_COLOR)
-
-	# --- 이름 ---
-	# 유닛 이름 글자를 만든다.
+## 머리 위 표시: 이름, 체력 바, 흐트러짐 바, 체력/방어도 숫자.
+func _build_overhead() -> void:
 	name_label = _make_label(unit.data.display_name, 36)
-	# 체력 바 조금 위에 놓는다.
 	name_label.position = Vector3(0.0, OVERHEAD_Y + 0.28, 0.0)
-	# 자식으로 붙인다.
 	add_child(name_label)
 
-	# --- 체력 바 ---
-	# 어두운 배경 막대 (그리기 우선순위 0: 먼저 그림).
+	# 배경 막대는 그리기 우선순위 0, 채움 막대는 1 (배경 위에 그린다).
 	hp_back = _make_bar(Color(0.1, 0.1, 0.1, 0.85), 0)
-	# 머리 위 높이에 놓는다.
 	hp_back.position = Vector3(0.0, OVERHEAD_Y, 0.0)
-	# 자식으로 붙인다.
 	add_child(hp_back)
-	# 초록 채움 막대 (우선순위 1: 배경 위에 그림).
 	hp_fill = _make_bar(Color(0.35, 0.85, 0.4), 1)
-	# 배경과 같은 높이에 놓는다.
 	hp_fill.position = Vector3(0.0, OVERHEAD_Y, 0.0)
-	# 자식으로 붙인다.
 	add_child(hp_fill)
-	# --- 흐트러짐 바 (체력 바 바로 아래, 얇게) ---
+	# 흐트러짐 바는 체력 바 바로 아래에 얇게.
 	stagger_back = _make_bar(Color(0.1, 0.1, 0.1, 0.85), 0, STAGGER_BAR_HEIGHT)
 	stagger_back.position = Vector3(0.0, OVERHEAD_Y - 0.085, 0.0)
 	add_child(stagger_back)
@@ -234,42 +225,24 @@ func setup(p_unit: Unit, texture: Texture2D) -> void:
 	stagger_fill.position = Vector3(0.0, OVERHEAD_Y - 0.085, 0.0)
 	add_child(stagger_fill)
 
-	# --- 수치 글자 ---
-	# 체력/방어도 숫자 글자를 만든다 (내용은 _refresh_stats 가 채움).
+	# 내용은 _refresh_stats 가 채운다.
 	stat_label = _make_label("", 28)
-	# 체력 바 바로 아래에 놓는다.
 	stat_label.position = Vector3(0.0, OVERHEAD_Y - 0.24, 0.0)
-	# 자식으로 붙인다.
 	add_child(stat_label)
 
-	# --- 클릭 판정 ---
-	# 움직이지 않는 물리 몸체를 만든다.
-	pick_body = StaticBody3D.new()
-	# 클릭 광선이 찾는 레이어에 올린다.
-	pick_body.collision_layer = PICK_LAYER_BIT
-	# 다른 물체와 부딪힐 일은 없으므로 마스크는 비운다.
-	pick_body.collision_mask = 0
-	# 충돌 모양 노드를 만든다.
-	pick_shape = CollisionShape3D.new()
-	# 스프라이트를 감싸는 상자 모양.
-	var box := BoxShape3D.new()
-	# 폭 0.8, 스프라이트 높이, 두께 0.4.
-	box.size = Vector3(0.8, SPRITE_HEIGHT, 0.4)
-	# 모양을 넣는다.
-	pick_shape.shape = box
-	# 스프라이트와 같은 높이에 맞춘다.
-	pick_shape.position = Vector3(0.0, SPRITE_HEIGHT / 2.0, 0.0)
-	# 모양을 몸체에 붙인다.
-	pick_body.add_child(pick_shape)
-	# 몸체를 이 노드에 붙인다.
-	add_child(pick_body)
 
-	# 규칙 유닛의 현재 값으로 표시를 채운다.
-	_stagger = unit.stagger
-	_max_stagger = maxi(unit.data.stagger, 1)
-	_broken = unit.broken
-	_statuses = unit.statuses.duplicate()
-	set_stats(unit.hp, unit.data.max_hp, unit.block)
+## 클릭 광선이 찾는 상자 (그림을 감싸고, 다른 물체와는 부딪히지 않는다).
+func _build_pick_body() -> void:
+	pick_body = StaticBody3D.new()
+	pick_body.collision_layer = PICK_LAYER_BIT
+	pick_body.collision_mask = 0
+	pick_shape = CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.8, SPRITE_HEIGHT, 0.4)
+	pick_shape.shape = box
+	pick_shape.position = Vector3(0.0, SPRITE_HEIGHT / 2.0, 0.0)
+	pick_body.add_child(pick_shape)
+	add_child(pick_body)
 
 
 ## 매 프레임: 몸을 카메라 쪽으로 돌리고 대기 동작을 진행한다.
@@ -281,7 +254,6 @@ func _process(delta: float) -> void:
 		body.rotation = billboard_rotation(-camera.global_basis.z, BODY_TILT_DEG)
 	# 시간을 쌓는다 (게임 시간이라 히트스톱 때 같이 멈춘다).
 	_clock += delta
-	# 대기 동작.
 	tick_idle(_clock)
 	# 흰 번쩍임은 실제 시간으로 끈다 (히트스톱 중에도 0.06초면 꺼진다).
 	tick_flash(Time.get_ticks_msec())
@@ -291,7 +263,6 @@ func _process(delta: float) -> void:
 
 ## 카메라 시선(camera_forward)의 수평 성분을 보도록 Y축만 돌리고, 위쪽을 카메라 반대로 tilt_deg 만큼 눕힌 회전.
 static func billboard_rotation(camera_forward: Vector3, tilt_deg: float) -> Vector3:
-	# 높이 성분을 버린 시선.
 	var flat := Vector3(camera_forward.x, 0.0, camera_forward.z)
 	# 바로 아래를 보면 돌 방향이 없다.
 	if flat.length_squared() == 0.0:
@@ -309,7 +280,6 @@ static func frame_count(sheet: Texture2D) -> int:
 
 ## 띠의 index 번 프레임을 보인다 (넘치면 감는다).
 func show_frame(sheet: Texture2D, index: int) -> void:
-	# 이 띠의 프레임 수.
 	var count: int = frame_count(sheet)
 	# 셰이더에 띠와 프레임을 넘긴다.
 	body_material.set_shader_parameter("texture_albedo", sheet)
@@ -319,30 +289,23 @@ func show_frame(sheet: Texture2D, index: int) -> void:
 
 ## 진행률 t(0~1)에 해당하는 띠 프레임을 보인다. 끝은 마지막 프레임에 머문다.
 func show_sheet_progress(sheet: Texture2D, t: float) -> void:
-	# 이 띠의 프레임 수.
 	var count: int = frame_count(sheet)
-	# 진행률을 프레임 번호로.
 	show_frame(sheet, mini(int(floor(t * count)), count - 1))
 
 
 ## 대기 동작 한 번: 띠가 있으면 8fps 프레임, 없으면 숨쉬기 자세. 연출 중이면 아무것도 안 한다.
 func tick_idle(time: float) -> void:
-	# 연출이 자세를 잡고 있다.
 	if _acting:
 		return
-	# 그려진 대기 동작.
 	if idle_sheet != null:
 		show_frame(idle_sheet, int(floor(time * IDLE_FPS)) + _idle_frame_offset)
 		return
-	# 코드 숨쉬기.
 	apply_pose(UnitMotion.idle(time, _idle_phase))
 
 
 ## 자세를 몸에 적용한다. 위로 늘면 옆으로 얇아져 부피가 유지돼 보인다. 기울기는 바라보는 방향의 뒤쪽.
 func apply_pose(p: UnitMotion.Pose) -> void:
-	# 늘이기.
 	pose.scale = Vector3(1.0 - p.stretch * 0.5, 1.0 + p.stretch, 1.0)
-	# 적은 반대로 기운다.
 	pose.rotation = Vector3(0.0, 0.0, deg_to_rad(p.lean * _facing))
 
 
@@ -358,23 +321,18 @@ func hit_duration() -> float:
 
 ## 체력·최대 체력·방어도 표시를 한 번에 바꾼다.
 func set_stats(hp: int, max_hp: int, block: int) -> void:
-	# 체력을 기억한다.
 	_hp = hp
 	# 최대 체력을 기억한다 (0 이하면 1 로 막아 나눗셈 오류를 피한다).
 	_max_hp = maxi(max_hp, 1)
-	# 방어도를 기억한다.
 	_block = block
-	# 화면을 갱신한다.
 	_refresh_stats()
 
 
 ## 체력 표시만 바꾼다 (방어도는 그대로).
 func set_hp(hp: int, max_hp: int) -> void:
-	# 체력을 기억한다.
 	_hp = hp
 	# 최대 체력을 기억한다 (최소 1).
 	_max_hp = maxi(max_hp, 1)
-	# 화면을 갱신한다.
 	_refresh_stats()
 
 
@@ -407,15 +365,12 @@ func stagger_shown() -> int:
 
 ## 방어도 표시만 바꾼다.
 func set_block(block: int) -> void:
-	# 방어도를 기억한다.
 	_block = block
-	# 화면을 갱신한다.
 	_refresh_stats()
 
 
 ## 원래 서 있을 위치를 정하고 그 자리로 옮긴다.
 func set_home(world_position: Vector3) -> void:
-	# 돌아올 위치로 기억한다.
 	home_position = world_position
 	# 지금 위치도 그 자리로 옮긴다.
 	position = world_position
@@ -425,37 +380,29 @@ func set_home(world_position: Vector3) -> void:
 func slide_to(world_position: Vector3) -> void:
 	# 돌아올 자리를 새 위치로 바꾼다.
 	home_position = world_position
-	# 위치 트윈을 만든다.
 	var tween: Tween = create_tween()
 	# MOVE_TIME 동안 새 위치로 옮긴다.
 	tween.tween_property(self, "position", world_position, MOVE_TIME)
-	# 끝날 때까지 기다린다.
 	await tween.finished
 
 
 ## 연출 도중 끊겼을 수 있는 자세·위치·셰이더 값을 기본으로 되돌린다.
 func reset_pose() -> void:
-	# 원래 칸 위치로.
 	position = home_position
 	# 깡충·흔들림 되돌림.
 	body.position = Vector3.ZERO
-	# 연출 끝.
 	_acting = false
-	# 기본 자세.
 	apply_pose(UnitMotion.Pose.new())
-	# 대기 그림.
 	_return_to_idle()
 	# 색·번쩍임·투명도.
 	body_material.set_shader_parameter("tint", Color.WHITE)
 	body_material.set_shader_parameter("flash", 0.0)
 	body_material.set_shader_parameter("fade", 1.0)
-	# 흰 번쩍임 예약도 지운다.
 	_white_until_msec = 0
 
 
 ## 살아 있음/쓰러짐에 맞춰 보이기와 클릭 판정을 켜고 끈다.
 func set_alive(alive: bool) -> void:
-	# 쓰러졌으면 숨긴다.
 	visible = alive
 	# 쓰러졌으면 클릭 판정을 끈다 (뒤에 있는 타일이 클릭되도록).
 	pick_shape.disabled = not alive
@@ -469,7 +416,6 @@ func lunge_toward(world_target: Vector3, distance: float = LUNGE_DISTANCE) -> vo
 	# 길이가 0 이 아니면 길이 1 로.
 	if direction.length() > 0.0:
 		direction = direction.normalized()
-	# 연출 시작.
 	_acting = true
 	# 0→1 진행률로 한 걸음씩 그린다.
 	var tween: Tween = create_tween()
@@ -482,33 +428,26 @@ func lunge_toward(world_target: Vector3, distance: float = LUNGE_DISTANCE) -> vo
 
 # 돌진 한 순간: 위치는 돌진 곡선, 모습은 공격 띠 또는 공격 자세 (둘을 겹치면 과해진다).
 func _lunge_step(t: float, home: Vector3, lunge: Vector3) -> void:
-	# 위치.
 	position = home.lerp(lunge, UnitMotion.lunge_reach(t))
-	# 그려진 공격.
 	if attack_sheet != null:
 		show_sheet_progress(attack_sheet, t)
-	# 코드 공격 자세.
 	else:
 		apply_pose(UnitMotion.attack(t))
 
 
 ## 제자리에서 한 번 뛴다 (방어·휴식 행동 표시). 끝날 때까지 await 할 수 있다.
 func hop() -> void:
-	# 연출 시작.
 	_acting = true
 	# 0→1 진행률.
 	var tween: Tween = create_tween()
 	tween.tween_method(_hop_step, 0.0, 1.0, ACTION_TIME)
 	await tween.finished
-	# 바닥으로.
 	body.position = Vector3.ZERO
-	# 연출 끝.
 	_acting = false
 
 
 # 깡충 한 순간: 높이와 자세.
 func _hop_step(t: float) -> void:
-	# 높이.
 	body.position = Vector3(0.0, UnitMotion.hop_height(t), 0.0)
 	# 웅크림·늘어남.
 	apply_pose(UnitMotion.hop(t))
@@ -517,9 +456,7 @@ func _hop_step(t: float) -> void:
 ## 피격 연출: 흰 번쩍임·불꽃으로 시작해 피격 띠(또는 움찔 자세) + 붉은 번쩍임 2회 + 좌우 흔들림.
 ## knockback 은 맞아서 밀려날 최대 변위(바닥 평면). 끝나면 정확히 제자리로 돌아온다. await 할 수 있다.
 func flash_and_shake(knockback: Vector3 = Vector3.ZERO) -> void:
-	# 연출 시작.
 	_acting = true
-	# 맞는 첫 순간.
 	start_impact()
 	# 0→1 진행률.
 	var tween: Tween = create_tween()
@@ -536,15 +473,12 @@ func flash_and_shake(knockback: Vector3 = Vector3.ZERO) -> void:
 
 # 피격 한 순간: 모습, 4구간 중 0·2번째 붉은색, 좌우 흔들림, 넉백.
 func _hit_step(t: float, home: Vector3, knockback: Vector3) -> void:
-	# 그려진 피격.
 	if hit_sheet != null:
 		show_sheet_progress(hit_sheet, t)
-	# 코드 움찔 자세.
 	else:
 		apply_pose(UnitMotion.hit(t))
 	# 몇 번째 구간인지 (0~3).
 	var quarter: int = mini(int(t * 4.0), 3)
-	# 짝수 구간은 붉게.
 	body_material.set_shader_parameter("tint", FLASH_TINT if quarter % 2 == 0 and t < 1.0 else Color.WHITE)
 	# 구간 안 진행률로 흔들림 키 사이를 잇는다.
 	var local: float = t * 4.0 - quarter
@@ -556,17 +490,13 @@ func _hit_step(t: float, home: Vector3, knockback: Vector3) -> void:
 # 기다리지 않는다. 숫자가 떠오르는 동안 다음 연출이 겹쳐도 된다.
 ## 맞는 첫 순간: 몸을 완전한 흰색으로 칠하고 불꽃을 튀긴다. 흰색은 실제 시간 0.06초 뒤 꺼진다.
 func start_impact() -> void:
-	# 흰색.
 	body_material.set_shader_parameter("flash", 1.0)
-	# 끌 시각.
 	_white_until_msec = Time.get_ticks_msec() + int(HIT_WHITE_TIME * 1000.0)
-	# 불꽃 한 번.
 	sparks.restart()
 
 
 ## 실제 시각 now_msec 가 흰색을 끌 때를 지났으면 끈다.
 func tick_flash(now_msec: int) -> void:
-	# 켜져 있고 시간이 됐으면.
 	if _white_until_msec > 0 and now_msec >= _white_until_msec:
 		_white_until_msec = 0
 		body_material.set_shader_parameter("flash", 0.0)
@@ -579,19 +509,15 @@ static func pop_scale(t: float, punch: float) -> float:
 
 ## 머리 위에 글자(피해 숫자, 카드 이름 등)를 띄워 위로 올리며 사라지게 한다.
 func pop_text(text: String, color: Color, punch: float = 1.0) -> void:
-	# 큰 글자를 만든다.
 	var label: Label3D = _make_label(text, 64)
-	# 글자 색을 정한다.
 	label.modulate = color
 	# 이름보다 위에서 시작한다.
 	label.position = Vector3(0.0, OVERHEAD_Y + 0.5, 0.0)
-	# 자식으로 붙인다.
 	add_child(label)
 	# 여러 속성을 동시에 바꾸는 트윈을 만든다.
 	var tween: Tween = create_tween().set_parallel(true)
 	# 위로 0.6 만큼 떠오른다.
 	tween.tween_property(label, "position:y", label.position.y + 0.6, POP_TIME)
-	# 글자가 투명해진다.
 	tween.tween_property(label, "modulate:a", 0.0, POP_TIME)
 	# 외곽선도 함께 투명해진다 (따로 바꾸지 않으면 외곽선만 남는다).
 	tween.tween_property(label, "outline_modulate:a", 0.0, POP_TIME)
@@ -619,19 +545,14 @@ func fade_out() -> void:
 	var tween: Tween = create_tween()
 	tween.tween_method(_fade_step, 0.0, 1.0, FADE_TIME)
 	await tween.finished
-	# 완전히 숨긴다.
 	visible = false
 
 
 # 쓰러짐 한 순간: 넘어지는 자세, 디더 페이드, 글자 투명도.
 func _fade_step(t: float) -> void:
-	# 넘어짐.
 	apply_pose(UnitMotion.death(t))
-	# 남은 불투명도.
 	var alpha: float = 1.0 - t
-	# 몸.
 	body_material.set_shader_parameter("fade", alpha)
-	# 글자와 외곽선.
 	name_label.modulate.a = alpha
 	name_label.outline_modulate.a = alpha
 	stat_label.modulate.a = alpha
@@ -640,11 +561,9 @@ func _fade_step(t: float) -> void:
 
 # 대기 모습: 대기 띠의 시작 프레임, 없으면 정지 그림.
 func _return_to_idle() -> void:
-	# 띠가 있으면 그 첫 프레임.
 	if idle_sheet != null:
 		show_frame(idle_sheet, _idle_frame_offset)
 		return
-	# 정지 그림 한 장.
 	body_material.set_shader_parameter("texture_albedo", still_texture)
 	body_material.set_shader_parameter("frame_count", 1)
 	body_material.set_shader_parameter("frame", 0)
@@ -660,10 +579,8 @@ func _refresh_stats() -> void:
 	# 상태 스택 (예: 혈갑3).
 	for status_id in _statuses:
 		stat_label.text += "  %s%d" % [CardText.status_name(status_id), _statuses[status_id]]
-	# 무너졌으면 표시한다.
 	if _broken:
 		stat_label.text += "  [%s]" % ("탈진" if unit != null and unit.is_ally() else "기절")
-	# 흐트러짐 바.
 	if stagger_fill != null:
 		var stagger_ratio: float = clampf(float(_stagger) / float(_max_stagger), 0.0, 1.0)
 		(stagger_fill.mesh as QuadMesh).size = Vector2(HP_BAR_WIDTH * stagger_ratio, STAGGER_BAR_HEIGHT)
@@ -685,7 +602,6 @@ func _refresh_stats() -> void:
 func _make_label(text: String, font_size: int) -> Label3D:
 	# 3D 글자 노드를 만든다.
 	var label := Label3D.new()
-	# 내용.
 	label.text = text
 	# 글꼴 크기 (픽셀 기준).
 	label.font_size = font_size
@@ -701,47 +617,33 @@ func _make_label(text: String, font_size: int) -> Label3D:
 	label.render_priority = 2
 	# 외곽선은 글자보다 먼저 그린다.
 	label.outline_render_priority = 1
-	# 만든 글자를 돌려준다.
 	return label
 
 
 ## 체력 바용 사각형 메시를 만든다. priority 가 클수록 나중에(위에) 그려진다.
 func _make_bar(color: Color, priority: int, height: float = HP_BAR_HEIGHT) -> MeshInstance3D:
-	# 메시 노드를 만든다.
 	var bar := MeshInstance3D.new()
-	# 평평한 사각형 메시.
 	var quad := QuadMesh.new()
-	# 막대 크기.
 	quad.size = Vector2(HP_BAR_WIDTH, height)
-	# 메시를 넣는다.
 	bar.mesh = quad
-	# 재질을 만든다.
 	var material := StandardMaterial3D.new()
-	# 조명 영향 없이 색 그대로.
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	# 항상 카메라를 향한다.
 	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	# 반투명을 허용한다 (배경 막대의 알파).
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	# 다른 물체에 가려지지 않게 한다.
 	material.no_depth_test = true
-	# 그리기 순서.
 	material.render_priority = priority
-	# 막대 색.
 	material.albedo_color = color
-	# 재질을 입힌다.
 	bar.material_override = material
-	# 만든 막대를 돌려준다.
 	return bar
 
 
 # 가슴 높이에서 사방으로 튀는 네모 불꽃 (유니티 UnitView.MakeSparks). 한 번 터뜨리고 끝난다.
 func _make_sparks() -> CPUParticles3D:
-	# 입자 노드.
 	var particles := CPUParticles3D.new()
 	particles.name = "Sparks"
 	particles.position = Vector3(0.0, CHEST_HEIGHT, 0.0)
-	# 한 번에 다 나온다.
 	particles.amount = SPARK_COUNT
 	particles.one_shot = true
 	particles.explosiveness = 1.0
@@ -749,19 +651,16 @@ func _make_sparks() -> CPUParticles3D:
 	particles.lifetime = 0.25
 	# 이미 튄 불꽃은 몸이 밀려도 제자리.
 	particles.local_coords = false
-	# 작은 구에서 사방으로.
 	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	particles.emission_sphere_radius = 0.1
 	particles.direction = Vector3.UP
 	particles.spread = 180.0
 	particles.initial_velocity_min = 2.0
 	particles.initial_velocity_max = 4.0
-	# 중력 절반.
 	particles.gravity = Vector3(0.0, -4.9, 0.0)
 	# 크기 0.06~0.1.
 	particles.scale_amount_min = 0.75
 	particles.scale_amount_max = 1.25
-	# 흰색~주황 사이에서 하나.
 	var colors := Gradient.new()
 	colors.set_color(0, _SPARK_HOT)
 	colors.set_color(1, _SPARK_WARM)
@@ -784,22 +683,18 @@ func _make_sparks() -> CPUParticles3D:
 
 # 몸 둘레에서 천천히 떠올라 옅어지며 사라지는 불꽃 (유니티 UnitView.MakeAura).
 func _make_aura(texture: Texture2D) -> CPUParticles3D:
-	# 입자 노드.
 	var particles := CPUParticles3D.new()
 	particles.name = "Aura"
-	# 몸 가운데 높이.
 	particles.position = Vector3(0.0, SPRITE_HEIGHT * 0.45, 0.0)
 	# 동시에 떠 있는 최대 수 = 수명 × 초당 수 (올림).
 	particles.amount = ceili(AURA_LIFETIME * AURA_RATE)
 	particles.lifetime = AURA_LIFETIME
-	# 처음부터 가득 차 있게.
 	particles.preprocess = AURA_LIFETIME
 	# 이미 뜬 불꽃은 몸이 움직여도 제자리.
 	particles.local_coords = false
 	# 몸을 감싸는 납작한 상자에서 나온다.
 	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 	particles.emission_box_extents = Vector3(0.55, SPRITE_HEIGHT * 0.35, 0.05)
-	# 위로 천천히.
 	particles.direction = Vector3.UP
 	particles.spread = 15.0
 	particles.gravity = Vector3.ZERO
@@ -831,7 +726,6 @@ func _make_aura(texture: Texture2D) -> CPUParticles3D:
 	particles.mesh = quad
 	# 그림자는 드리우지 않는다.
 	particles.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# 계속 나온다.
 	particles.emitting = true
 	add_child(particles)
 	return particles
@@ -839,7 +733,6 @@ func _make_aura(texture: Texture2D) -> CPUParticles3D:
 
 # 발밑 바닥에 까는 평면 하나 (그림자·고리). 조명과 그림자에 영향받지 않는다.
 func _floor_decal(texture: Texture2D, size: Vector2, height: float, color: Color) -> MeshInstance3D:
-	# 바닥 평면.
 	var decal := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = size
@@ -861,7 +754,6 @@ func _floor_decal(texture: Texture2D, size: Vector2, height: float, color: Color
 
 # 가운데가 진하고(0.5) 가장자리로 갈수록 투명한 원 (유니티 ViewAssets.CreateShadow).
 static func _get_shadow_texture() -> Texture2D:
-	# 처음 한 번만 만든다.
 	if _shadow_texture == null:
 		_shadow_texture = _radial_texture(func(r: float) -> float: return 0.5 * (1.0 - clampf(r, 0.0, 1.0)))
 	return _shadow_texture
@@ -869,7 +761,6 @@ static func _get_shadow_texture() -> Texture2D:
 
 # 반지름 0.8~0.95 사이만 불투명한 얇은 고리 (유니티 ViewAssets.CreateRing).
 static func _get_ring_texture() -> Texture2D:
-	# 처음 한 번만 만든다.
 	if _ring_texture == null:
 		_ring_texture = _radial_texture(func(r: float) -> float: return clampf(1.0 - absf(r - 0.875) / 0.075, 0.0, 1.0))
 	return _ring_texture
@@ -877,16 +768,11 @@ static func _get_ring_texture() -> Texture2D:
 
 # 64×64 흰 텍스처. 중심에서의 거리(반지름 1 기준) r 마다 alpha_at(r) 을 알파로 쓴다.
 static func _radial_texture(alpha_at: Callable) -> Texture2D:
-	# 한 변의 픽셀 수.
 	var size: int = 64
-	# 빈 이미지.
 	var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
-	# 중심.
 	var center := Vector2((size - 1) / 2.0, (size - 1) / 2.0)
-	# 픽셀마다 알파를 정한다.
 	for y in size:
 		for x in size:
 			var r: float = Vector2(x, y).distance_to(center) / (size / 2.0)
 			image.set_pixel(x, y, Color(1.0, 1.0, 1.0, alpha_at.call(r)))
-	# 텍스처로 만든다.
 	return ImageTexture.create_from_image(image)

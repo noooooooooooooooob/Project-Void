@@ -13,6 +13,10 @@ var _accent: Color
 
 
 ## options: 문자열 또는 {"text", "desc", "disabled"} 의 목록.
+func title() -> String:
+	return _title
+
+
 func _init(title: String, body: String, options: Array, background: Texture2D = null, accent: Color = UiTheme.LAVENDER) -> void:
 	_title = title
 	_body = body

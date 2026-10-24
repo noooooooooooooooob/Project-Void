@@ -31,11 +31,9 @@ func run() -> Array[Dictionary]:
 	_test_turn_start_draws_into_hand()
 	# 차례 종료: 버리기 → 리셔플 → 드로우.
 	_test_end_turn_discards_then_reshuffles_and_draws()
-	# 아군 이동 이벤트 재생.
 	_test_move_event_moves_the_view()
 	# 적 이동 차례: 차례 시작 강조는 출발 칸, 이동 뒤에는 도착 칸.
 	_test_enemy_move_highlights_follow_the_move()
-	# 타격 묶음 찾기.
 	_test_impact_start()
 	# 넉백 거리·카메라 유지·발사음 시점.
 	_test_impact_rules()
@@ -43,19 +41,14 @@ func run() -> Array[Dictionary]:
 	_test_only_melee_and_ranged_cards_attack()
 	# instant 재생은 소리를 내지 않는다.
 	_test_instant_is_silent()
-	# 결과를 돌려준다.
 	return results()
 
 
 # 데이터와 칸으로 배치 한 줄을 만든다.
 func _placement(data: UnitData, cell: Vector2i) -> UnitPlacement:
-	# 배치 리소스.
 	var placement: UnitPlacement = PlacementScript.new()
-	# 유닛 데이터.
 	placement.unit_data = data
-	# 칸.
 	placement.cell = cell
-	# 돌려준다.
 	return placement
 
 
@@ -66,65 +59,45 @@ func _rig() -> Dictionary:
 	var card: CardData = CardDataScript.new()
 	# id.
 	card.id = &"zap"
-	# 이름.
 	card.display_name = "zap"
 	# 비용 1.
 	card.sp_cost = 1
-	# 원거리.
 	card.attack_type = CardData.AttackType.RANGED
 	# 한 방에 쓰러뜨리는 피해 50.
 	card.effects = [Fixtures.effect(CardEffect.Kind.DAMAGE, 500)]
 
-	# 아군 데이터.
 	var ally: AllyData = AllyDataScript.new()
 	# id.
 	ally.id = &"a"
-	# 이름.
 	ally.display_name = "a"
-	# 최대 체력.
 	ally.max_hp = 30
-	# 빠르게.
 	ally.speed = 10
 	# SP.
 	ally.max_sp = 3
-	# 카드 한 장짜리 덱.
 	var deck: Array[CardData] = [card]
-	# 덱을 넣는다.
 	ally.deck = deck
 
-	# 적 데이터.
 	var enemy: EnemyData = EnemyDataScript.new()
 	# id.
 	enemy.id = &"e"
-	# 이름.
 	enemy.display_name = "e"
-	# 최대 체력.
 	enemy.max_hp = 20
-	# 느리게.
 	enemy.speed = 1
 	# 무작위 이동을 끈다 (재생 결과를 정확히 확인하기 위해).
 	enemy.move_chance = 0.0
 
 	# 전투 구성 (격자 기본 3×3).
 	var encounter: EncounterData = EncounterScript.new()
-	# 아군 배치.
 	var allies: Array[UnitPlacement] = [_placement(ally, Vector2i(0, 1))]
-	# 적 배치.
 	var enemies: Array[UnitPlacement] = [_placement(enemy, Vector2i(0, 1))]
-	# 아군 배치 넣기.
 	encounter.ally_units = allies
-	# 적 배치 넣기.
 	encounter.enemy_units = enemies
-	# 난수 생성기.
 	var rng := RandomNumberGenerator.new()
-	# 시드 고정.
 	rng.seed = 8
-	# 전투 상태.
 	var state := BattleState.new(encounter, rng)
 
 	# 신호 기록기 (전투 시작 전에 연결).
 	var recorder := BattleEventRecorder.new(state)
-	# 보드.
 	var board := Board3D.new()
 	# 임시 그림으로 보드를 만든다.
 	board.build(state, ImageTexture.create_from_image(Image.create(10, 20, false, Image.FORMAT_RGBA8)))
@@ -132,9 +105,7 @@ func _rig() -> Dictionary:
 	var hud: BattleHud = HudScene.instantiate()
 	# _ready 가 돌아 %노드들이 연결되도록 루트 창에 붙인다.
 	(Engine.get_main_loop() as SceneTree).root.add_child(hud)
-	# 재생기.
 	var playback := BattlePlayback.new()
-	# 보드 연결.
 	playback.board = board
 	# HUD 연결.
 	playback.hud = hud
@@ -146,281 +117,191 @@ func _rig() -> Dictionary:
 
 # _rig 가 만든 노드들을 지운다.
 func _free(rig: Dictionary) -> void:
-	# 보드.
 	(rig["board"] as Board3D).free()
 	# HUD.
 	(rig["hud"] as BattleHud).free()
-	# 재생기.
 	(rig["playback"] as BattlePlayback).free()
 
 
 # 전투 시작 이벤트를 재생하면 아군 칸이 강조되고, 로그에 차례 줄이 생기고, finished 가 한 번 즉시 나오는지.
 func _test_turn_start_highlights_and_logs() -> void:
-	# 준비물.
 	var rig: Dictionary = _rig()
-	# 전투 상태.
 	var state: BattleState = rig["state"]
-	# 기록기.
 	var recorder: BattleEventRecorder = rig["recorder"]
-	# 보드.
 	var board: Board3D = rig["board"]
 	# HUD.
 	var hud: BattleHud = rig["hud"]
-	# 재생기.
 	var playback: BattlePlayback = rig["playback"]
 	# finished 횟수 (람다에서 바꾸려고 배열에 담는다).
 	var finished_count: Array = [0]
 	# finished 가 나올 때마다 센다.
 	playback.finished.connect(func() -> void: finished_count[0] += 1)
 
-	# 전투 시작.
 	state.start_battle()
-	# 쌓인 이벤트 재생.
 	playback.play(recorder.take_events())
-	# 아군 칸 강조.
 	check_eq("current tile highlighted", board.tile_state(Unit.Team.ALLY, Vector2i(0, 1)), Board3D.TileState.CURRENT)
-	# 차례 로그.
 	check("turn logged", hud.log_text().contains("― a 차례"))
-	# 동기로 한 번 끝났다.
 	check_eq("finished once, synchronously", finished_count[0], 1)
-	# 정리.
 	_free(rig)
 
 
 # 피해 50 카드로 적을 쓰러뜨리는 이벤트를 재생하면 체력 0 표시, 숨김, 빈 칸, 로그, 승리 배너, 손패 비움이 되는지.
 func _test_kill_plays_to_banner() -> void:
-	# 준비물.
 	var rig: Dictionary = _rig()
-	# 전투 상태.
 	var state: BattleState = rig["state"]
-	# 기록기.
 	var recorder: BattleEventRecorder = rig["recorder"]
-	# 보드.
 	var board: Board3D = rig["board"]
 	# HUD.
 	var hud: BattleHud = rig["hud"]
-	# 재생기.
 	var playback: BattlePlayback = rig["playback"]
 
-	# 시작.
 	state.start_battle()
-	# 시작 이벤트 재생.
 	playback.play(recorder.take_events())
-	# 보드 동기화.
 	board.sync_from_state(state)
-	# 적 유닛.
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 
 	# 카드를 쓴다 (적 처치, 전투 종료).
 	state.play_card(0, foe)
-	# 그 이벤트들을 재생한다.
 	playback.play(recorder.take_events())
 	# 체력 글자 0/20.
 	check_eq("hp shown at zero", board.view_for(foe).stat_label.text, "0/20")
-	# 적 화면 숨김.
 	check("dead view hidden", not board.view_for(foe).visible)
-	# 적 칸 빈 칸.
 	check_eq("dead tile empty", board.tile_state(Unit.Team.ENEMY, Vector2i(0, 1)), Board3D.TileState.EMPTY)
 	# 규칙이 남긴 카드 사용 로그.
 	check("card log from the rules", hud.log_text().contains("a → e (zap)"))
-	# 재생기가 남긴 피해 로그.
 	check("damage log", hud.log_text().contains("e 에게 50 피해"))
-	# 승리 배너.
 	check("victory banner", hud.banner_visible())
 	# 쓴 카드는 손패에서 빠졌다.
 	check_eq("played card left the hand", hud.hand_view().card_views().size(), 0)
-	# 정리.
 	_free(rig)
 
 
 # 직접 만든 회복·방어도 이벤트를 재생하면 체력 글자와 방어도 글자가 갱신되는지.
 func _test_heal_and_block_update_view() -> void:
-	# 준비물.
 	var rig: Dictionary = _rig()
-	# 전투 상태.
 	var state: BattleState = rig["state"]
-	# 보드.
 	var board: Board3D = rig["board"]
-	# 재생기.
 	var playback: BattlePlayback = rig["playback"]
-	# 적 유닛.
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
-	# 적 화면.
 	var view: UnitView = board.view_for(foe)
 
 	# 회복 이벤트를 손으로 만든다.
 	var healed := BattleEvent.new(BattleEvent.Kind.HEALED)
-	# 대상.
 	healed.unit = foe
-	# 회복량.
 	healed.amount = 3
-	# 회복 후 체력.
 	healed.hp = 12
-	# 이벤트 배열.
 	var heal_events: Array[BattleEvent] = [healed]
-	# 재생.
 	playback.play(heal_events)
 	# 체력 12/20.
 	check_eq("heal updates hp", view.stat_label.text, "12/20")
 
 	# 방어도 이벤트를 손으로 만든다.
 	var guarded := BattleEvent.new(BattleEvent.Kind.BLOCK_GAINED)
-	# 대상.
 	guarded.unit = foe
-	# 얻은 양.
 	guarded.amount = 5
-	# 얻은 뒤 방어도.
 	guarded.block = 5
-	# 이벤트 배열.
 	var block_events: Array[BattleEvent] = [guarded]
-	# 재생.
 	playback.play(block_events)
 	# 체력은 유지하고 방어도가 붙는다.
 	check_eq("block keeps the shown hp", view.stat_label.text, "12/20  방5")
-	# 정리.
 	_free(rig)
 
 
 # 전투 시작 이벤트(드로우 포함)를 재생하면 손패 1 장, 덱 더미 0, 더미 이름 a 가 되는지.
 func _test_turn_start_draws_into_hand() -> void:
-	# 준비물.
 	var rig: Dictionary = _rig()
-	# 전투 상태.
 	var state: BattleState = rig["state"]
-	# 기록기.
 	var recorder: BattleEventRecorder = rig["recorder"]
 	# HUD.
 	var hud: BattleHud = rig["hud"]
-	# 재생기.
 	var playback: BattlePlayback = rig["playback"]
 
-	# 시작.
 	state.start_battle()
-	# 재생.
 	playback.play(recorder.take_events())
 	# 손패 1 장 (덱이 1 장뿐).
 	check_eq("drawn card is in the hand", hud.hand_view().card_views().size(), 1)
 	# 덱 더미 0.
 	check_eq("deck pile emptied by the draw", hud.deck_pile().count_text(), "0")
-	# 더미 이름.
 	check_eq("deck pile names the ally", hud.deck_pile().owner_text(), "a")
-	# 정리.
 	_free(rig)
 
 
 # 차례 종료 이벤트를 두 번에 나눠 재생: 먼저 버리기만 → 손패 0·묘지 1, 나머지(리셔플·드로우) → 손패 1·묘지 0.
 func _test_end_turn_discards_then_reshuffles_and_draws() -> void:
-	# 준비물.
 	var rig: Dictionary = _rig()
-	# 전투 상태.
 	var state: BattleState = rig["state"]
-	# 기록기.
 	var recorder: BattleEventRecorder = rig["recorder"]
 	# HUD.
 	var hud: BattleHud = rig["hud"]
-	# 재생기.
 	var playback: BattlePlayback = rig["playback"]
 
-	# 시작.
 	state.start_battle()
-	# 시작 이벤트 재생.
 	playback.play(recorder.take_events())
 	# 차례 종료 (버리기 → 적 차례 → 리셔플·드로우).
 	state.end_turn()
-	# 그 이벤트들을 꺼낸다.
 	var events: Array[BattleEvent] = recorder.take_events()
 
 	# 첫 이벤트(손패 버리기)만.
 	var discard_only: Array[BattleEvent] = [events[0]]
-	# 재생.
 	playback.play(discard_only)
 	# 손패 0.
 	check_eq("hand discarded", hud.hand_view().card_views().size(), 0)
 	# 묘지 1.
 	check_eq("discard pile holds the card", hud.discard_pile().count_text(), "1")
 
-	# 나머지 이벤트 재생.
 	playback.play(events.slice(1))
 	# 다시 손패 1.
 	check_eq("card drawn again after the reshuffle", hud.hand_view().card_views().size(), 1)
 	# 묘지 0.
 	check_eq("discard pile emptied by the reshuffle", hud.discard_pile().count_text(), "0")
-	# 정리.
 	_free(rig)
 
 
 # 아군이 (0,1)→(1,1) 로 이동한 이벤트를 재생하면 화면 위치·강조 타일·SP 패널·로그가 바뀌는지.
 func _test_move_event_moves_the_view() -> void:
-	# 준비물.
 	var rig: Dictionary = _rig()
-	# 전투 상태.
 	var state: BattleState = rig["state"]
-	# 기록기.
 	var recorder: BattleEventRecorder = rig["recorder"]
-	# 보드.
 	var board: Board3D = rig["board"]
 	# HUD.
 	var hud: BattleHud = rig["hud"]
-	# 재생기.
 	var playback: BattlePlayback = rig["playback"]
 
-	# 시작.
 	state.start_battle()
-	# 시작 이벤트 재생.
 	playback.play(recorder.take_events())
-	# 아군 유닛.
 	var ally: Unit = state.living_units(Unit.Team.ALLY)[0]
-	# 한 칸 뒤로 이동.
 	state.move_unit(Vector2i(1, 1))
-	# 이동 이벤트 재생.
 	playback.play(recorder.take_events())
-	# 화면 위치.
 	check("view moved to the new cell", board.view_for(ally).position.is_equal_approx(board.layout.cell_position(Unit.Team.ALLY, Vector2i(1, 1))))
-	# 새 칸 강조.
 	check_eq("new cell highlighted", board.tile_state(Unit.Team.ALLY, Vector2i(1, 1)), Board3D.TileState.CURRENT)
 	# 이동은 SP 대신 이동력을 쓴다.
 	check_eq("sp panel shows the remaining move points", hud.sp_text(), "SP\n●●●\n3 / 3\n이동 1 / 2")
-	# 로그.
 	check("move logged", hud.log_text().contains("a 이동"))
-	# 정리.
 	_free(rig)
 
 
 # 이동 확률 100% 적의 차례를 나눠 재생: 차례 시작까지는 출발 칸(0,1)이 강조되고 도착 칸은 빈 칸,
 # 이동 이벤트까지 재생하면 출발 칸은 빈 칸, 도착 칸은 강조, 적 화면은 도착 칸에 선다.
 func _test_enemy_move_highlights_follow_the_move() -> void:
-	# 준비물.
 	var rig: Dictionary = _rig()
-	# 전투 상태.
 	var state: BattleState = rig["state"]
-	# 기록기.
 	var recorder: BattleEventRecorder = rig["recorder"]
-	# 보드.
 	var board: Board3D = rig["board"]
-	# 재생기.
 	var playback: BattlePlayback = rig["playback"]
 
-	# 시작.
 	state.start_battle()
-	# 시작 이벤트 재생.
 	playback.play(recorder.take_events())
-	# 보드 동기화.
 	board.sync_from_state(state)
-	# 적 유닛.
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
-	# 항상 이동하게 한다.
 	(foe.data as EnemyData).move_chance = 1.0
 	# 차례 종료 → 적이 이동 → 다음 아군 차례 (규칙은 끝까지 계산된다).
 	state.end_turn()
-	# 쌓인 이벤트.
 	var events: Array[BattleEvent] = recorder.take_events()
 	# 적 차례 시작까지의 이벤트.
 	var until_turn: Array[BattleEvent] = []
 	# 그 뒤 적 이동까지의 이벤트.
 	var until_move: Array[BattleEvent] = []
-	# 적 차례 시작을 지났는지.
 	var turn_seen: bool = false
-	# 이벤트를 나눈다.
 	for event in events:
 		# 적 차례 시작 전(포함)이면 첫 묶음.
 		if not turn_seen:
@@ -434,46 +315,30 @@ func _test_enemy_move_highlights_follow_the_move() -> void:
 
 	# 규칙에서는 이미 이동했다.
 	check("the enemy already moved in the rules", foe.cell != Vector2i(0, 1))
-	# 적 차례 시작까지 재생.
 	playback.play(until_turn)
-	# 출발 칸이 강조된다.
 	check_eq("starting cell highlighted at turn start", board.tile_state(Unit.Team.ENEMY, Vector2i(0, 1)), Board3D.TileState.CURRENT)
-	# 도착 칸은 아직 빈 칸.
 	check_eq("destination not highlighted before the move", board.tile_state(Unit.Team.ENEMY, foe.cell), Board3D.TileState.EMPTY)
-	# 이동까지 재생.
 	playback.play(until_move)
-	# 출발 칸은 빈 칸.
 	check_eq("starting cell empty after the move", board.tile_state(Unit.Team.ENEMY, Vector2i(0, 1)), Board3D.TileState.EMPTY)
-	# 도착 칸이 강조된다.
 	check_eq("destination highlighted after the move", board.tile_state(Unit.Team.ENEMY, foe.cell), Board3D.TileState.CURRENT)
-	# 적 화면이 도착 칸에 선다.
 	check("enemy view stands on its destination", board.view_for(foe).position.is_equal_approx(board.layout.cell_position(Unit.Team.ENEMY, foe.cell)))
-	# 정리.
 	_free(rig)
 
 
 # 종류 목록으로 이벤트 배열을 만든다.
 func _events(kinds: Array) -> Array[BattleEvent]:
-	# 결과.
 	var events: Array[BattleEvent] = []
-	# 종류마다.
 	for kind in kinds:
 		events.append(BattleEvent.new(kind))
-	# 돌려준다.
 	return events
 
 
 # 공격 뒤 첫 피해 위치: 바로 뒤, 로그 건너뜀, 없음, 다른 이벤트가 끼면 −1.
 func _test_impact_start() -> void:
-	# 종류 줄임말.
 	var K := BattleEvent.Kind
-	# 바로 뒤.
 	check_eq("impact_start: damage right after", BattlePlayback.impact_start(_events([K.CARD_PLAYED, K.DAMAGED, K.DIED]), 0), 1)
-	# 로그 건너뜀.
 	check_eq("impact_start: skips logs", BattlePlayback.impact_start(_events([K.CARD_PLAYED, K.LOG, K.LOG, K.DAMAGED]), 0), 3)
-	# 없음.
 	check_eq("impact_start: no damage after attack", BattlePlayback.impact_start(_events([K.CARD_PLAYED, K.LOG]), 0), -1)
-	# 다른 이벤트.
 	check_eq("impact_start: other event breaks it", BattlePlayback.impact_start(_events([K.ENEMY_ACTED, K.BLOCK_GAINED, K.DAMAGED]), 0), -1)
 
 
@@ -483,60 +348,44 @@ func _test_impact_rules() -> void:
 	check("knockback_distance(0) == 0", is_equal_approx(BattlePlayback.knockback_distance(0), 0.0))
 	# 피해 5 → 0.25.
 	check("knockback grows with damage", is_equal_approx(BattlePlayback.knockback_distance(5), 0.25))
-	# 상한.
 	check("knockback caps", is_equal_approx(BattlePlayback.knockback_distance(40), BattlePlayback.MAX_KNOCKBACK))
-	# 푸시 유지.
 	check("damage keeps the push", BattlePlayback.keeps_camera_push(BattleEvent.Kind.DAMAGED) and BattlePlayback.keeps_camera_push(BattleEvent.Kind.LOG))
-	# 푸시 해제.
 	check("turn start releases the push", not BattlePlayback.keeps_camera_push(BattleEvent.Kind.TURN_STARTED))
-	# 원거리.
 	check("ranged sound at strike", BattlePlayback.attack_sound_at_strike(CardData.AttackType.RANGED))
-	# 근접.
 	check("melee sound at start", not BattlePlayback.attack_sound_at_strike(CardData.AttackType.MELEE))
 
 
 # 재생기에 소리를 달아도 instant 재생(처치까지)은 소리를 하나도 내지 않고 결과는 같다.
 func _test_instant_is_silent() -> void:
-	# 준비물.
 	var rig: Dictionary = _rig()
 	var state: BattleState = rig["state"]
 	var recorder: BattleEventRecorder = rig["recorder"]
 	var board: Board3D = rig["board"]
 	var playback: BattlePlayback = rig["playback"]
-	# 소리.
 	var audio := BattleAudio.new()
 	audio.sounds = load("res://Resources/audio/battle_sounds.tres")
 	playback.audio = audio
-	# 시작과 처치.
 	state.start_battle()
 	playback.play(recorder.take_events())
 	board.sync_from_state(state)
 	var foe: Unit = state.living_units(Unit.Team.ENEMY)[0]
 	state.play_card(0, foe)
 	playback.play(recorder.take_events())
-	# 결과는 그대로.
 	check("instant kill still hides the foe", not board.view_for(foe).visible)
-	# 소리 없음.
 	check_eq("instant playback is silent", audio.play_count, 0)
-	# 정리.
 	audio.free()
 	_free(rig)
 
 
 # 카드 사용 이벤트는 근접·원거리 카드일 때만 공격(돌진·화살)이고, 아군·자신 카드는 아니다.
 func _test_only_melee_and_ranged_cards_attack() -> void:
-	# 종류별 기대값.
 	var expected: Dictionary = {
 		CardData.AttackType.MELEE: true,
 		CardData.AttackType.RANGED: true,
 		CardData.AttackType.ALLY: false,
 		CardData.AttackType.SELF: false,
 	}
-	# 종류마다.
 	for attack_type in expected:
-		# 카드 사용 이벤트.
 		var event := BattleEvent.new(BattleEvent.Kind.CARD_PLAYED)
-		# 그 종류의 카드.
 		event.card = Fixtures.damage_card(&"c", attack_type, 10)
-		# 판정.
 		check_eq("card type %d attacks" % attack_type, BattlePlayback._is_attack(event), expected[attack_type])

@@ -7,9 +7,7 @@ signal changed
 
 ## 처음 소장 수명 (되살아날 때마다 1 년씩 준다).
 const START_LIFESPAN: int = 40
-const UNIT_DIR: String = "res://Resources/content/units"
-const ITEM_DIR: String = "res://Resources/items"
-const CARD_DIR: String = "res://Resources/content/cards"
+
 ## 합류 순서대로 서는 아군 칸 (x = 열, 0 이 앞줄).
 const MEMBER_CELLS: Array[Vector2i] = [Vector2i(0, 1), Vector2i(0, 2), Vector2i(1, 0), Vector2i(1, 1)]
 const SAVE_PATH: String = "user://save.json"
@@ -33,7 +31,7 @@ func _init() -> void:
 func add_member(member_id: String) -> bool:
 	if party.index_of(StringName(member_id)) >= 0:
 		return false
-	var base: AllyData = load("%s/%s.tres" % [UNIT_DIR, member_id])
+	var base: AllyData = Content.unit(member_id)
 	if base == null:
 		return false
 	var data: AllyData = base.duplicate()
@@ -111,7 +109,7 @@ static func from_dict(d: Dictionary) -> GameState:
 		var index: int = state.party.member_count() - 1
 		var deck: Array[CardData] = []
 		for card_id in m.get("deck", []):
-			var card: CardData = load("%s/%s.tres" % [CARD_DIR, card_id])
+			var card: CardData = Content.card(card_id)
 			if card != null:
 				deck.append(card)
 		state.party.member_data(index).deck = deck
@@ -131,7 +129,7 @@ static func from_dict(d: Dictionary) -> GameState:
 
 
 static func _item(item_id: String) -> ItemData:
-	var path: String = "%s/%s.tres" % [ITEM_DIR, item_id]
+	var path: String = "%s/%s.tres" % [Content.ITEM_DIR, item_id]
 	return load(path) if ResourceLoader.exists(path) else null
 
 

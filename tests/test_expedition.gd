@@ -42,9 +42,9 @@ func _expedition(seed_value: int = 1) -> Expedition:
 
 
 ## 고를 수 있는 첫 노드를 마친다 (전투면 승리 처리).
-func _step(ex: Expedition) -> Dictionary:
-	var n: Dictionary = ex.pick(ex.selectable_ids()[0])
-	if n.has("enemies"):
+func _step(ex: Expedition) -> ExpeditionNode:
+	var n: ExpeditionNode = ex.pick(ex.selectable_ids()[0])
+	if n.is_battle():
 		ex.resolve_battle_win(n, [30, 25])
 	else:
 		ex.resolve_simple(n)
@@ -73,45 +73,45 @@ func _test_map_shape(s: int) -> void:
 	var ex: Expedition = _expedition(s)
 	var cols: int = ex.column_count()
 	check_eq("seed %d: columns × 3 lanes + exit" % s, ex.nodes.size(), cols * Expedition.LANES + 1)
-	var exit: Dictionary = ex.node(ex.exit_id())
-	check("seed %d: last node is the exit" % s, exit["exit"])
-	check_eq("seed %d: exit sits after the last column" % s, exit["col"], cols)
+	var exit: ExpeditionNode = ex.node(ex.exit_id())
+	check("seed %d: last node is the exit" % s, exit.exit)
+	check_eq("seed %d: exit sits after the last column" % s, exit.col, cols)
 	var shops: int = 0
 	for n in ex.nodes:
-		if n["type"] == ChapterData.SHOP:
+		if n.type == ChapterData.SHOP:
 			shops += 1
 	check_eq("seed %d: one shop per zone" % s, shops, 1)
 	for lane in Expedition.LANES:
-		check("seed %d: last column lane %d leads to the exit" % [s, lane], (ex.node((cols - 1) * Expedition.LANES + lane)["next"] as Array) == [ex.exit_id()])
+		check("seed %d: last column lane %d leads to the exit" % [s, lane], ex.node((cols - 1) * Expedition.LANES + lane).next == [ex.exit_id()])
 
 
 func _test_paths_never_cross(s: int) -> void:
 	var ex: Expedition = _expedition(s)
 	for c in range(ex.column_count() - 1):
 		for lane in range(Expedition.LANES - 1):
-			var down: bool = (ex.node(c * 3 + lane)["next"] as Array).has((c + 1) * 3 + lane + 1)
-			var up: bool = (ex.node(c * 3 + lane + 1)["next"] as Array).has((c + 1) * 3 + lane)
+			var down: bool = ex.node(c * 3 + lane).next.has((c + 1) * 3 + lane + 1)
+			var up: bool = ex.node(c * 3 + lane + 1).next.has((c + 1) * 3 + lane)
 			check("seed %d: col %d lanes %d/%d don't cross" % [s, c, lane, lane + 1], not (down and up))
 		for lane in Expedition.LANES:
-			for next_id in ex.node(c * 3 + lane)["next"]:
-				var next: Dictionary = ex.node(next_id)
-				check("seed %d: edges go one column right and at most one lane" % s, next["col"] == c + 1 and absi(int(next["lane"]) - lane) <= 1)
+			for next_id in ex.node(c * 3 + lane).next:
+				var next: ExpeditionNode = ex.node(next_id)
+				check("seed %d: edges go one column right and at most one lane" % s, next.col == c + 1 and absi(next.lane - lane) <= 1)
 
 
 func _test_every_node_reaches_the_exit(s: int) -> void:
 	var ex: Expedition = _expedition(s)
 	for n in ex.nodes:
-		if n["exit"]:
+		if n.exit:
 			continue
-		var frontier: Array = [n["id"]]
+		var frontier: Array = [n.id]
 		var reached: bool = false
 		while not frontier.is_empty():
 			var id: int = frontier.pop_back()
 			if id == ex.exit_id():
 				reached = true
 				break
-			frontier.append_array(ex.node(id)["next"])
-		check("seed %d: node %d can reach the exit" % [s, n["id"]], reached)
+			frontier.append_array(ex.node(id).next)
+		check("seed %d: node %d can reach the exit" % [s, n.id], reached)
 
 
 func _test_first_column_has_battles() -> void:
@@ -119,7 +119,7 @@ func _test_first_column_has_battles() -> void:
 		var ex: Expedition = _expedition(s)
 		var battles: int = 0
 		for lane in Expedition.LANES:
-			if ex.node(lane)["type"] == ChapterData.BATTLE:
+			if ex.node(lane).type == ChapterData.BATTLE:
 				battles += 1
 		check_eq("seed %d: first column has two battles" % s, battles, 2)
 
@@ -128,15 +128,15 @@ func _test_only_connected_nodes_are_selectable() -> void:
 	var ex: Expedition = _expedition(3)
 	check_eq("at the zone start all three first-column nodes are open", ex.selectable_ids(), [0, 1, 2])
 	check("a second-column node is not open yet", not ex.is_selectable(3))
-	check("picking a closed node returns nothing", ex.pick(4).is_empty())
-	var first: Dictionary = ex.pick(1)
-	if first.has("enemies"):
+	check("picking a closed node returns nothing", ex.pick(4) == null)
+	var first: ExpeditionNode = ex.pick(1)
+	if first.is_battle():
 		ex.resolve_battle_win(first, [30, 25])
 	else:
 		ex.resolve_simple(first)
 	check_eq("current node moved", ex.current_id, 1)
 	var expected: Array[int] = []
-	for id in ex.node(1)["next"]:
+	for id in ex.node(1).next:
 		expected.append(id)
 	expected.sort()
 	check_eq("only the connected next nodes are open", ex.selectable_ids(), expected)
@@ -149,7 +149,7 @@ func _test_walking_to_the_exit_moves_to_the_next_zone() -> void:
 	while ex.floor_index == 0:
 		if ex.at_exit():
 			check_eq("only the exit is open at the end", ex.selectable_ids(), [ex.exit_id()])
-		visited_types.append(_step(ex)["type"])
+		visited_types.append(_step(ex).type)
 	check_eq("one node per column plus the exit", visited_types.size(), ex.column_count() + 1)
 	check_eq("now in zone 2", ex.floor_index, 1)
 	check_eq("the new zone starts fresh", ex.current_id, -1)
@@ -158,7 +158,7 @@ func _test_walking_to_the_exit_moves_to_the_next_zone() -> void:
 
 func _test_battle_hp_carries_over_and_fallen_rise_with_one() -> void:
 	var ex: Expedition = _expedition()
-	var n: Dictionary = ex.pick(ex.selectable_ids()[0])
+	var n: ExpeditionNode = ex.pick(ex.selectable_ids()[0])
 	ex.resolve_battle_win(n, [20, 0])
 	check_eq("hp carries over", ex.hp[0], 20)
 	check_eq("a fallen member gets up with 1 hp", ex.hp[1], 1)
@@ -167,7 +167,7 @@ func _test_battle_hp_carries_over_and_fallen_rise_with_one() -> void:
 func _test_encounter_uses_carried_hp_and_enemy_cells() -> void:
 	var ex: Expedition = _expedition()
 	ex.hp[0] = 12
-	var encounter: EncounterData = ex.encounter_for({"type": "battle", "enemies": ["rat", "hound"]})
+	var encounter: EncounterData = ex.encounter_for(ExpeditionNode.battle(ChapterData.BATTLE, ["rat", "hound"]))
 	check_eq("ally starts with carried hp", encounter.ally_units[0].start_hp, 12)
 	check_eq("two enemies", encounter.enemy_units.size(), 2)
 	check_eq("first enemy stands front centre", encounter.enemy_units[0].cell, Vector2i(0, 1))
@@ -189,10 +189,10 @@ func _test_rest_heals_and_never_exceeds_max() -> void:
 
 func _test_shop_stock_and_spending() -> void:
 	var ex: Expedition = _expedition()
-	var stock: Dictionary = ex.shop_stock()
-	check_eq("three items", stock["items"].size(), 3)
-	check_eq("three cards", stock["cards"].size(), 3)
-	check("cards have a price", stock["cards"][0]["price"] > 0)
+	var stock: ShopStock = ex.shop_stock()
+	check_eq("three items", stock.items.size(), 3)
+	check_eq("three cards", stock.cards.size(), 3)
+	check("cards have a price", stock.cards[0].price > 0)
 	ex.game.gold = 50
 	check("can't buy above the purse", not ex.spend(60))
 	check_eq("gold untouched", ex.game.gold, 50)
@@ -215,7 +215,7 @@ func _test_deep_layer_scales_enemies() -> void:
 	var ex: Expedition = _expedition()
 	var base: EnemyData = load("res://Resources/content/units/rat.tres")
 	ex.deep = true
-	var encounter: EncounterData = ex.encounter_for({"type": "battle", "enemies": ["rat"]})
+	var encounter: EncounterData = ex.encounter_for(ExpeditionNode.battle(ChapterData.BATTLE, ["rat"]))
 	var scaled: EnemyData = encounter.enemy_units[0].unit_data
 	check_eq("deeper enemies have more hp", scaled.max_hp, roundi(base.max_hp * Expedition.DEEP_ENEMY_SCALE))
 	check_eq("the source rat is untouched", (load("res://Resources/content/units/rat.tres") as EnemyData).max_hp, base.max_hp)
@@ -224,13 +224,13 @@ func _test_deep_layer_scales_enemies() -> void:
 
 func _test_rewards_offer_member_cards() -> void:
 	var ex: Expedition = _expedition()
-	var reward: Dictionary = ex.battle_reward({"type": "elite"})
-	check("gold is positive", reward["gold"] > 0)
-	check_eq("three card choices", reward["cards"].size(), 3)
-	for choice in reward["cards"]:
-		var member_id: String = String(ex.game.party.member_data(choice["member"]).id)
-		check("card %s belongs to %s's pool" % [choice["card"].id, member_id], ChapterData.REWARD_CARDS[member_id].has(String(choice["card"].id)))
-	check("elites drop an item", reward["item"] != null)
+	var reward: BattleReward = ex.battle_reward(ExpeditionNode.battle(ChapterData.ELITE, ["brute"]))
+	check("gold is positive", reward.gold > 0)
+	check_eq("three card choices", reward.cards.size(), 3)
+	for offer in reward.cards:
+		var member_id: String = String(ex.game.party.member_data(offer.member).id)
+		check("card %s belongs to %s's pool" % [offer.card.id, member_id], ChapterData.REWARD_CARDS[member_id].has(String(offer.card.id)))
+	check("elites drop an item", reward.item != null)
 
 
 func _test_save_round_trip() -> void:

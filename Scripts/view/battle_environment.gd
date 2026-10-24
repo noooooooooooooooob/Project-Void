@@ -2,7 +2,6 @@
 ## 모두 3D 라서 원근·조명·그림자를 받아 칸이 실제 방 바닥 위에 놓인 것처럼 보인다 (유니티 BattleEnvironment).
 ## 클릭 판정에 끼지 않도록 충돌체를 만들지 않는다.
 class_name BattleEnvironment
-# Node3D: 방 전체를 묶는 노드.
 extends Node3D
 
 ## 벽 셰이더.
@@ -62,10 +61,8 @@ const BACKDROP_LAYER: int = -100
 
 ## 보드 배치와 방 데이터로 방을 만든다. 방이 없으면 null.
 static func build(layout: BoardLayout, room: BattleRoomData) -> BattleEnvironment:
-	# 방 없음.
 	if room == null:
 		return null
-	# 방 노드.
 	var env := BattleEnvironment.new()
 	# 씬 트리에서 알아보기 쉬운 이름.
 	env.name = "Environment"
@@ -78,35 +75,22 @@ static func build(layout: BoardLayout, room: BattleRoomData) -> BattleEnvironmen
 		env._backdrop(room.backdrop, room.backdrop_dim)
 		return env
 
-	# --- 바닥 ---
 	# 바닥 그림이 있을 때만 만든다.
 	if room.ground_texture != null:
-		# 바닥 메시 노드.
 		env.ground = MeshInstance3D.new()
-		# 이름.
 		env.ground.name = "Ground"
-		# 평평한 판.
 		var plane := PlaneMesh.new()
-		# 폭 × 깊이.
 		plane.size = Vector2(GROUND_WIDTH, GROUND_DEPTH)
-		# 판을 붙인다.
 		env.ground.mesh = plane
-		# 바닥 재질.
 		var material := StandardMaterial3D.new()
-		# 바닥 그림.
 		material.albedo_texture = room.ground_texture
-		# 어둡게 칠한다.
 		material.albedo_color = GROUND_TINT
 		# 텍스처 한 장이 5 단위를 덮게 반복한다.
 		material.uv1_scale = Vector3(GROUND_WIDTH / GROUND_TILE_SIZE, GROUND_DEPTH / GROUND_TILE_SIZE, 1.0)
-		# 재질을 입힌다.
 		env.ground.material_override = material
-		# 보드 중심 아래에 깐다.
 		env.ground.position = Vector3(center.x, floor_y, center.z)
-		# 방에 붙인다.
 		env.add_child(env.ground)
 
-	# --- 벽 ---
 	# 0행이 −z (화면 안쪽). 뒷벽은 가장 먼 행 너머, 옆벽은 보드 좌우 끝 너머.
 	var back_z: float = -(layout.depth() / 2.0 + BACK_WALL_GAP)
 	# 왼쪽 벽 x.
@@ -129,13 +113,10 @@ static func build(layout: BoardLayout, room: BattleRoomData) -> BattleEnvironmen
 		env._window_light(Vector3(left_x + (right_x - left_x) * 0.3, WALL_HEIGHT, back_z + 0.5), center + Vector3(-1.5, floor_y, -0.5))
 		env._window_light(Vector3(left_x + (right_x - left_x) * 0.75, WALL_HEIGHT, back_z + 0.5), center + Vector3(2.5, floor_y, 0.5))
 
-	# --- 소품 ---
-	# 방 데이터의 소품마다.
 	for placement in room.props:
 		# 그림이 있는 소품만 만든다.
 		if placement.texture != null:
 			env.props.append(env._prop(placement, floor_y))
-	# 완성된 방을 돌려준다.
 	return env
 
 
@@ -161,7 +142,6 @@ static func apply_atmosphere(env: Environment, sun: DirectionalLight3D, room: Ba
 	# 바깥은 안개 색과 같은 어둠.
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = FOG_COLOR
-	# 실내 앰비언트.
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = AMBIENT_COLOR
 	env.ambient_light_energy = 1.0
@@ -173,7 +153,6 @@ static func apply_atmosphere(env: Environment, sun: DirectionalLight3D, room: Ba
 	env.volumetric_fog_enabled = true
 	env.volumetric_fog_density = VOLUMETRIC_DENSITY
 	env.volumetric_fog_albedo = Color(1.0, 0.95, 0.9)
-	# 구석 그늘.
 	env.ssao_enabled = true
 	# 창문·밝은 곳이 은은하게 번지게.
 	env.glow_enabled = true
@@ -230,55 +209,37 @@ func _backdrop(texture: Texture2D, dim: float) -> void:
 
 # 벽 한 면: 아래 가운데 bottom_center, 세로축 yaw_deg 회전, 가로 length, 높이 WALL_HEIGHT.
 func _wall(wall_name: String, texture: Texture2D, bottom_center: Vector3, yaw_deg: float, length: float) -> MeshInstance3D:
-	# 벽 메시 노드.
 	var wall := MeshInstance3D.new()
-	# 이름.
 	wall.name = wall_name
-	# 세워진 사각 판.
 	var quad := QuadMesh.new()
-	# 가로 × 높이.
 	quad.size = Vector2(length, WALL_HEIGHT)
-	# 판을 붙인다.
 	wall.mesh = quad
 	# 반복 텍스처·그늘 셰이더.
 	var material := ShaderMaterial.new()
-	# 벽 셰이더.
 	material.shader = WALL_SHADER
-	# 벽 그림.
 	material.set_shader_parameter("texture_albedo", texture)
-	# 색.
 	material.set_shader_parameter("tint", WALL_TINT)
 	# 그림 한 장이 WALL_TILE_SIZE 를 덮도록 반복 횟수를 정한다 (세로는 아래 바닥 줄을 잘라낸 만큼 줄인다).
 	material.set_shader_parameter("uv_scale", Vector2(length / WALL_TILE_SIZE, WALL_HEIGHT / WALL_TILE_SIZE * (1.0 - WALL_FLOOR_CROP)))
 	# 위로 갈수록 어두워지는 정도.
 	material.set_shader_parameter("shade_alpha", WALL_SHADE_ALPHA)
-	# 재질을 입힌다.
 	wall.material_override = material
-	# 판 중심을 높이 절반에.
 	wall.position = bottom_center + Vector3.UP * (WALL_HEIGHT / 2.0)
 	# 세로축으로 돌려 방향을 맞춘다.
 	wall.rotation_degrees = Vector3(0.0, yaw_deg, 0.0)
-	# 방에 붙인다.
 	add_child(wall)
-	# 만든 벽을 돌려준다.
 	return wall
 
 
 # 창문 스포트라이트 하나와 빛이 떨어지는 곳 위의 먼지.
 func _window_light(from: Vector3, target: Vector3) -> void:
-	# 스포트라이트.
 	var spot := SpotLight3D.new()
-	# 이름.
 	spot.name = "WindowLight"
-	# 따뜻한 빛 색.
 	spot.light_color = LIGHT_COLOR
-	# 세기.
 	spot.light_energy = LIGHT_ENERGY
-	# 빛이 닿는 거리.
 	spot.spot_range = 20.0
 	# 유니티 spotAngle 35° 는 전체 각도, Godot 은 반각.
 	spot.spot_angle = 17.5
-	# 그림자를 드리운다.
 	spot.shadow_enabled = true
 	# 먼저 붙인다 (look_at 은 트리 안에서 전역 좌표로 계산한다).
 	add_child(spot)
@@ -294,11 +255,8 @@ func _window_light(from: Vector3, target: Vector3) -> void:
 func _dust(at: Vector3) -> void:
 	# CPU 파티클 (GPU 파티클보다 헤드리스·저사양에서 안전하다).
 	var dust := CPUParticles3D.new()
-	# 이름.
 	dust.name = "Dust"
-	# 위치.
 	dust.position = at
-	# 입자 수.
 	dust.amount = 48
 	# 입자 하나의 수명 (초).
 	dust.lifetime = 6.0
@@ -310,11 +268,8 @@ func _dust(at: Vector3) -> void:
 	dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 	# 상자 반쪽 크기 (가로 2, 높이 3, 깊이 2).
 	dust.emission_box_extents = Vector3(1.0, 1.5, 1.0)
-	# 기본 방향은 위.
 	dust.direction = Vector3.UP
-	# 사방으로 퍼진다.
 	dust.spread = 180.0
-	# 떨어지지 않는다.
 	dust.gravity = Vector3.ZERO
 	# 아주 느린 속도 (최소).
 	dust.initial_velocity_min = 0.05
@@ -322,29 +277,20 @@ func _dust(at: Vector3) -> void:
 	dust.initial_velocity_max = 0.05
 	# 입자 모양: 작은 사각 판.
 	var quad := QuadMesh.new()
-	# 크기.
 	quad.size = Vector2(0.02, 0.02)
-	# 입자 재질.
 	var material := StandardMaterial3D.new()
 	# 조명을 받지 않는다 (스스로 빛나 보이게).
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	# 투명도를 쓴다.
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	# 더하기 혼합으로 빛처럼 겹친다.
 	material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	# 입자마다 카메라를 본다.
 	material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	# 색.
 	material.albedo_color = DUST_COLOR
-	# 재질을 입힌다.
 	quad.material = material
-	# 입자 모양을 정한다.
 	dust.mesh = quad
 	# 먼지는 그림자를 만들지 않는다.
 	dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# 바로 뿜기 시작한다.
 	dust.emitting = true
-	# 방에 붙인다.
 	add_child(dust)
 
 
@@ -352,33 +298,23 @@ func _dust(at: Vector3) -> void:
 func _prop(placement: PropPlacement, floor_y: float) -> Node3D:
 	# 회전 중심 (바닥에 선다).
 	var pivot := Node3D.new()
-	# 이름.
 	pivot.name = "Prop"
 	# 소품 위치를 바닥 높이에 둔다.
 	pivot.position = Vector3(placement.position.x, floor_y, placement.position.z)
-	# 그림 판 노드.
 	var sprite := MeshInstance3D.new()
-	# 사각 판.
 	var quad := QuadMesh.new()
-	# 그림의 가로 ÷ 세로 비율.
 	var aspect: float = float(placement.texture.get_width()) / float(placement.texture.get_height())
 	# 높이를 맞추고 너비는 비율대로.
 	quad.size = Vector2(placement.height * aspect, placement.height)
-	# 판을 붙인다.
 	sprite.mesh = quad
 	# 판 아래 끝이 바닥에 닿도록 높이 절반만큼 올린다.
 	sprite.position = Vector3(0.0, placement.height / 2.0, 0.0)
-	# 유닛 셰이더 재질.
 	var material := ShaderMaterial.new()
 	# 유닛과 같은 셰이더라 같은 빛·그림자를 받는다.
 	material.shader = UnitView.UNIT_SHADER
-	# 소품 그림.
 	material.set_shader_parameter("texture_albedo", placement.texture)
-	# 재질을 입힌다.
 	sprite.material_override = material
-	# 판을 피벗에 붙인다.
 	pivot.add_child(sprite)
-	# 피벗을 방에 붙인다.
 	add_child(pivot)
 	# 피벗을 돌려준다 (_process 가 이것을 돌린다).
 	return pivot

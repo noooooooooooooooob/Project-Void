@@ -7,12 +7,12 @@ signal done(index: int)
 
 const CARD_SCALE: float = 1.9
 
-var _reward: Dictionary
+var _reward: BattleReward
 var _game: GameState
 var _title: String
 
 
-func _init(reward: Dictionary, game: GameState, title: String = "전투 승리") -> void:
+func _init(reward: BattleReward, game: GameState, title: String = "전투 승리") -> void:
 	_reward = reward
 	_game = game
 	_title = title
@@ -32,14 +32,14 @@ func _ready() -> void:
 	var title := UiTheme.title_label(_title, 52, UiTheme.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
-	var loot: PackedStringArray = ["자금 +%d" % _reward.get("gold", 0)]
-	var item: ItemData = _reward.get("item")
+	var loot: PackedStringArray = ["자금 +%d" % _reward.gold]
+	var item: ItemData = _reward.item
 	if item != null:
 		loot.append("장비 획득: %s (%s)" % [item.display_name, item.summary()])
 	var loot_label := UiTheme.label("   ·   ".join(loot), 24, UiTheme.TEXT)
 	loot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(loot_label)
-	var cards: Array = _reward.get("cards", [])
+	var cards: Array[CardOffer] = _reward.cards
 	if not cards.is_empty():
 		var hint := UiTheme.label("카드 한 장을 골라 덱에 넣으세요", 20, UiTheme.TEXT_DIM)
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -56,25 +56,14 @@ func _ready() -> void:
 	col.add_child(skip)
 
 
-func _card_choice(choice: Dictionary, index: int) -> Control:
-	var member: int = choice["member"]
-	var data: AllyData = _game.party.member_data(member)
+func _card_choice(offer: CardOffer, index: int) -> Control:
+	var data: AllyData = _game.party.member_data(offer.member)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 10)
 	var who := UiTheme.label(data.display_name, 22, UiTheme.LAVENDER)
 	who.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(who)
-	var holder := Control.new()
-	holder.custom_minimum_size = CardView.SIZE * CARD_SCALE
-	col.add_child(holder)
-	var view := CardView.new()
-	view.setup(choice["card"], data)
-	# CardView 는 손패 연출용으로 가운데를 기준점으로 쓴다 — 여기서는 왼쪽 위를 기준으로 키운다.
-	view.pivot_offset = Vector2.ZERO
-	view.position = Vector2.ZERO
-	view.scale = Vector2(CARD_SCALE, CARD_SCALE)
-	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(view)
+	col.add_child(CardView.preview(offer.card, data, CARD_SCALE))
 	var pick := UiTheme.button("선택", Vector2(0, 52))
 	pick.pressed.connect(func() -> void: done.emit(index))
 	col.add_child(pick)

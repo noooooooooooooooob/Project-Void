@@ -8,5 +8,4 @@ func run() -> Array[Dictionary]:
 	check("harness reports a pass", true)
 	# 같은 값 비교가 통과로 기록되는지.
 	check_eq("check_eq compares values", 1 + 1, 2)
-	# 결과를 돌려준다.
 	return results()

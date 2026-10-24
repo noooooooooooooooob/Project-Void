@@ -10,6 +10,19 @@ const CHAPTER1: Dictionary = {
 	"client": "하수도 감독관",
 	"summary": "구시가 하수도에서 검은 기름이 올라와 아랫동네 사람들이 깨어나지 않는다. 공허의 핵을 회수해 정화하라.",
 	"story": true,
+	## 이야기 의뢰에서 흐름 곳곳에 끼어드는 대본 (Resources/story/<id>.txt). 없는 항목은 건너뛴다.
+	"scripts": {
+		"briefing": "ch1_briefing",
+		"void_choice": "ch1_void_choice",
+		## 구역마다 처음 들어설 때. 황혼층이면 deep_floor_intros 쪽이 있으면 그것을 쓴다.
+		"floor_intros": ["ch1_floor1", "ch1_floor2", "ch1_floor3", "ch1_floor4"],
+		"deep_floor_intros": ["", "", "", "ch1_floor4_deep"],
+		"boss": "ch1_boss",
+		"purify": "ch1_purify",
+		"epilogue": "ch1_epilogue",
+	},
+	## 끝까지 마치면 GameState.chapter 를 이 값으로 올린다.
+	"unlocks_chapter": 2,
 	"floors": 5,
 	"floor_names": ["하수도 입구", "배수 터널", "침전조", "깊은 수로", "핵의 방"],
 	"room": "sewer",

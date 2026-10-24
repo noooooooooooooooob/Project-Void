@@ -27,23 +27,23 @@ func _initialize() -> void:
 		while not ex.finished and alive:
 			if ex.needs_void_choice():
 				ex.choose_deep(force_deep)
-			var node: Dictionary = _pick(ex)
-			match node["type"]:
-				"battle", "elite", "boss":
+			var node: ExpeditionNode = _pick(ex)
+			match node.type:
+				ChapterData.BATTLE, ChapterData.ELITE, ChapterData.BOSS:
 					var result: Dictionary = _battle(ex.encounter_for(node), 7 + run)
 					rounds_total += result["rounds"]
 					battles_total += 1
 					if result["won"]:
 						# 보상 카드는 첫 번째를 고른다.
-						var reward: Dictionary = ex.battle_reward(node)
-						if not reward["cards"].is_empty():
-							game.add_card(reward["cards"][0]["member"], reward["cards"][0]["card"])
+						var reward: BattleReward = ex.battle_reward(node)
+						if not reward.cards.is_empty():
+							game.add_card(reward.cards[0].member, reward.cards[0].card)
 						ex.resolve_battle_win(node, result["hp"])
 					else:
-						var key: String = "F%d %s %s" % [ex.floor_index + 1, node["type"], ",".join(node["enemies"])]
+						var key: String = "F%d %s %s" % [ex.floor_index + 1, node.type, ",".join(node.enemies)]
 						deaths_at[key] = int(deaths_at.get(key, 0)) + 1
 						alive = false
-				"rest":
+				ChapterData.REST:
 					ex.resolve_rest(node)
 				_:
 					ex.resolve_simple(node)
@@ -58,14 +58,14 @@ func _initialize() -> void:
 
 
 ## 체력이 낮으면 휴식, 아니면 전투, 그 밖엔 첫 노드를 고른다.
-func _pick(ex: Expedition) -> Dictionary:
+func _pick(ex: Expedition) -> ExpeditionNode:
 	var ids: Array[int] = ex.selectable_ids()
 	var low: bool = ex.hp_ratio(0) < 0.5 or ex.hp_ratio(1) < 0.5
 	for id in ids:
-		if low and ex.node(id)["type"] == "rest":
+		if low and ex.node(id).type == ChapterData.REST:
 			return ex.pick(id)
 	for id in ids:
-		if ex.node(id)["type"] == "battle":
+		if ex.node(id).type == ChapterData.BATTLE:
 			return ex.pick(id)
 	return ex.pick(ids[0])
 

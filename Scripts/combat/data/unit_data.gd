@@ -3,7 +3,6 @@
 ## 아군·적군이 공통으로 가지는 유닛 설계 데이터.
 ## 직접 쓰지 않고 AllyData / EnemyData 가 상속해서 쓴다.
 class_name UnitData
-# Resource: 파일로 저장·불러오기가 되는 데이터 객체.
 extends Resource
 
 ## 코드에서 유닛 종류를 구분하는 고유 이름 (예: &"brute").

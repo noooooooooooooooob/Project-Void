@@ -2,7 +2,6 @@
 ## 행동 순서 바, 로그, SP 패널, 덱·묘지 더미, 부채꼴 손패(HandView), 이동·차례 종료 버튼, 승패 배너를 관리한다.
 ## BattlePlayback 이 연출 함수(draw_card, reshuffle ...)를 부르고, BattleRoot 는 입력 신호를 받는다.
 class_name BattleHud
-# Control: 2D UI 노드의 기본 클래스.
 extends Control
 
 ## 손패에서 카드를 골랐다(index) 또는 선택을 풀었다(-1). HandView 의 신호를 그대로 전달한다.
@@ -96,18 +95,14 @@ func sync_from_state(state: BattleState, selected_card: int) -> void:
 		_show_piles(actor.data.display_name, actor.deck.size(), actor.discard.size())
 	# 적 차례이거나 끝난 전투면 손패를 비우고 더미를 흐리게 한다.
 	else:
-		# 손패를 비운다.
 		_clear_hand(0)
-		# 더미를 흐리게 한다.
 		_dim_piles()
 	# 끝난 전투면 순서 바 대신 결과를 보여 준다.
 	if state.finished:
-		# 승패 문구.
 		_turn_label.text = "승리!" if state.ally_won else "패배..."
 		return
 	# 행동 순서의 유닛마다 살아 있는지 모은다.
 	var alive: Array[bool] = []
-	# 순서대로 확인한다.
 	for member in state.initiative:
 		alive.append(member.is_alive())
 	# 순서 바 문장을 만들어 넣는다.
@@ -118,7 +113,6 @@ func sync_from_state(state: BattleState, selected_card: int) -> void:
 func show_turn(event: BattleEvent) -> void:
 	# 기록 시점의 순서 정보로 순서 바를 그린다.
 	_turn_label.text = turn_bar_text(event.round_index, event.order, event.alive, event.turn_index)
-	# 아군 차례.
 	if event.unit.is_ally():
 		# 드로우 연출이 이어지므로 손패를 비우고, 새 카드가 SP 부족으로 흐려지지 않게 현재 SP 로 시작한다.
 		_clear_hand(event.unit.sp)
@@ -128,32 +122,24 @@ func show_turn(event: BattleEvent) -> void:
 		_refresh_sp(event.unit)
 		# 더미를 이 유닛의 기록 시점 장수로.
 		_show_piles(event.unit.data.display_name, event.deck_count, event.discard_count)
-	# 적 차례.
 	else:
-		# 손패를 비운다.
 		_clear_hand(0)
 		# SP 패널을 숨긴다.
 		_refresh_sp(null)
-		# 더미를 흐리게 한다.
 		_dim_piles()
 
 
 ## 입력 가능 여부를 손패와 버튼에 적용한다 (BattleRoot 가 재생 전후로 부른다).
 func set_interactive(enabled: bool) -> void:
-	# 상태를 기억한다.
 	_interactive = enabled
-	# 손패 입력을 켜거나 끈다.
 	_hand.interactive = enabled
-	# 버튼 활성화를 반영한다.
 	_apply_interactive()
 
 
 ## 지금 이동할 수 있는지 알린다 (BattleRoot 가 상태를 볼 때마다 부른다).
 ## 이동할 수 없으면 이동 버튼이 잠기고 눌려 있던 모드도 풀린다.
 func set_move_available(available: bool) -> void:
-	# 상태를 기억한다.
 	_move_available = available
-	# 버튼 활성화를 반영한다.
 	_apply_interactive()
 
 
@@ -165,13 +151,11 @@ func set_move_mode(on: bool) -> void:
 
 ## 손패의 카드 선택을 푼다 (이동 모드로 바꿀 때). card_selected 는 내지 않는다.
 func clear_card_selection() -> void:
-	# 손패에 그대로 넘긴다.
 	_hand.deselect()
 
 
 ## 곧 사용될 카드의 손패 위치를 손패에 알려 준다.
 func set_pending_play(index: int) -> void:
-	# 손패에 그대로 넘긴다.
 	_hand.set_pending_play(index)
 
 
@@ -224,39 +208,32 @@ func apply_move(event: BattleEvent) -> void:
 
 ## 로그에 한 줄을 추가한다.
 func append_log(text: String) -> void:
-	# 줄바꿈을 붙여 덧붙인다.
 	_log.append_text(text + "\n")
 
 
 ## 승패 배너를 띄운다.
 func show_banner(ally_won: bool) -> void:
-	# 문구를 정한다.
 	_banner.text = "승리!" if ally_won else "패배..."
-	# 보이게 한다.
 	_banner.visible = true
 
 
 ## 손패 영역의 위쪽 끝 (화면 좌표 y). BattleRoot 가 놓기 위치가 손패 위인지 판단하는 데 쓴다.
 func hand_top_y() -> float:
-	# 손패에 묻는다.
 	return _hand.top_y()
 
 
 ## 손패 노드 (테스트용 접근자).
 func hand_view() -> HandView:
-	# 손패를 돌려준다.
 	return _hand
 
 
 ## 덱 더미 노드 (테스트용 접근자).
 func deck_pile() -> PileView:
-	# 덱 더미를 돌려준다.
 	return _deck_pile
 
 
 ## 묘지 더미 노드 (테스트용 접근자).
 func discard_pile() -> PileView:
-	# 묘지 더미를 돌려준다.
 	return _discard_pile
 
 
@@ -268,25 +245,21 @@ func sp_text() -> String:
 
 ## 로그 전체 글자 (BBCode 태그를 뺀 순수 문장, 테스트용).
 func log_text() -> String:
-	# 해석된 글자를 돌려준다.
 	return _log.get_parsed_text()
 
 
 ## 차례 종료 버튼이 활성화되어 있는지 (테스트용).
 func end_turn_enabled() -> bool:
-	# 비활성이 아니면 활성.
 	return not _end_turn_button.disabled
 
 
 ## 이동 버튼 노드 (테스트용 접근자).
 func move_button() -> Button:
-	# 이동 버튼을 돌려준다.
 	return _move_button
 
 
 ## 이동 버튼이 활성화되어 있는지 (테스트용).
 func move_enabled() -> bool:
-	# 비활성이 아니면 활성.
 	return not _move_button.disabled
 
 
@@ -298,27 +271,22 @@ func move_pressed() -> bool:
 
 ## 승패 배너가 보이는지 (테스트용).
 func banner_visible() -> bool:
-	# 보이기 상태를 돌려준다.
 	return _banner.visible
 
 
 ## 승패 배너 문구 (테스트용).
 func banner_text() -> String:
-	# 문구를 돌려준다.
 	return _banner.text
 
 
 ## 순서 바 문장을 만든다. 예: "R1  [회색]정찰병[/] → [노랑]▶추적자[/] → 선봉"
 ## 쓰러진 유닛은 빼고, 이미 행동한 유닛은 회색, 지금 차례는 굵은 노란색에 ▶ 표시.
 static func turn_bar_text(round_index: int, order: Array[Unit], alive: Array[bool], turn_index: int) -> String:
-	# 유닛별 조각을 모을 배열.
 	var parts: PackedStringArray = []
-	# 행동 순서대로.
 	for i in order.size():
 		# 기록 시점에 쓰러져 있던 유닛은 뺀다.
 		if not alive[i]:
 			continue
-		# 유닛 이름.
 		var unit_name: String = order[i].data.display_name
 		# 이미 행동한 유닛: 회색.
 		if i < turn_index:
@@ -335,9 +303,7 @@ static func turn_bar_text(round_index: int, order: Array[Unit], alive: Array[boo
 
 ## SP 패널을 유닛에 맞게 갱신한다. 아군이 아니면(또는 null) 숨긴다.
 func _refresh_sp(actor: Unit) -> void:
-	# 아군 차례일 때만 보인다.
 	_sp_panel.visible = actor != null and actor.is_ally()
-	# 숨겼으면 더 할 일이 없다.
 	if not _sp_panel.visible:
 		return
 	# 최대 SP.
@@ -352,35 +318,26 @@ func _refresh_sp(actor: Unit) -> void:
 func _clear_hand(sp: int) -> void:
 	# 타입이 정해진 빈 배열 (set_cards 가 Array[CardData] 를 요구한다).
 	var none: Array[CardData] = []
-	# 빈 손패로 설정한다.
 	_hand.set_cards(none, sp, -1)
 
 
 ## 더미에 유닛 이름과 장수를 보여 주고 흐림을 푼다.
 func _show_piles(owner_name: String, deck_count: int, discard_count: int) -> void:
-	# 덱 더미 위에 유닛 이름.
 	_deck_pile.set_owner_name(owner_name)
-	# 두 더미의 장수.
 	_set_counts(deck_count, discard_count)
-	# 덱 더미를 또렷하게.
 	_deck_pile.set_dimmed(false)
-	# 묘지 더미를 또렷하게.
 	_discard_pile.set_dimmed(false)
 
 
 ## 두 더미를 흐리게 한다 (적 차례).
 func _dim_piles() -> void:
-	# 덱 더미를 흐리게.
 	_deck_pile.set_dimmed(true)
-	# 묘지 더미를 흐리게.
 	_discard_pile.set_dimmed(true)
 
 
 ## 두 더미의 장수 숫자를 바꾼다.
 func _set_counts(deck_count: int, discard_count: int) -> void:
-	# 덱 장수.
 	_deck_pile.set_count(deck_count)
-	# 묘지 장수.
 	_discard_pile.set_count(discard_count)
 
 
@@ -397,19 +354,16 @@ func _apply_interactive() -> void:
 
 ## 손패의 카드 선택 신호를 HUD 신호로 전달한다.
 func _on_hand_card_selected(index: int) -> void:
-	# 그대로 다시 낸다.
 	card_selected.emit(index)
 
 
 ## 손패의 카드 놓기 신호를 HUD 신호로 전달한다.
 func _on_hand_card_dropped(index: int, screen_position: Vector2) -> void:
-	# 그대로 다시 낸다.
 	card_dropped.emit(index, screen_position)
 
 
 ## 손패의 카드 끄는 중 커서 이동 신호를 HUD 신호로 전달한다.
 func _on_hand_card_drag_moved(screen_position: Vector2) -> void:
-	# 그대로 다시 낸다.
 	card_drag_moved.emit(screen_position)
 
 
